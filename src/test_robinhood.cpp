@@ -181,9 +181,45 @@ void test5() {
   r.insert(0+8);
 }
 
+void test_map1() {
+  {
+    Timer t;
+    MarsagliaMWC99 rand;
+    rand.seed(321);
+    RobinHoodHashMap<int> r;
+    for (size_t i=0; i<1000000; ++i) {
+      r.insert(rand(i+1), i);
+    }
+    std::cout << t.elapsed() << " r " << r.size() << std::endl;
+  }
+  {
+    Timer t;
+    MarsagliaMWC99 rand;
+    rand.seed(321);
+    std::unordered_map<size_t, int> u;
+    for (size_t i=0; i<1000000; ++i) {
+      u[rand(i+1)] = i;
+    }
+    std::cout << t.elapsed() << " u " << u.size() << std::endl;
+  }
+
+
+  /*
+  // check everything
+  CHECK(u.size() == r.size());
+  for (auto it = u.begin(); it != u.end(); ++it) {
+    bool is_ok;
+    int& v = r.find(it->first, is_ok);
+    CHECK(is_ok);
+    CHECK(v == it->second);
+  }
+  */
+}
+
 
 int main(int argc, char** argv) {
   try {
+    test_map1();
     test5();
     bench1(30000000, 1000000);
     test4();
