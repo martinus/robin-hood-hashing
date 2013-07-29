@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <unordered_set>
+#include <unordered_map>
 
 
 
@@ -88,6 +89,58 @@ void test4() {
 void bench1(size_t times, size_t max) {
 
   MarsagliaMWC99 rand;
+
+
+
+  {
+    RobinHoodHashMap<int, std::hash<size_t> > r;
+    rand.seed(123);
+    Timer t;
+    for (size_t i=0; i<max; ++i) {
+      r.insert(rand(), 0);
+    }
+    std::cout << t.elapsed() << " ";
+    t.restart();
+    
+    size_t f = 0;
+    rand.seed(123);
+    for (size_t i=0; i<times*2; ++i) {
+      bool success;
+      r.find(rand(), success);
+      if (success) {
+        ++f;
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " RobinHoodHashMap<int, std::hash<size_t> > " << r.size() << " " << f << std::endl;
+    r.print_steps();
+  }
+  {
+    RobinHoodHashMap<int> r;
+    rand.seed(123);
+    Timer t;
+    for (size_t i=0; i<max; ++i) {
+      r.insert(rand(), 0);
+    }
+    std::cout << t.elapsed() << " ";
+    t.restart();
+    
+    size_t f = 0;
+    rand.seed(123);
+    for (size_t i=0; i<times*2; ++i) {
+      bool success;
+      r.find(rand(), success);
+      if (success) {
+        ++f;
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " RobinHoodHashMap<int> " << r.size() << " " << f << std::endl;
+    r.print_steps();
+  }
+
+
+
   {
     hash_table<size_t, int> r;
     rand.seed(123);
@@ -128,6 +181,49 @@ void bench1(size_t times, size_t max) {
     }
     std::cout << t.elapsed();
     std::cout << " hash_table<size_t, int, DummyHash<size_t> > " << r.size() << " " << f << std::endl;
+  }
+
+
+
+  {
+    std::unordered_map<size_t, int> r;
+    rand.seed(123);
+    Timer t;
+    for (size_t i=0; i<max; ++i) {
+      r[rand()] = 0;
+    }
+    std::cout << t.elapsed() << " ";
+    t.restart();
+    
+    size_t f = 0;
+    rand.seed(123);
+    for (size_t i=0; i<times*2; ++i) {
+      if (r.find(rand()) != r.end()) {
+        ++f;
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " std::unordered_map<size_t, int> " << r.size() << " " << f << std::endl;
+  }
+  {
+    std::unordered_map<size_t, int, DummyHash<size_t> > r;
+    rand.seed(123);
+    Timer t;
+    for (size_t i=0; i<max; ++i) {
+      r[rand()] = 0;
+    }
+    std::cout << t.elapsed() << " ";
+    t.restart();
+    
+    size_t f = 0;
+    rand.seed(123);
+    for (size_t i=0; i<times*2; ++i) {
+      if (r.find(rand()) != r.end()) {
+        ++f;
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " std::unordered_map<size_t, int, DummyHash<size_t> > " << r.size() << " " << f << std::endl;
   }
 
 
@@ -226,53 +322,43 @@ void test5() {
   r.insert(0+8);
 }
 
+template<class T>
 void test_map1(size_t times) {
   {
     Timer t;
     MarsagliaMWC99 rand;
     rand.seed(321);
-    hash_table<size_t, int> ht;
+    hash_table<size_t, int, T> ht;
     for (size_t i=0; i<times; ++i) {
       ht.insert(rand(i+1), i);
     }
     std::cout << t.elapsed() << " hash_table<size_t, int> " << ht.size() << std::endl;
+    ht.print_moves();
   }
-  /*
   {
     Timer t;
     MarsagliaMWC99 rand;
     rand.seed(321);
-    RobinHoodHashMap<int> r;
+    RobinHoodHashMap<int, T> r;
+    double slowest = 0;
     for (size_t i=0; i<times; ++i) {
       r.insert(rand(i+1), i);
     }
-    std::cout << t.elapsed() << " RobinHoodHashMap<int> r " << r.size() << std::endl;
+    std::cout << t.elapsed() << " RobinHoodHashMap<int> " << r.size() << std::endl;
+    r.print_moves();
   }
-  */
+
   {
     Timer t;
     MarsagliaMWC99 rand;
     rand.seed(321);
-    std::unordered_map<size_t, int> u;
+    std::unordered_map<size_t, int, T> u;
     for (size_t i=0; i<times; ++i) {
       u[rand(i+1)] = i;
     }
     std::cout << t.elapsed() << " std::unordered_map<size_t, int> " << u.size() << std::endl;
   }
-
-
-
-
-  /*
-  // check everything
-  CHECK(u.size() == r.size());
-  for (auto it = u.begin(); it != u.end(); ++it) {
-    bool is_ok;
-    int& v = r.find(it->first, is_ok);
-    CHECK(is_ok);
-    CHECK(v == it->second);
-  }
-  */
+  std::cout << "test_map done!" << std::endl;
 }
 
 void test_rh() {
@@ -282,10 +368,13 @@ void test_rh() {
 
 int main(int argc, char** argv) {
   try {
+    std::cout << "DummyHash" << std::endl;
+    //test_map1<DummyHash<size_t> >(100000);
+    std::cout << "\n\nstd::hash" << std::endl;
+    test_map1<std::hash<size_t> >(100000);
     bench1(30000000, 1000000);
     test1();
     test_rh();
-    test_map1(100000);
     test5();
     test4();
     test3();

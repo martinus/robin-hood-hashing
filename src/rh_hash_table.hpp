@@ -20,6 +20,8 @@ class hash_table
   static const int INITIAL_SIZE = 8;
   static const int LOAD_FACTOR_PERCENT = 70;
 
+  std::unordered_map<size_t, InitSizet> _moves;
+
   struct elem
   {
     Key key;
@@ -147,12 +149,14 @@ class hash_table
   {
     int pos = desired_pos(hash);
     int dist = 0;
+    //size_t moves = 0;
     for(;;)
     {			
       bool is_new = elem_hash(pos) == 0;
       if(is_new || key == buffer[pos].key)
       {
         construct(pos, hash, std::move(key), std::move(val));
+        //++_moves[moves].v;
         return is_new;
       }
 
@@ -164,13 +168,14 @@ class hash_table
         if(is_deleted(elem_hash(pos)))
         {
           construct(pos, hash, std::move(key), std::move(val));
+          //++_moves[moves].v;
           return true;
         }
-
         std::swap(hash, elem_hash(pos));
         std::swap(key, buffer[pos].key);
         std::swap(val, buffer[pos].value);
         dist = existing_elem_probe_dist;				
+        //++moves;
       }
 
       pos = (pos+1) & mask;
@@ -202,6 +207,13 @@ public:
   {
     alloc();
   }
+
+  void print_moves() const {
+    for (auto it = _moves.begin(); it != _moves.end(); ++it) {
+      std::cout << it->first << ";" << it->second.v << std::endl;
+    }
+  }
+
 
   void insert(Key key, Value val)
   {		

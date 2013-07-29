@@ -158,11 +158,15 @@ public:
   }
 
   // inline because it should be fast
-  inline bool insert(size_t key, const T& val) {
-    std::pair<size_t, T> kv(key, val);
+  inline bool insert(size_t key, const T val) {
+    std::pair<size_t, T> kv(std::move(key), std::move(val));
 
     const size_t sentinel = -1;
     size_t i = _hash(kv.first) & _mask;
+
+    //size_t moves = 0;
+
+    int dist_key = 0;
 
     while (true) {
       if (_data[i].first == sentinel) {
@@ -170,18 +174,23 @@ public:
         if (++_size == _max_fullness) {
           increase_size();
         }
+        //++_moves[moves].v;
         return true;
       } else if (_data[i].first == kv.first) {
         _data[i] = std::move(kv);
+        //++_moves[moves].v;
         return false;
       } else {
-        size_t dist_inplace = (i - _hash(_data[i].first)) & _mask;
-        size_t dist_key = (i - _hash(kv.first)) & _mask;
+        int dist_inplace = (i - _hash(_data[i].first)) & _mask;
 
-        if (dist_key > dist_inplace) {
+        if (dist_inplace < dist_key) {
+          dist_key = dist_inplace;
           std::swap(kv, _data[i]);
         }
+        //++moves;
       }
+
+      ++dist_key;
       ++i;
       i &= _mask;
     }
@@ -197,19 +206,19 @@ public:
       if (_data[i].first == sentinel) {
         //++_steps_to_count[steps].v;
         success = false;
-        return _values[0];
+        return _data[i];
       }
 
       if (_data[i].first == key) {
         //++_steps_to_count[steps].v;
         success = true;
-        return _values[i];
+        return _data[i];
       }
 
       if (((i - initial) & _mask) > ((i - _hash(_data[i].first)) & _mask)) {
         //++_steps_to_count[steps].v;
         success = false;
-        return _values[0];
+        return _data[i];
       }
 
       ++i;
@@ -224,6 +233,12 @@ public:
     }
   }
 
+  void print_moves() const {
+    for (auto it = _moves.begin(); it != _moves.end(); ++it) {
+      std::cout << it->first << ";" << it->second.v << std::endl;
+    }
+  }
+
   inline size_t size() const {
     return _size;
   }
@@ -234,6 +249,7 @@ public:
 
 private:
   std::unordered_map<size_t, InitSizet> _steps_to_count;
+  std::unordered_map<size_t, InitSizet> _moves;
 
   // doubles size
   void increase_size() {
