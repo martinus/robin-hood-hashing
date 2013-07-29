@@ -1,6 +1,7 @@
 #include <timer.h>
 #include <robinhood.h>
 #include <marsagliamwc99.h>
+#include <rh_hash_table.hpp>
 
 #include <iostream>
 #include <unordered_set>
@@ -40,6 +41,7 @@ void test1() {
     CHECK(rhhs.size() == 2 + i);
   }
 }
+
 
 void test2() {
   RobinHoodHashSet<> h;
@@ -86,6 +88,49 @@ void test4() {
 void bench1(size_t times, size_t max) {
 
   MarsagliaMWC99 rand;
+  {
+    hash_table<size_t, int> r;
+    rand.seed(123);
+    Timer t;
+    for (size_t i=0; i<max; ++i) {
+      r.insert(rand(), 0);
+    }
+    std::cout << t.elapsed() << " ";
+    t.restart();
+    
+    size_t f = 0;
+    rand.seed(123);
+    for (size_t i=0; i<times*2; ++i) {
+      if (r.find(rand())) {
+        ++f;
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " hash_table<size_t, int> " << r.size() << " " << f << std::endl;
+  }
+
+  {
+    hash_table<size_t, int, DummyHash<size_t> > r;
+    rand.seed(123);
+    Timer t;
+    for (size_t i=0; i<max; ++i) {
+      r.insert(rand(), 0);
+    }
+    std::cout << t.elapsed() << " ";
+    t.restart();
+    
+    size_t f = 0;
+    rand.seed(123);
+    for (size_t i=0; i<times*2; ++i) {
+      if (r.find(rand())) {
+        ++f;
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " hash_table<size_t, int, DummyHash<size_t> > " << r.size() << " " << f << std::endl;
+  }
+
+
   {
     RobinHoodHashSet<> r;
     rand.seed(123);
@@ -181,27 +226,41 @@ void test5() {
   r.insert(0+8);
 }
 
-void test_map1() {
+void test_map1(size_t times) {
+  {
+    Timer t;
+    MarsagliaMWC99 rand;
+    rand.seed(321);
+    hash_table<size_t, int> ht;
+    for (size_t i=0; i<times; ++i) {
+      ht.insert(rand(i+1), i);
+    }
+    std::cout << t.elapsed() << " hash_table<size_t, int> " << ht.size() << std::endl;
+  }
+  /*
   {
     Timer t;
     MarsagliaMWC99 rand;
     rand.seed(321);
     RobinHoodHashMap<int> r;
-    for (size_t i=0; i<1000000; ++i) {
+    for (size_t i=0; i<times; ++i) {
       r.insert(rand(i+1), i);
     }
-    std::cout << t.elapsed() << " r " << r.size() << std::endl;
+    std::cout << t.elapsed() << " RobinHoodHashMap<int> r " << r.size() << std::endl;
   }
+  */
   {
     Timer t;
     MarsagliaMWC99 rand;
     rand.seed(321);
     std::unordered_map<size_t, int> u;
-    for (size_t i=0; i<1000000; ++i) {
+    for (size_t i=0; i<times; ++i) {
       u[rand(i+1)] = i;
     }
-    std::cout << t.elapsed() << " u " << u.size() << std::endl;
+    std::cout << t.elapsed() << " std::unordered_map<size_t, int> " << u.size() << std::endl;
   }
+
+
 
 
   /*
@@ -216,16 +275,21 @@ void test_map1() {
   */
 }
 
+void test_rh() {
+  hash_table<size_t, size_t> m;
+}
+
 
 int main(int argc, char** argv) {
   try {
-    test_map1();
-    test5();
     bench1(30000000, 1000000);
+    test1();
+    test_rh();
+    test_map1(100000);
+    test5();
     test4();
     test3();
     test2();
-    test1();
 
 
   } catch (const std::exception& e) {
