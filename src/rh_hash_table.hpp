@@ -17,7 +17,7 @@ typedef unsigned __int32 uint32_t;
 template<class Key, class Value, class Hasher = std::hash<Key> >
 class hash_table
 {
-  static const int INITIAL_SIZE = 256;
+  static const int INITIAL_SIZE = 8;
   static const int LOAD_FACTOR_PERCENT = 70;
 
   struct elem
@@ -142,16 +142,18 @@ class hash_table
     elem_hash(ix) = hash;
   }
 
-  void insert_helper(uint32_t hash, Key&& key, Value&& val)
+  // returns true if a new element was inserted
+  bool insert_helper(uint32_t hash, Key&& key, Value&& val)
   {
     int pos = desired_pos(hash);
     int dist = 0;
     for(;;)
     {			
-      if(elem_hash(pos) == 0)
-      {			
+      bool is_new = elem_hash(pos) == 0;
+      if(is_new || key == buffer[pos].key)
+      {
         construct(pos, hash, std::move(key), std::move(val));
-        return;
+        return is_new;
       }
 
       // If the existing elem has probed less than us, then swap places with existing
@@ -162,7 +164,7 @@ class hash_table
         if(is_deleted(elem_hash(pos)))
         {
           construct(pos, hash, std::move(key), std::move(val));
-          return;
+          return true;
         }
 
         std::swap(hash, elem_hash(pos));
@@ -203,11 +205,11 @@ public:
 
   void insert(Key key, Value val)
   {		
-    if (++num_elems >= resize_threshold)
-    {
-      grow();
-    }		
-    insert_helper(hash_key(key), std::move(key), std::move(val));		
+    if (insert_helper(hash_key(key), std::move(key), std::move(val))) {
+      if (++num_elems >= resize_threshold) {
+        grow();
+      }		
+    }
   }
 
   ~hash_table()
