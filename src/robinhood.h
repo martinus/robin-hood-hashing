@@ -20,17 +20,24 @@ struct InitSizet {
 
 
 
-template<class T, class H = DummyHash<size_t> >
+template<class T, class H = DummyHash<size_t>, class A = std::allocator<T> >
 class RobinHoodHashMap {
 public:
   RobinHoodHashMap()
+  : _allocator()
   {
     init_data(8);
   }
 
   ~RobinHoodHashMap() {
+    for (size_t i=0; i<_size; ++i) {
+      if (_keys[i] != (size_t)-1) {
+        _allocator.destroy(_values + i);
+      }
+    }
+
     delete[] _keys;
-    delete[] _values;
+    _allocator.deallocate(_values, _size);
   }
 
   // inline because it should be fast
@@ -43,14 +50,16 @@ public:
     while (true) {
       if (_keys[i] == sentinel) {
         _keys[i] = std::move(key);
-        _values[i] = std::move(val);
+        // todo: is move ok here?
+        _allocator.construct(_values + i, std::move(val));
         if (++_size == _max_fullness) {
           increase_size();
         }
         return true;
 
       } else if (_keys[i] == key) {
-        _values[i] = std::move(val);
+        _allocator.destroy(_values + i);
+        _allocator.construct(_values + i, std::move(val));
         return false;
 
       } else {
@@ -60,6 +69,7 @@ public:
           // this might be costly
           dist_key = dist_inplace;
           std::swap(key, _keys[i]);
+          // todo allocator stuff here?
           std::swap(val, _values[i]);
         }
       }
@@ -127,10 +137,11 @@ private:
     for (size_t i=0; i<old_size; ++i) {
       if (old_keys[i] != (size_t)-1) {
         insert(old_keys[i], old_values[i]);
+        _allocator.destroy(old_values + i);
       }
     }
     delete[] old_keys;
-    delete[] old_values;
+    _allocator.deallocate(old_values, old_size);
   }
 
 
@@ -139,7 +150,7 @@ private:
     _max_size = new_size;
     _mask = _max_size - 1;
     _keys = new size_t[_max_size];
-    _values = new T[_max_size];
+    _values = _allocator.allocate(_max_size);
     for (size_t i=0; i<_max_size; ++i) {
       _keys[i] = (size_t)-1;
     }
@@ -154,4 +165,6 @@ private:
   size_t _mask;
   size_t _max_size;
   size_t _max_fullness;
+
+  A _allocator;
 };
