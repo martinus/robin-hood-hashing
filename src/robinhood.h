@@ -166,7 +166,7 @@ public:
 
     //size_t moves = 0;
 
-    int dist_key = 0;
+    size_t dist_key = 0;
 
     while (true) {
       if (_data[i].first == sentinel) {
@@ -181,7 +181,7 @@ public:
         //++_moves[moves].v;
         return false;
       } else {
-        int dist_inplace = (i - _hash(_data[i].first)) & _mask;
+        size_t dist_inplace = (i - _hash(_data[i].first)) & _mask;
 
         if (dist_inplace < dist_key) {
           dist_key = dist_inplace;
@@ -196,31 +196,27 @@ public:
     }
   }
 
-  std::pair<size_t, T>& find(size_t key, bool& success) {
-    const size_t sentinel = -1;
-    const size_t initial = _hash(key) & _mask;
-    size_t i = initial;
+  T& find(size_t key, bool& success) {
+    static const size_t sentinel = -1;
+    size_t i = _hash(key) & _mask;
+    size_t dist_key = 0;
 
     //size_t steps = 0;
     while (true) {
-      if (_data[i].first == sentinel) {
+      const size_t k = _data[i].first;
+      if (k == sentinel || k == key) {
+        //++_steps_to_count[steps].v;
+        success = k == key;
+        return _data[i].second;
+      }
+
+      if (dist_key > ((i - _hash(k)) & _mask)) {
         //++_steps_to_count[steps].v;
         success = false;
-        return _data[i];
+        return _data[i].second;
       }
 
-      if (_data[i].first == key) {
-        //++_steps_to_count[steps].v;
-        success = true;
-        return _data[i];
-      }
-
-      if (((i - initial) & _mask) > ((i - _hash(_data[i].first)) & _mask)) {
-        //++_steps_to_count[steps].v;
-        success = false;
-        return _data[i];
-      }
-
+      ++dist_key;
       ++i;
       i &= _mask;
       //++steps;
