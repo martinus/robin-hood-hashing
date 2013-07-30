@@ -33,55 +33,61 @@ double bench_hashing(int& data) {
 
 
 void test1() {
-  RobinHoodHashSet<> rhhs;
+  RobinHoodHashMap<int> rhhs;
   CHECK(rhhs.size() == 0);
-  rhhs.insert(32145);
+  rhhs.insert(32145, 123);
   CHECK(rhhs.size() == 1);
   for (size_t i=0; i<10; ++i) {
-    rhhs.insert(i*4);
+    rhhs.insert(i*4, 423);
     CHECK(rhhs.size() == 2 + i);
   }
 }
 
 
 void test2() {
-  RobinHoodHashSet<> h;
+  RobinHoodHashMap<int> h;
   for (size_t i=0; i<11; ++i) {
-    h.insert(i*i + 7);
+    h.insert(i*i + 7, 123);
   }
 
   // query
   for (size_t i=0; i<11; ++i) {
-    CHECK(h.find(i*i+7));
+    bool f;
+    h.find(i*i+7, f);
+    CHECK(f);
   }
   for (size_t i=12; i<1000; ++i) {
-    CHECK(!h.find(i*i+7));
+    bool f;
+    h.find(i*i+7, f);
+    CHECK(!f);
   }
 }
 
 void test3() {
-  RobinHoodHashSet<> h;
+  RobinHoodHashMap<int> h;
   for (size_t i=0; i<4; ++i) {
-    h.insert(i * 8 + 14);
-    h.insert(i * 8 + 15);
+    h.insert(i * 8 + 14, 123);
+    h.insert(i * 8 + 15, 123);
   }
   for (size_t i=0; i<4; ++i) {
   }
   for (size_t i=0; i<4; ++i) {
-    CHECK(h.find(i * 8 + 14));
+    bool f;
+    h.find(i * 8 + 14, f);
+    CHECK(f);
   }
 }
 
 
 void test4() {
   std::unordered_set<size_t> u;
-  RobinHoodHashSet<> r;
+  RobinHoodHashMap<int> r;
 
   MarsagliaMWC99 rand;
 
   for (size_t i=0; i<100000; ++i) {
     size_t val = rand(i+1);
-    CHECK(u.insert(val).second == r.insert(val));
+    CHECK(u.insert(val).second == r.insert(val, 123));
   }
 }
 
@@ -90,6 +96,30 @@ template<class T>
 void bench1(size_t times, size_t max) {
 
   MarsagliaMWC99 rand;
+
+  {
+    RobinHoodHashMap<std::string, T> r;
+    rand.seed(123);
+    Timer t;
+    for (size_t i=0; i<max; ++i) {
+      r.insert(rand(), "fkjljklasjljajsk");
+    }
+    std::cout << t.elapsed() << " ";
+    t.restart();
+    
+    size_t f = 0;
+    rand.seed(123);
+    for (size_t i=0; i<times*2; ++i) {
+      bool success;
+      r.find(rand(), success);
+      if (success) {
+        ++f;
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " RobinHoodHashMap<int> " << r.size() << " " << f << std::endl;
+    r.print_steps();
+  }
 
   {
     RobinHoodHashMap<int, T> r;
@@ -158,28 +188,6 @@ void bench1(size_t times, size_t max) {
   }
 
   {
-    RobinHoodHashSet<T> r;
-    rand.seed(123);
-    Timer t;
-    for (size_t i=0; i<max; ++i) {
-      r.insert(rand());
-    }
-    std::cout << t.elapsed() << " ";
-    t.restart();
-    
-    size_t f = 0;
-    rand.seed(123);
-    for (size_t i=0; i<times*2; ++i) {
-      if (r.find(rand())) {
-        ++f;
-      }
-    }
-    std::cout << t.elapsed();
-    std::cout << " RobinHoodHashSet<> " << r.size() << " " << f << std::endl;
-    r.print_steps();
-  }
-
-  {
     std::unordered_set<size_t, T> r;
     rand.seed(123);
     Timer t;
@@ -200,15 +208,6 @@ void bench1(size_t times, size_t max) {
     std::cout << " std::unordered_set<size_t> " << r.size() << " " << f << std::endl;
   }
   std::cout << "bench done!\n\n";
-}
-
-void test5() {
-  RobinHoodHashSet<> r;
-  r.insert(7);
-  r.insert(7+8);
-  r.insert(0);
-  r.insert(1);
-  r.insert(0+8);
 }
 
 template<class T>
@@ -271,7 +270,6 @@ int main(int argc, char** argv) {
 
     test1();
     test_rh();
-    test5();
     test4();
     test3();
     test2();
