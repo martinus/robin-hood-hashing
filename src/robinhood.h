@@ -154,40 +154,39 @@ public:
   }
 
   ~RobinHoodHashMap() {
-    delete _data;
+    delete _keys;
+    delete _values;
   }
 
   // inline because it should be fast
-  inline bool insert(size_t key, const T val) {
-    std::pair<size_t, T> kv(std::move(key), std::move(val));
-
+  inline bool insert(size_t key, T val) {
     const size_t sentinel = -1;
-    size_t i = _hash(kv.first) & _mask;
-
-    //size_t moves = 0;
+    size_t i = _hash(key) & _mask;
 
     size_t dist_key = 0;
 
     while (true) {
-      if (_data[i].first == sentinel) {
-        _data[i] = std::move(kv);
+      if (_keys[i] == sentinel) {
+        _keys[i] = std::move(key);
+        _values[i] = std::move(val);
         if (++_size == _max_fullness) {
           increase_size();
         }
-        //++_moves[moves].v;
         return true;
-      } else if (_data[i].first == kv.first) {
-        _data[i] = std::move(kv);
-        //++_moves[moves].v;
+
+      } else if (_keys[i] == key) {
+        _values[i] = std::move(val);
         return false;
+
       } else {
-        size_t dist_inplace = (i - _hash(_data[i].first)) & _mask;
+        size_t dist_inplace = (i - _hash(_keys[i])) & _mask;
 
         if (dist_inplace < dist_key) {
+          // this might be costly
           dist_key = dist_inplace;
-          std::swap(kv, _data[i]);
+          std::swap(key, _keys[i]);
+          std::swap(val, _values[i]);
         }
-        //++moves;
       }
 
       ++dist_key;
@@ -203,23 +202,19 @@ public:
 
     //size_t steps = 0;
     while (true) {
-      const size_t k = _data[i].first;
-      if (k == sentinel || k == key) {
-        //++_steps_to_count[steps].v;
-        success = k == key;
-        return _data[i].second;
+      if (_keys[i] == sentinel || _keys[i] == key) {
+        success = _keys[i] == key;
+        return _values[i];
       }
 
-      if (dist_key > ((i - _hash(k)) & _mask)) {
-        //++_steps_to_count[steps].v;
+      if (dist_key > ((i - _hash(_keys[i])) & _mask)) {
         success = false;
-        return _data[i].second;
+        return _values[i];
       }
 
       ++dist_key;
       ++i;
       i &= _mask;
-      //++steps;
     }
   }
 
@@ -249,15 +244,17 @@ private:
 
   // doubles size
   void increase_size() {
-    std::pair<size_t, T>* old_data = _data;
+    size_t* old_keys = _keys;
+    T* old_values = _values;
     size_t old_size = _max_size;
     init_data(_max_size*2);
     for (size_t i=0; i<old_size; ++i) {
-      if (old_data[i].first != (size_t)-1) {
-        insert(old_data[i].first, old_data[i].second);
+      if (old_keys[i] != (size_t)-1) {
+        insert(old_keys[i], old_values[i]);
       }
     }
-    delete old_data;
+    delete old_keys;
+    delete old_values;
   }
 
 
@@ -265,14 +262,16 @@ private:
     _size = 0;
     _max_size = new_size;
     _mask = _max_size - 1;
-    _data = new std::pair<size_t, T>[_max_size];
+    _keys = new size_t[_max_size];
+    _values = new T[_max_size];
     for (size_t i=0; i<_max_size; ++i) {
-      _data[i].first = (size_t)-1;
+      _keys[i] = (size_t)-1;
     }
     _max_fullness = _max_size*70/100;
   }
 
-  std::pair<size_t, T>* _data;
+  size_t* _keys;
+  T* _values;
 
   const H _hash;
   size_t _size;
