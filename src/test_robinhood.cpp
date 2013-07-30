@@ -92,17 +92,17 @@ void test4() {
 }
 
 
-template<class T>
-void bench1(size_t times, size_t max) {
+template<class T, class H>
+void bench1(size_t times, size_t max, const T& value) {
 
   MarsagliaMWC99 rand;
 
   {
-    RobinHoodHashMap<std::string, T> r;
+    RobinHoodHashMap<T, H> r;
     rand.seed(123);
     Timer t;
     for (size_t i=0; i<max; ++i) {
-      r.insert(rand(), "fkjljklasjljajsk");
+      r.insert(rand(), value);
     }
     std::cout << t.elapsed() << " ";
     t.restart();
@@ -117,40 +117,16 @@ void bench1(size_t times, size_t max) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " RobinHoodHashMap<int> " << r.size() << " " << f << std::endl;
+    std::cout << " RobinHoodHashMap<T, H> " << r.size() << " " << f << std::endl;
     r.print_steps();
   }
 
   {
-    RobinHoodHashMap<int, T> r;
+    hash_table<size_t, T, H> r;
     rand.seed(123);
     Timer t;
     for (size_t i=0; i<max; ++i) {
-      r.insert(rand(), i);
-    }
-    std::cout << t.elapsed() << " ";
-    t.restart();
-    
-    size_t f = 0;
-    rand.seed(123);
-    for (size_t i=0; i<times*2; ++i) {
-      bool success;
-      r.find(rand(), success);
-      if (success) {
-        ++f;
-      }
-    }
-    std::cout << t.elapsed();
-    std::cout << " RobinHoodHashMap<int> " << r.size() << " " << f << std::endl;
-    r.print_steps();
-  }
-
-  {
-    hash_table<size_t, int, T> r;
-    rand.seed(123);
-    Timer t;
-    for (size_t i=0; i<max; ++i) {
-      r.insert(rand(), i);
+      r.insert(rand(), value);
     }
     std::cout << t.elapsed() << " ";
     t.restart();
@@ -163,15 +139,15 @@ void bench1(size_t times, size_t max) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " hash_table<size_t, int> " << r.size() << " " << f << std::endl;
+    std::cout << " hash_table<size_t, T, H> " << r.size() << " " << f << std::endl;
   }
 
   {
-    std::unordered_map<size_t, int, T> r;
+    std::unordered_map<size_t, T, H> r;
     rand.seed(123);
     Timer t;
     for (size_t i=0; i<max; ++i) {
-      r[rand()] = i;
+      r[rand()] = value;
     }
     std::cout << t.elapsed() << " ";
     t.restart();
@@ -184,28 +160,7 @@ void bench1(size_t times, size_t max) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " std::unordered_map<size_t, int> " << r.size() << " " << f << std::endl;
-  }
-
-  {
-    std::unordered_set<size_t, T> r;
-    rand.seed(123);
-    Timer t;
-    for (size_t i=0; i<max; ++i) {
-      r.insert(rand());
-    }
-    std::cout << t.elapsed() << " ";
-    t.restart();
-    
-    size_t f = 0;
-    rand.seed(123);
-    for (size_t i=0; i<times*2; ++i) {
-      if (r.find(rand()) != r.end()) {
-        ++f;
-      }
-    }
-    std::cout << t.elapsed();
-    std::cout << " std::unordered_set<size_t> " << r.size() << " " << f << std::endl;
+    std::cout << " std::unordered_map<size_t, T, H> " << r.size() << " " << f << std::endl;
   }
   std::cout << "bench done!\n\n";
 }
@@ -221,7 +176,6 @@ void test_map1(size_t times) {
       ht.insert(rand(i+1), i);
     }
     std::cout << t.elapsed() << " hash_table<size_t, int> " << ht.size() << std::endl;
-    ht.print_moves();
   }
   {
     Timer t;
@@ -254,13 +208,38 @@ void test_rh() {
 }
 
 
+struct D {
+  D() {
+    std::cout << "ctor" << std::endl;
+  }
+  ~D() {
+    std::cout << "dtor" << std::endl;
+  }
+};
+
+void test_del(int count) {
+  D* d = new D[count];
+  delete[] d;
+}
+
 int main(int argc, char** argv) {
   try {
-    std::cout << "DummyHash bench" << std::endl;
-    bench1<DummyHash<size_t> >(30000000, 1000000);
+    test_del(4);
+    std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
+    std::cout << "std::string, DummyHash" << std::endl;
+    bench1<std::string, DummyHash<size_t> >(30000000, 1000000, "fklajlejklahseh");
 
-    std::cout << "std::hash bench" << std::endl;
-    bench1<std::hash<size_t> >(30000000, 1000000);
+    std::cout << "std::string, std::hash" << std::endl;
+    bench1<std::string, std::hash<size_t> >(30000000, 1000000, "lfklkajasjefj");
+
+    std::cout << "int, DummyHash" << std::endl;
+    bench1<int, DummyHash<size_t> >(30000000, 1000000, 1231);
+
+    std::cout << "int, std::hash" << std::endl;
+    bench1<int, std::hash<size_t> >(30000000, 1000000, 3213);
+
+
+
 
     std::cout << "DummyHash" << std::endl;
     test_map1<DummyHash<size_t> >(500000);
