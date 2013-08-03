@@ -173,11 +173,11 @@ private:
     _values = _allocator.allocate(_max_size + HOP_SIZE);
     for (size_t i=0; i<_max_size + HOP_SIZE; ++i) {
       _keys[i] = (size_t)-1;
-      _hops[i] = 0;
+      _hops[i] = (HopType)0;
     }
 
-    _max_fullness = (_max_size + HOP_SIZE) * 80/100;;
-    //_max_fullness = _max_size + HOP_SIZE - 1;
+    //_max_fullness = (_max_size + HOP_SIZE) * 80/100;
+    _max_fullness = _max_size + HOP_SIZE - 1;
   }
 
   size_t* _keys;

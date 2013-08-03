@@ -96,7 +96,7 @@ void test4() {
 template<class T, class H>
 void bench1(size_t insertions, size_t queries, const T& value) {
 
-  MarsagliaMWC99 rand;
+  MarsagliaMWC99 rand(1000000);
   const int seed = 23154;
 
   {
@@ -104,7 +104,7 @@ void bench1(size_t insertions, size_t queries, const T& value) {
     rand.seed(seed);
     Timer t;
     for (size_t i=0; i<insertions; ++i) {
-      r.insert(rand(), value);
+      r.insert(i, value);
     }
     std::cout << t.elapsed() << " ";
     t.restart();
@@ -127,7 +127,7 @@ void bench1(size_t insertions, size_t queries, const T& value) {
     rand.seed(seed);
     Timer t;
     for (size_t i=0; i<insertions; ++i) {
-      r.insert(rand(), value);
+      r.insert(i, value);
     }
     std::cout << t.elapsed() << " ";
     t.restart();
@@ -151,7 +151,7 @@ void bench1(size_t insertions, size_t queries, const T& value) {
     rand.seed(seed);
     Timer t;
     for (size_t i=0; i<insertions; ++i) {
-      r.insert(rand(), value);
+      r.insert(i, value);
     }
     std::cout << t.elapsed() << " ";
     t.restart();
@@ -172,7 +172,7 @@ void bench1(size_t insertions, size_t queries, const T& value) {
     rand.seed(seed);
     Timer t;
     for (size_t i=0; i<insertions; ++i) {
-      r[rand()] = value;
+      r[i] = value;
     }
     std::cout << t.elapsed() << " ";
     t.restart();
@@ -295,12 +295,12 @@ void test_compare(size_t times) {
 
 int main(int argc, char** argv) {
   try {
-    test_compare<MultiplyHash<size_t> >(10000000);
+    //test_compare<MultiplyHash<size_t> >(10000000);
 
 
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
-    size_t insertions = 2000000;
-    size_t queries = 10000000;
+    size_t insertions = 200000;
+    size_t queries = 100000000;
     std::cout << "int, std::hash" << std::endl;
     bench1<int, std::hash<size_t> >(insertions, queries, 1231);
     std::cout << "int, DummyHash" << std::endl;
