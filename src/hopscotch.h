@@ -2,13 +2,24 @@
 
 #include <algorithm>
 #include <unordered_map>
+#include <cstdint>
+
+// HopScotch algorithm. Based on
+// http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
+// https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.hpp
+
 
 template<class T, class H = DummyHash<size_t>, class A = std::allocator<T> >
 class HopScotch {
 private:
   enum CONSTANTS {
-    HOP_SIZE = 32
+    HOP_SIZE = 8
   };
+
+  //typedef unsigned int HopType;
+  typedef std::uint8_t HopType;
+
+
 public:
   HopScotch()
   : _allocator()
@@ -44,7 +55,9 @@ public:
     }
 
     if (idx == _max_size + HOP_SIZE) {
-      std::cout << "OMG! insert failed!! " << _size << " " << (_max_size + HOP_SIZE) << std::endl;
+      // retry insert
+      increase_size();
+      return insert(key, val);
     }
 
     if (_keys[idx] == key) {
@@ -69,12 +82,13 @@ public:
         _keys[idx] = std::move(_keys[i]);
         _allocator.construct(_values + idx, std::move(_values[i]));
         _allocator.destroy(_values + i);
-        _hops[h] |= (1 << (idx - h));
+        _hops[h] |= ((HopType)1 << (idx - h));
 
         // clear hop bit
-        _hops[h] ^= (1 << (i - h)); 
+        _hops[h] ^= ((HopType)1 << (i - h)); 
       } else {
-        std::cout << "OMG! could not insert! TODO fix this" << std::endl;
+        increase_size();
+        return insert(key, val);
       }
       idx = i;
     }
@@ -83,7 +97,7 @@ public:
     // it's rightful place.
     _allocator.construct(_values + idx, std::move(val));
     _keys[idx] = std::move(key);
-    _hops[initial_idx] |= (1 << (idx - initial_idx));
+    _hops[initial_idx] |= ((HopType)1 << (idx - initial_idx));
     ++_size;
     return true;
   }
@@ -91,7 +105,7 @@ public:
   T& find(size_t key, bool& success) {
     const size_t sentinel = -1;
     size_t idx = _hash(key) & _mask;
-    unsigned int hops = _hops[idx];
+    HopType hops = _hops[idx];
 
     //for (size_t i=0; i<HOP_SIZE; ++i) {
     while (hops) {
@@ -139,7 +153,7 @@ private:
     _max_size = new_size;
     _mask = _max_size - 1;
     _keys = new size_t[_max_size + HOP_SIZE];
-    _hops = new uint32_t[_max_size + HOP_SIZE];
+    _hops = new HopType[_max_size + HOP_SIZE];
     _values = _allocator.allocate(_max_size + HOP_SIZE);
     for (size_t i=0; i<_max_size + HOP_SIZE; ++i) {
       _keys[i] = (size_t)-1;
@@ -149,7 +163,7 @@ private:
   }
 
   size_t* _keys;
-  unsigned int* _hops;
+  HopType* _hops;
   T* _values;
 
   const H _hash;

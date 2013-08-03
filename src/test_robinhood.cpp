@@ -94,7 +94,7 @@ void test4() {
 
 
 template<class T, class H>
-void bench1(size_t times, size_t max, const T& value) {
+void bench1(size_t insertions, size_t queries, const T& value) {
 
   MarsagliaMWC99 rand;
 
@@ -102,7 +102,7 @@ void bench1(size_t times, size_t max, const T& value) {
     HopScotch<T, H> r;
     rand.seed(123);
     Timer t;
-    for (size_t i=0; i<max; ++i) {
+    for (size_t i=0; i<insertions; ++i) {
       r.insert(rand(), value);
     }
     std::cout << t.elapsed() << " ";
@@ -110,7 +110,7 @@ void bench1(size_t times, size_t max, const T& value) {
     
     size_t f = 0;
     rand.seed(123);
-    for (size_t i=0; i<times*2; ++i) {
+    for (size_t i=0; i<queries; ++i) {
       bool success;
       r.find(rand(), success);
       if (success) {
@@ -125,7 +125,7 @@ void bench1(size_t times, size_t max, const T& value) {
     RobinHoodHashMap<T, H> r;
     rand.seed(123);
     Timer t;
-    for (size_t i=0; i<max; ++i) {
+    for (size_t i=0; i<insertions; ++i) {
       r.insert(rand(), value);
     }
     std::cout << t.elapsed() << " ";
@@ -133,7 +133,7 @@ void bench1(size_t times, size_t max, const T& value) {
     
     size_t f = 0;
     rand.seed(123);
-    for (size_t i=0; i<times*2; ++i) {
+    for (size_t i=0; i<queries; ++i) {
       bool success;
       r.find(rand(), success);
       if (success) {
@@ -149,7 +149,7 @@ void bench1(size_t times, size_t max, const T& value) {
     hash_table<size_t, T, H> r;
     rand.seed(123);
     Timer t;
-    for (size_t i=0; i<max; ++i) {
+    for (size_t i=0; i<insertions; ++i) {
       r.insert(rand(), value);
     }
     std::cout << t.elapsed() << " ";
@@ -157,7 +157,7 @@ void bench1(size_t times, size_t max, const T& value) {
     
     size_t f = 0;
     rand.seed(123);
-    for (size_t i=0; i<times*2; ++i) {
+    for (size_t i=0; i<queries; ++i) {
       if (r.find(rand())) {
         ++f;
       }
@@ -170,7 +170,7 @@ void bench1(size_t times, size_t max, const T& value) {
     std::unordered_map<size_t, T, H> r;
     rand.seed(123);
     Timer t;
-    for (size_t i=0; i<max; ++i) {
+    for (size_t i=0; i<insertions; ++i) {
       r[rand()] = value;
     }
     std::cout << t.elapsed() << " ";
@@ -178,7 +178,7 @@ void bench1(size_t times, size_t max, const T& value) {
     
     size_t f = 0;
     rand.seed(123);
-    for (size_t i=0; i<times*2; ++i) {
+    for (size_t i=0; i<queries; ++i) {
       if (r.find(rand()) != r.end()) {
         ++f;
       }
@@ -295,24 +295,24 @@ int main(int argc, char** argv) {
 
 
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
-    size_t insertions = 10000000;
-    size_t lookups = 20000000;
+    size_t insertions = 200000;
+    size_t queries = 10000000;
     std::cout << "int, std::hash" << std::endl;
-    bench1<int, std::hash<size_t> >(lookups, insertions, 1231);
+    bench1<int, std::hash<size_t> >(insertions, queries, 1231);
     std::cout << "int, DummyHash" << std::endl;
-    bench1<int, DummyHash<size_t> >(lookups, insertions, 1231);
+    bench1<int, DummyHash<size_t> >(insertions, queries, 1231);
     std::cout << "int, MultiplyHash" << std::endl;
-    bench1<int, MultiplyHash<size_t> >(lookups, insertions, 1231);
+    bench1<int, MultiplyHash<size_t> >(insertions, queries, 1231);
 
     std::cout << "std::string, DummyHash" << std::endl;
-    bench1<std::string, DummyHash<size_t> >(lookups, insertions, "fklajlejklahseh");
+    bench1<std::string, DummyHash<size_t> >(insertions, queries, "fklajlejklahseh");
 
     std::cout << "std::string, std::hash" << std::endl;
-    bench1<std::string, std::hash<size_t> >(lookups, insertions, "lfklkajasjefj");
+    bench1<std::string, std::hash<size_t> >(insertions, queries, "lfklkajasjefj");
 
 
     std::cout << "int, std::hash" << std::endl;
-    bench1<int, std::hash<size_t> >(insertions, lookups, 1231);
+    bench1<int, std::hash<size_t> >(insertions, queries, 1231);
 
 
     std::cout << "test DummyHash" << std::endl;
