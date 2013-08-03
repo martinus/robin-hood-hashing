@@ -6,7 +6,7 @@
 
 // HopScotch algorithm. Based on
 // http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
-// https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.hpp
+// https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
 
 
 template<class T, class H = DummyHash<size_t>, class A = std::allocator<T> >
@@ -40,11 +40,11 @@ public:
 
   // inline because it should be fast
   inline bool insert(size_t key, T val) {
+    const size_t sentinel = -1;
     if (_size == _max_fullness) {
       increase_size();
     }
 
-    const size_t sentinel = -1;
     size_t initial_idx = _hash(key) & _mask;
 
     // now, idx is the preferred position for this element. Search forward to find an empty place.
@@ -70,26 +70,37 @@ public:
     // we have found an empty spot. hop the hole back until we are at the right step.
     // idx is the empty spot.
     while (idx > initial_idx + HOP_SIZE - 1) {
-      size_t search_start_idx = idx < HOP_SIZE ? 0 : idx - HOP_SIZE + 1;
-      size_t i = search_start_idx;
-      size_t h;
+      size_t h = idx < HOP_SIZE ? -1 : idx - HOP_SIZE;
 
-      while (i < idx && (h = _hash(_keys[i]) & _mask) < search_start_idx) {
-        ++i;
-      }
-      if (i < idx) {
-        // move it!
-        _keys[idx] = std::move(_keys[i]);
-        _allocator.construct(_values + idx, std::move(_values[i]));
-        _allocator.destroy(_values + i);
-        _hops[h] |= ((HopType)1 << (idx - h));
+      // no need to rehash - use hop information!
+      HopType hop_mask = (HopType)-1;
+      HopType hops;
+      size_t i;
+      do {
+        hop_mask >>= 1;
+        hops = _hops[++h] & hop_mask;
+        i = h;
+        while (hops && !(hops & 1)) {
+          hops >>= 1;
+          ++i;
+        }
+      } while (hops == 0 && i < idx);
 
-        // clear hop bit
-        _hops[h] ^= ((HopType)1 << (i - h)); 
-      } else {
+      // insertion failed? resize and try again.
+      if (i >= idx) {
         increase_size();
         return insert(key, val);
       }
+
+      // found a place! move hole to the front
+      _keys[idx] = std::move(_keys[i]);
+      _allocator.construct(_values + idx, std::move(_values[i]));
+      _allocator.destroy(_values + i);
+      _hops[h] |= ((HopType)1 << (idx - h));
+
+      // clear hop bit
+      _hops[h] ^= ((HopType)1 << (i - h)); 
+
       idx = i;
     }
 
@@ -103,11 +114,9 @@ public:
   }
 
   T& find(size_t key, bool& success) {
-    const size_t sentinel = -1;
     size_t idx = _hash(key) & _mask;
     HopType hops = _hops[idx];
 
-    //for (size_t i=0; i<HOP_SIZE; ++i) {
     while (hops) {
       if (key == _keys[idx]) {
         success = true;
@@ -134,16 +143,23 @@ private:
   void increase_size() {
     size_t* old_keys = _keys;
     T* old_values = _values;
-    size_t old_size = _max_size;
-    init_data(_max_size*2);
+    HopType* old_hops = _hops;
 
+    size_t old_size = _max_size;
+    init_data(_max_size * 2);
+
+    HopType hops = 0;
     for (size_t i=0; i<old_size + HOP_SIZE; ++i) {
-      if (old_keys[i] != (size_t)-1) {
+      hops |= old_hops[i];
+      if (hops & 1) {
         insert(old_keys[i], old_values[i]);
         _allocator.destroy(old_values + i);
       }
+      hops >>= 1;
     }
+
     delete[] old_keys;
+    delete[] old_hops;
     _allocator.deallocate(old_values, old_size);
   }
 
@@ -159,7 +175,9 @@ private:
       _keys[i] = (size_t)-1;
       _hops[i] = 0;
     }
-    _max_fullness = _max_size*70/100;
+
+    _max_fullness = (_max_size + HOP_SIZE) * 80/100;;
+    //_max_fullness = _max_size + HOP_SIZE - 1;
   }
 
   size_t* _keys;
