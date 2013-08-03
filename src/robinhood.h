@@ -11,6 +11,14 @@ struct DummyHash : public std::unary_function<T, T> {
   }
 };
 
+template<class T>
+struct MultiplyHash : public std::unary_function<T, T> {
+  inline T operator()(const T& t) const {
+    return 2654435769*t;
+  }
+};
+
+
 struct InitSizet {
   InitSizet()
   : v(0)

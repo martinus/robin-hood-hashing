@@ -1,5 +1,6 @@
 #include <timer.h>
 #include <robinhood.h>
+#include <hopscotch.h>
 #include <marsagliamwc99.h>
 #include <rh_hash_table.hpp>
 
@@ -98,6 +99,29 @@ void bench1(size_t times, size_t max, const T& value) {
   MarsagliaMWC99 rand;
 
   {
+    HopScotch<T, H> r;
+    rand.seed(123);
+    Timer t;
+    for (size_t i=0; i<max; ++i) {
+      r.insert(rand(), value);
+    }
+    std::cout << t.elapsed() << " ";
+    t.restart();
+    
+    size_t f = 0;
+    rand.seed(123);
+    for (size_t i=0; i<times*2; ++i) {
+      bool success;
+      r.find(rand(), success);
+      if (success) {
+        ++f;
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " HopScotch<T, H> " << r.size() << " " << f << std::endl;
+  }
+
+  {
     RobinHoodHashMap<T, H> r;
     rand.seed(123);
     Timer t;
@@ -171,6 +195,17 @@ void test_map1(size_t times) {
     Timer t;
     MarsagliaMWC99 rand;
     rand.seed(321);
+    HopScotch<int, T> r;
+    double slowest = 0;
+    for (size_t i=0; i<times; ++i) {
+      r.insert(rand(i+1), i);
+    }
+    std::cout << t.elapsed() << " HopScotch<int> " << r.size() << std::endl;
+  }
+  {
+    Timer t;
+    MarsagliaMWC99 rand;
+    rand.seed(321);
     hash_table<size_t, int, T> ht;
     for (size_t i=0; i<times; ++i) {
       ht.insert(rand(i+1), i);
@@ -222,30 +257,71 @@ void test_del(int count) {
   delete[] d;
 }
 
+template<class T>
+void test_compare(size_t times) {
+  Timer t;
+  MarsagliaMWC99 rand;
+  size_t seed = 142323;
+  size_t max_i = std::numeric_limits<size_t>::max();
+  rand.seed(seed);
+  
+  HopScotch<int, T> r;
+  typedef std::unordered_map<size_t, int, T> StdMap;
+  StdMap m;
+
+  for (size_t i=0; i<times; ++i) {
+    size_t v = rand(i + 100);
+    bool was_inserted = r.insert(v, i);
+    std::pair<StdMap::iterator, bool> p = m.insert(StdMap::value_type(v, i));
+
+    if (was_inserted != p.second) {
+      std::cout << i << ": " << v << " " << was_inserted << " " << p.second << std::endl;
+    }
+
+    bool is_there;
+    v = rand(i + 100);
+    r.find(v, is_there);
+    bool found_stdmap = m.find(v) != m.end();
+    if (found_stdmap != is_there) {
+      std::cout << i << ": " << v << " " << was_inserted << " " << p.second << std::endl;
+    }
+  }
+  std::cout << "ok!" << std::endl;
+}
+
 int main(int argc, char** argv) {
   try {
-    test_del(4);
+    //test_compare<MultiplyHash<size_t> >(10000000);
+
+
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
+    size_t insertions = 10000000;
+    size_t lookups = 20000000;
+    std::cout << "int, std::hash" << std::endl;
+    bench1<int, std::hash<size_t> >(lookups, insertions, 1231);
+    std::cout << "int, DummyHash" << std::endl;
+    bench1<int, DummyHash<size_t> >(lookups, insertions, 1231);
+    std::cout << "int, MultiplyHash" << std::endl;
+    bench1<int, MultiplyHash<size_t> >(lookups, insertions, 1231);
+
     std::cout << "std::string, DummyHash" << std::endl;
-    bench1<std::string, DummyHash<size_t> >(30000000, 1000000, "fklajlejklahseh");
+    bench1<std::string, DummyHash<size_t> >(lookups, insertions, "fklajlejklahseh");
 
     std::cout << "std::string, std::hash" << std::endl;
-    bench1<std::string, std::hash<size_t> >(30000000, 1000000, "lfklkajasjefj");
+    bench1<std::string, std::hash<size_t> >(lookups, insertions, "lfklkajasjefj");
 
-    std::cout << "int, DummyHash" << std::endl;
-    bench1<int, DummyHash<size_t> >(30000000, 1000000, 1231);
 
     std::cout << "int, std::hash" << std::endl;
-    bench1<int, std::hash<size_t> >(30000000, 1000000, 3213);
+    bench1<int, std::hash<size_t> >(insertions, lookups, 1231);
 
 
-
-
-    std::cout << "DummyHash" << std::endl;
+    std::cout << "test DummyHash" << std::endl;
     test_map1<DummyHash<size_t> >(500000);
 
     std::cout << "\nstd::hash" << std::endl;
     test_map1<std::hash<size_t> >(10000000);
+
+
 
     test1();
     test_rh();

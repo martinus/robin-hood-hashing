@@ -82,6 +82,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\hopscotch.h" />
     <ClInclude Include="..\src\marsagliamwc99.h" />
     <ClInclude Include="..\src\rh_hash_table.hpp" />
     <ClInclude Include="..\src\robinhood.h" />
