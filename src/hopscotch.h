@@ -50,32 +50,65 @@ public:
     // now, idx is the preferred position for this element. Search forward to find an empty place.
     // we use overflow area, so no modulo is required.
     size_t idx = initial_idx;
-    while (idx < _max_size + HOP_SIZE && _keys[idx] != sentinel && _keys[idx] != key) {
+    size_t e = initial_idx + HOP_SIZE;
+    while (idx < e && _keys[idx] != sentinel && _keys[idx] != key) {
       ++idx;
     }
+    if (idx == e) {
+      // no need to check key from now on - this is definitely a new insertion.
+      e = _max_size + HOP_SIZE;
+      while (idx < e && _keys[idx] != sentinel) {
+        ++idx;
+      }
+    } else {
+      if (_keys[idx] == key) {
+        // found it! overwrite.
+        _allocator.destroy(_values + idx);
+        _allocator.construct(_values + idx, std::move(val));
+        return false;
+      } else {
+        _allocator.construct(_values + idx, std::move(val));
+        _keys[idx] = std::move(key);
+        _hops[initial_idx] |= ((HopType)1 << (idx - initial_idx));
+        ++_size;
+        return true;
+      }
+    }
 
+    // no insert possible? resize and retry.
     if (idx == _max_size + HOP_SIZE) {
       // retry insert
       increase_size();
       return insert(key, val);
     }
 
-    if (_keys[idx] == key) {
-      // found it! overwrite.
-      _allocator.destroy(_values + idx);
-      _allocator.construct(_values + idx, std::move(val));
-      return false;
-    }
-
-    // we have found an empty spot. hop the hole back until we are at the right step.
-    // idx is the empty spot.
+    // we have found an empty spot, but it's far away. We have to move the hole to the front
+    // until we are at the right step. idx is the empty spot.
     while (idx > initial_idx + HOP_SIZE - 1) {
-      size_t h = idx < HOP_SIZE ? -1 : idx - HOP_SIZE;
+      /*
+      size_t h = idx < HOP_SIZE ? 0 : idx - HOP_SIZE + 1;
 
       // no need to rehash - use hop information!
       HopType hop_mask = (HopType)-1;
-      HopType hops;
+
+      size_t i = h;
+      HopType hops = 0;
+      while (hops == 0 && i < idx) {
+        hop_mask >>= 1;
+        i = h;
+        hops = _hops[h++] & hop_mask;
+        while (hops && !(hops & 1)) {
+          hops >>= 1;
+          ++i;
+        }
+      }
+      */
+
+      size_t h = idx < HOP_SIZE ? -1 : idx - HOP_SIZE;
       size_t i;
+      // no need to rehash - use hop information!
+      HopType hop_mask = (HopType)-1;
+      HopType hops = 0;
       do {
         hop_mask >>= 1;
         hops = _hops[++h] & hop_mask;

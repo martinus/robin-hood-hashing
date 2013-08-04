@@ -94,28 +94,27 @@ void test4() {
 
 
 template<class T, class H>
-void bench1(size_t insertions, size_t queries, const T& value) {
+void bench1(size_t insertions, size_t queries, size_t times, const T& value) {
 
-  MarsagliaMWC99 rand(1000000);
+  MarsagliaMWC99 rand;
   const int seed = 23154;
 
   {
     HopScotch<T, H> r;
     rand.seed(seed);
-    Timer t;
-    for (size_t i=0; i<insertions; ++i) {
-      r.insert(i, value);
-    }
-    std::cout << t.elapsed() << " ";
-    t.restart();
-    
     size_t f = 0;
-    rand.seed(seed+1);
-    for (size_t i=0; i<queries; ++i) {
-      bool success;
-      r.find(rand(), success);
-      if (success) {
-        ++f;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
+        r.insert(rand(), value);
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        bool success;
+        r.find(rand(), success);
+        if (success) {
+          ++f;
+        }
       }
     }
     std::cout << t.elapsed();
@@ -125,20 +124,19 @@ void bench1(size_t insertions, size_t queries, const T& value) {
   {
     RobinHoodHashMap<T, H> r;
     rand.seed(seed);
-    Timer t;
-    for (size_t i=0; i<insertions; ++i) {
-      r.insert(i, value);
-    }
-    std::cout << t.elapsed() << " ";
-    t.restart();
-    
     size_t f = 0;
-    rand.seed(seed+1);
-    for (size_t i=0; i<queries; ++i) {
-      bool success;
-      r.find(rand(), success);
-      if (success) {
-        ++f;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
+        r.insert(rand(), value);
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        bool success;
+        r.find(rand(), success);
+        if (success) {
+          ++f;
+        }
       }
     }
     std::cout << t.elapsed();
@@ -149,18 +147,17 @@ void bench1(size_t insertions, size_t queries, const T& value) {
   {
     hash_table<size_t, T, H> r;
     rand.seed(seed);
-    Timer t;
-    for (size_t i=0; i<insertions; ++i) {
-      r.insert(i, value);
-    }
-    std::cout << t.elapsed() << " ";
-    t.restart();
-    
     size_t f = 0;
-    rand.seed(seed+1);
-    for (size_t i=0; i<queries; ++i) {
-      if (r.find(rand())) {
-        ++f;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
+        r.insert(rand(), value);
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        if (r.find(rand())) {
+          ++f;
+        }
       }
     }
     std::cout << t.elapsed();
@@ -170,18 +167,17 @@ void bench1(size_t insertions, size_t queries, const T& value) {
   {
     std::unordered_map<size_t, T, H> r;
     rand.seed(seed);
-    Timer t;
-    for (size_t i=0; i<insertions; ++i) {
-      r[i] = value;
-    }
-    std::cout << t.elapsed() << " ";
-    t.restart();
-    
     size_t f = 0;
-    rand.seed(seed+1);
-    for (size_t i=0; i<queries; ++i) {
-      if (r.find(rand()) != r.end()) {
-        ++f;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
+        r[rand()] = value;
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        if (r.find(rand()) != r.end()) {
+          ++f;
+        }
       }
     }
     std::cout << t.elapsed();
@@ -271,9 +267,6 @@ void test_compare(size_t times) {
   StdMap m;
 
   for (size_t i=0; i<times; ++i) {
-    if (i == 32) {
-      std::cout << "xx" << std::endl;
-    }
     size_t v = rand(i + 100);
     bool was_inserted = r.insert(v, i);
     std::pair<StdMap::iterator, bool> p = m.insert(StdMap::value_type(v, i));
@@ -293,30 +286,29 @@ void test_compare(size_t times) {
   std::cout << "ok!" << std::endl;
 }
 
+
+
 int main(int argc, char** argv) {
   try {
     //test_compare<MultiplyHash<size_t> >(10000000);
 
 
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
-    size_t insertions = 200000;
-    size_t queries = 100000000;
+    size_t insertions = 200*1000;
+    size_t queries = 000*1000*1000;
+    size_t times = 10;
     std::cout << "int, std::hash" << std::endl;
-    bench1<int, std::hash<size_t> >(insertions, queries, 1231);
+    bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
     std::cout << "int, DummyHash" << std::endl;
-    bench1<int, DummyHash<size_t> >(insertions, queries, 1231);
+    bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
     std::cout << "int, MultiplyHash" << std::endl;
-    bench1<int, MultiplyHash<size_t> >(insertions, queries, 1231);
-
+    bench1<int, MultiplyHash<size_t> >(insertions, queries, times, 1231);
     std::cout << "std::string, DummyHash" << std::endl;
-    bench1<std::string, DummyHash<size_t> >(insertions, queries, "fklajlejklahseh");
-
+    bench1<std::string, DummyHash<size_t> >(insertions, queries, times, "fklajlejklahseh");
     std::cout << "std::string, std::hash" << std::endl;
-    bench1<std::string, std::hash<size_t> >(insertions, queries, "lfklkajasjefj");
+    bench1<std::string, std::hash<size_t> >(insertions, queries, times, "lfklkajasjefj");
 
-
-    std::cout << "int, std::hash" << std::endl;
-    bench1<int, std::hash<size_t> >(insertions, queries, 1231);
+    std::cout << std::endl << ">>>>>>>>> Tests <<<<<<<<<<<<<" << std::endl;
 
 
     std::cout << "test DummyHash" << std::endl;
