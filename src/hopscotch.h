@@ -85,39 +85,22 @@ public:
     // we have found an empty spot, but it's far away. We have to move the hole to the front
     // until we are at the right step. idx is the empty spot.
     while (idx > initial_idx + HOP_SIZE - 1) {
-      /*
-      size_t h = idx < HOP_SIZE ? 0 : idx - HOP_SIZE + 1;
-
-      // no need to rehash - use hop information!
-      HopType hop_mask = (HopType)-1;
-
-      size_t i = h;
-      HopType hops = 0;
-      while (hops == 0 && i < idx) {
-        hop_mask >>= 1;
-        i = h;
-        hops = _hops[h++] & hop_mask;
-        while (hops && !(hops & 1)) {
-          hops >>= 1;
-          ++i;
-        }
-      }
-      */
-
-      size_t h = idx < HOP_SIZE ? -1 : idx - HOP_SIZE;
-      size_t i;
-      // no need to rehash - use hop information!
-      HopType hop_mask = (HopType)-1;
-      HopType hops = 0;
+      // h: where the hash wants to be
+      // i: where it actually is
+      // idx: where it can be moved
+      size_t start_h = idx < HOP_SIZE ? 0 : idx - HOP_SIZE + 1;
+      size_t h;
+      size_t i = start_h - 1;
       do {
-        hop_mask >>= 1;
-        hops = _hops[++h] & hop_mask;
-        i = h;
-        while (hops && !(hops & 1)) {
-          hops >>= 1;
-          ++i;
+        ++i;
+        // find i's h
+        h = start_h;
+        while (h <= i 
+          && !(_hops[h] & ((HopType)1 << (i - h))))
+        {
+          ++h;
         }
-      } while (hops == 0 && i < idx);
+      } while (i < idx && h > i);
 
       // insertion failed? resize and try again.
       if (i >= idx) {
@@ -148,6 +131,7 @@ public:
 
   T& find(size_t key, bool& success) {
     size_t idx = _hash(key) & _mask;
+
     HopType hops = _hops[idx];
 
     while (hops) {
@@ -174,6 +158,7 @@ public:
 private:
   // doubles size
   void increase_size() {
+    //std::cout << "resize: " << 1.0*_size / (_max_size + HOP_SIZE) << std::endl;
     size_t* old_keys = _keys;
     T* old_values = _values;
     HopType* old_hops = _hops;
