@@ -193,7 +193,6 @@ void test_map1(size_t times) {
     MarsagliaMWC99 rand;
     rand.seed(321);
     HopScotch<int, T> r;
-    double slowest = 0;
     for (size_t i=0; i<times; ++i) {
       r.insert(rand(i+1), i);
     }
@@ -214,7 +213,6 @@ void test_map1(size_t times) {
     MarsagliaMWC99 rand;
     rand.seed(321);
     RobinHoodHashMap<int, T> r;
-    double slowest = 0;
     for (size_t i=0; i<times; ++i) {
       r.insert(rand(i+1), i);
     }
@@ -259,7 +257,6 @@ void test_compare(size_t times) {
   Timer t;
   MarsagliaMWC99 rand;
   size_t seed = 142323;
-  size_t max_i = std::numeric_limits<size_t>::max();
   rand.seed(seed);
   
   HopScotch<int, T> r;
@@ -295,7 +292,7 @@ int main(int argc, char** argv) {
 
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
     size_t insertions = 200*1000;
-    size_t queries = 000*1000*1000;
+    size_t queries = 1*1000*1000;
     size_t times = 10;
     std::cout << "int, std::hash" << std::endl;
     bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);

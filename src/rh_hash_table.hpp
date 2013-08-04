@@ -228,7 +228,6 @@ public:
 
   Value* find(const Key& key)
   {
-    const uint32_t hash = hash_key(key);
     const int ix = lookup_index(key);
     return ix != -1 ? &buffer[ix].value : nullptr;
   }
@@ -240,7 +239,6 @@ public:
 
   bool erase(const Key& key)
   {
-    const uint32_t hash = hash_key(key);
     const int ix = lookup_index(key);
 
     if (ix == -1) return false;
