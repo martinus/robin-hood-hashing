@@ -13,7 +13,8 @@ template<class T, class H = DummyHash<size_t>, class A = std::allocator<T> >
 class HopScotch {
 private:
   enum CONSTANTS {
-    HOP_SIZE = 8
+    HOP_SIZE = 8,
+    ADD_RANGE = 128
   };
 
   //typedef unsigned int HopType;
@@ -41,48 +42,41 @@ public:
   // inline because it should be fast
   inline bool insert(size_t key, T val) {
     const size_t sentinel = -1;
-    if (_size == _max_fullness) {
-      increase_size();
-    }
 
     size_t initial_idx = _hash(key) & _mask;
 
     // now, idx is the preferred position for this element. Search forward to find an empty place.
     // we use overflow area, so no modulo is required.
     size_t idx = initial_idx;
-    size_t e = initial_idx + HOP_SIZE;
-    while (idx < e && _keys[idx] != sentinel && _keys[idx] != key) {
-      ++idx;
-    }
-    if (idx == e) {
-      // no need to check key from now on - this is definitely a new insertion.
-      e = _max_size + HOP_SIZE;
-      while (idx < e && _keys[idx] != sentinel) {
-        ++idx;
-      }
-    } else {
+
+    // find key & repalce if found
+    HopType hops = _hops[idx];
+    while (hops) {
       if (_keys[idx] == key) {
-        // found it! overwrite.
+        // found the key! replace value
         _allocator.destroy(_values + idx);
         _allocator.construct(_values + idx, std::move(val));
         return false;
-      } else {
-        _allocator.construct(_values + idx, std::move(val));
-        _keys[idx] = std::move(key);
-        _hops[initial_idx] |= ((HopType)1 << (idx - initial_idx));
-        ++_size;
-        return true;
       }
+      ++idx;
+      hops >>= 1;
+    }
+
+    // key is not there, so find an empty spot
+    idx = initial_idx;
+    size_t e = std::min(_max_size + HOP_SIZE, initial_idx + ADD_RANGE);
+    while (idx < e && _keys[idx] != sentinel) {
+      ++idx;
     }
 
     // no insert possible? resize and retry.
-    if (idx == _max_size + HOP_SIZE) {
+    if (idx == e) {
       // retry insert
       increase_size();
       return insert(key, val);
     }
 
-    // we have found an empty spot, but it's far away. We have to move the hole to the front
+    // we have found an empty spot, but it might be far away. We have to move the hole to the front
     // until we are at the right step. idx is the empty spot.
     while (idx > initial_idx + HOP_SIZE - 1) {
       // h: where the hash wants to be

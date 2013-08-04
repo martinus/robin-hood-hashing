@@ -94,7 +94,7 @@ void test4() {
 
 
 template<class T, class H>
-void bench1(size_t insertions, size_t queries, size_t times, const T& value) {
+void bench1(size_t insertions, size_t queries, size_t times, T value) {
 
   MarsagliaMWC99 rand;
   const int seed = 23154;
@@ -263,6 +263,9 @@ void test_compare(size_t times) {
   typedef std::unordered_map<size_t, int, T> StdMap;
   StdMap m;
 
+  StdMap m2;
+  m2[423] = 342;
+
   for (size_t i=0; i<times; ++i) {
     size_t v = rand(i + 100);
     bool was_inserted = r.insert(v, i);
@@ -292,8 +295,8 @@ int main(int argc, char** argv) {
 
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
     size_t insertions = 200*1000;
-    size_t queries = 100*1000*1000;
-    size_t times = 1;
+    size_t queries = 10*1000*1000;
+    size_t times = 10;
     std::cout << "int, std::hash" << std::endl;
     bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
     std::cout << "int, DummyHash" << std::endl;
