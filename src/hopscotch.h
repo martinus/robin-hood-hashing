@@ -57,21 +57,28 @@ public:
   }
 
   void clear() {
+    Traits::HopType hops = (Traits::HopType)0;
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-      if (_keys[i] != (size_t)-1) {
+      hops |= _hops[i];
+      if (hops & 1) {
         _allocator.destroy(_values + i);
+        // TODO get rid of this sentinel
         _keys[i] = -1;
       }
+      hops >>= 1;
       _hops[i] = (HopType)0;
     }
     _size = 0;
   }
 
   ~HopScotch() {
+    Traits::HopType hops = (Traits::HopType)0;
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-      if (_keys[i] != (size_t)-1) {
+      hops |= _hops[i];
+      if (hops & 1) {
         _allocator.destroy(_values + i);
       }
+      hops >>= 1;
     }
 
     delete[] _keys;
@@ -89,10 +96,10 @@ public:
     // we use overflow area, so no modulo is required.
     size_t idx = initial_idx;
 
-    // find key & repalce if found
+    // find key & replace if found
     Traits::HopType hops = _hops[idx];
     while (hops) {
-      if (_keys[idx] == key) {
+      if ((hops & 1) && (_keys[idx] == key)) {
         // found the key! replace value
         _allocator.destroy(_values + idx);
         _allocator.construct(_values + idx, std::move(val));

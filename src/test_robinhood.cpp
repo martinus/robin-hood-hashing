@@ -99,7 +99,6 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
   MarsagliaMWC99 rand(insertions*5);
   const int seed = 23154;
 
-  while (true)
   {
     HopScotch<T, H, HopScotchFast> r;
     rand.seed(seed);
@@ -346,8 +345,8 @@ int main(int argc, char** argv) {
 
 
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
-    size_t insertions = 10*1000*1000;
-    size_t queries = 000*1000*1000;
+    size_t insertions = 1*1000*1000;
+    size_t queries = 10*1000*1000;
     size_t times = 1;
     std::cout << "int, std::hash" << std::endl;
     bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
