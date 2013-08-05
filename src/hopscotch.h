@@ -14,7 +14,7 @@ class HopScotch {
 private:
   enum CONSTANTS {
     HOP_SIZE = 8,
-    ADD_RANGE = 128
+    ADD_RANGE = 512
   };
 
   //typedef unsigned int HopType;
@@ -28,8 +28,19 @@ public:
     init_data(HOP_SIZE);
   }
 
+  void clear() {
+    for (size_t i=0; i<_max_size + HOP_SIZE; ++i) {
+      if (_keys[i] != (size_t)-1) {
+        _allocator.destroy(_values + i);
+        _keys[i] = -1;
+      }
+      _hops[i] = (HopType)0;
+    }
+    _size = 0;
+  }
+
   ~HopScotch() {
-    for (size_t i=0; i<_size; ++i) {
+    for (size_t i=0; i<_max_size + HOP_SIZE; ++i) {
       if (_keys[i] != (size_t)-1) {
         _allocator.destroy(_values + i);
       }
@@ -43,6 +54,7 @@ public:
   inline bool insert(size_t key, T val) {
     const size_t sentinel = -1;
 
+    //size_t initial_idx = _hash(key) % _max_size;
     size_t initial_idx = _hash(key) & _mask;
 
     // now, idx is the preferred position for this element. Search forward to find an empty place.
@@ -123,13 +135,32 @@ public:
     return true;
   }
 
-  T& find(size_t key, bool& success) {
+  inline T& find(size_t key, bool& success) {
     size_t idx = _hash(key) & _mask;
+    //size_t idx = _hash(key) % _max_size;
 
     HopType hops = _hops[idx];
 
     while (hops) {
-      if (key == _keys[idx]) {
+      if ((hops & 1) && (key == _keys[idx])) {
+        success = true;
+        return _values[idx];
+      }
+      hops >>= 1;
+      ++idx;
+    }
+
+    success = false;
+    return _values[0];
+  }
+
+  inline const T& find(size_t key, bool& success) const {
+    size_t idx = _hash(key) & _mask;
+    //size_t idx = _hash(key) % _max_size;
+
+    HopType hops = _hops[idx];
+    while (hops) {
+      if ((hops & 1) && (key == _keys[idx])) {
         success = true;
         return _values[idx];
       }
@@ -152,12 +183,13 @@ public:
 private:
   // doubles size
   void increase_size() {
-    //std::cout << "resize: " << 1.0*_size / (_max_size + HOP_SIZE) << std::endl;
+    //std::cout << "resize: " << _max_size << "\t" << 1.0*_size / (_max_size + HOP_SIZE) << std::endl;
     size_t* old_keys = _keys;
     T* old_values = _values;
     HopType* old_hops = _hops;
 
     size_t old_size = _max_size;
+    //init_data(_max_size * 23 / 20);
     init_data(_max_size * 2);
 
     HopType hops = 0;
