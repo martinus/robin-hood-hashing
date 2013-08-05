@@ -316,9 +316,49 @@ void test_compare(size_t times) {
 }
 
 
+void bench_java() {
+  size_t n = 10*1000*1000;
+
+  std::vector<float> v;
+  v.push_back(0);
+  v.push_back(1);
+  v.push_back(2);
+  v.push_back(3);
+  v.push_back(4);
+
+  Timer t;
+  HopScotch<std::vector<float>*, DummyHash<size_t>, HopScotchFast> r;
+  for (size_t i=0; i<n; ++i) {
+    r.insert(i, &v);
+  }
+  double e = t.elapsed();
+  std::cout << e << " insert HopScotch" << std::endl;
+
+  t.restart();
+  std::unordered_map<size_t, std::vector<float>*, DummyHash<size_t> > m;
+  for (size_t i=0; i<n; ++i) {
+    m[i] = &v;
+  }
+  e = t.elapsed();
+  std::cout << e << " insert std::unordered_map" << std::endl;
+
+  t.restart();
+  size_t c=0;
+  for (size_t i=0; i<n; ++i) {
+    bool f;
+    r.find(i, f);
+    if (f) {
+      ++c;
+    }
+  }
+  e = t.elapsed();
+  std::cout << e << " get HopScotch " << c << std::endl;
+}
+
 
 int main(int argc, char** argv) {
   try {
+    bench_java();
     //test_compare<MultiplyHash<size_t> >(10000000);
 
     size_t i = 20*1000*1000;
@@ -345,9 +385,9 @@ int main(int argc, char** argv) {
 
 
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
-    size_t insertions = 1*1000*1000;
+    size_t insertions = 200*1000;
     size_t queries = 10*1000*1000;
-    size_t times = 1;
+    size_t times = 5;
     std::cout << "int, std::hash" << std::endl;
     bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
     std::cout << "int, DummyHash" << std::endl;

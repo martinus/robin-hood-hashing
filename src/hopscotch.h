@@ -87,7 +87,7 @@ public:
   }
 
   // inline because it should be fast
-  inline bool insert(size_t key, T val) {
+  inline bool insert(size_t key, const T& val) {
     const size_t sentinel = -1;
 
     size_t initial_idx = Traits::h(_hash(key), _max_size, _mask);
@@ -102,7 +102,7 @@ public:
       if ((hops & 1) && (_keys[idx] == key)) {
         // found the key! replace value
         _allocator.destroy(_values + idx);
-        _allocator.construct(_values + idx, std::move(val));
+        _allocator.construct(_values + idx, val);
         return false;
       }
       ++idx;
@@ -163,7 +163,7 @@ public:
 
     // now that we've moved everything, we can finally construct the element at
     // it's rightful place.
-    _allocator.construct(_values + idx, std::move(val));
+    _allocator.construct(_values + idx, val);
     _keys[idx] = std::move(key);
     _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx));
     ++_size;
