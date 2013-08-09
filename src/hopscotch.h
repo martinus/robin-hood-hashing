@@ -8,11 +8,24 @@
 // http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
 // https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
 
+// TODO
+// * get rid of sentinel: use one bit of the hop table to check if it's full.
+//   if (hops & 1) {
+//     // we are full!
+//   } else {
+//     // this is empty.
+//   }
+//   hops >>= 1; // after that, hops are defined as it was. Just with one less element at the end.
+//
+// * Use allocator for keys. Needs another allocator, because different type.
+// * Make sure memory requirements stay OK (e.g. minimum fullness? max size?)
+//   maybe automatically switch to HopScotchDefault if fast does not work any more?
+
 struct HopScotchFast {
   typedef std::uint8_t HopType;
   enum Debug { DEBUG = 0 };
   enum resize_percentage { RESIZE_PERCENTAGE = 200 };
-  enum hop_size { HOP_SIZE = 8 };
+  enum hop_size { HOP_SIZE = 8-1 };
   enum add_range { ADD_RANGE = 512 };
   inline static size_t h(size_t v, size_t s, size_t mask) {
     return v & mask;
@@ -23,7 +36,7 @@ struct HopScotchDefault {
   typedef std::uint32_t HopType;
   enum Debug { DEBUG = 0 };
   enum resize_percentage { RESIZE_PERCENTAGE = 200 };
-  enum hop_size { HOP_SIZE = 32 };
+  enum hop_size { HOP_SIZE = 32-1 };
   enum add_range { ADD_RANGE = 512 };
   inline static size_t h(size_t v, size_t s, size_t mask) {
     return v & mask;
@@ -34,7 +47,7 @@ struct HopScotchCompact {
   typedef std::uint64_t HopType;
   enum Debug { DEBUG = 0 };
   enum resize_percentage { RESIZE_PERCENTAGE = 120 };
-  enum hop_size { HOP_SIZE = 64 };
+  enum hop_size { HOP_SIZE = 64-1 };
   enum add_range { ADD_RANGE = 1024 };
   inline static size_t h(size_t v, size_t s, size_t mask) {
     return v % s;
@@ -57,28 +70,21 @@ public:
   }
 
   void clear() {
-    Traits::HopType hops = (Traits::HopType)0;
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-      hops |= _hops[i];
-      if (hops & 1) {
+      if (_keys[i] != (size_t)-1) {
         _allocator.destroy(_values + i);
-        // TODO get rid of this sentinel
         _keys[i] = -1;
       }
-      hops >>= 1;
       _hops[i] = (HopType)0;
     }
     _size = 0;
   }
 
   ~HopScotch() {
-    Traits::HopType hops = (Traits::HopType)0;
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-      hops |= _hops[i];
-      if (hops & 1) {
+      if (_keys[i] != (size_t)-1) {
         _allocator.destroy(_values + i);
       }
-      hops >>= 1;
     }
 
     delete[] _keys;
@@ -87,7 +93,7 @@ public:
   }
 
   // inline because it should be fast
-  inline bool insert(size_t key, const T& val) {
+  inline bool insert(size_t key, T val) {
     const size_t sentinel = -1;
 
     size_t initial_idx = Traits::h(_hash(key), _max_size, _mask);
@@ -97,12 +103,12 @@ public:
     size_t idx = initial_idx;
 
     // find key & replace if found
-    Traits::HopType hops = _hops[idx];
+    Traits::HopType hops = _hops[idx] >> 1;
     while (hops) {
       if ((hops & 1) && (_keys[idx] == key)) {
         // found the key! replace value
         _allocator.destroy(_values + idx);
-        _allocator.construct(_values + idx, val);
+        _allocator.construct(_values + idx, std::move(val));
         return false;
       }
       ++idx;
@@ -123,9 +129,8 @@ public:
       return insert(key, val);
     }
 
-    // we have found an empty spot at idx, but it might be far away.
-    // We have to move the hole to the front until we are at the
-    // right step.
+    // we have found an empty spot, but it might be far away. We have to move the hole to the front
+    // until we are at the right step. idx is the empty spot.
     while (idx > initial_idx + Traits::HOP_SIZE - 1) {
       // h: where the hash wants to be
       // i: where it actually is
@@ -138,7 +143,7 @@ public:
         // find i's h
         h = start_h;
         while (h <= i 
-          && !(_hops[h] & ((Traits::HopType)1 << (i - h))))
+          && !(_hops[h] & ((Traits::HopType)1 << (i - h + 1))))
         {
           ++h;
         }
@@ -154,19 +159,19 @@ public:
       _keys[idx] = std::move(_keys[i]);
       _allocator.construct(_values + idx, std::move(_values[i]));
       _allocator.destroy(_values + i);
-      _hops[h] |= ((Traits::HopType)1 << (idx - h));
+      _hops[h] |= ((Traits::HopType)1 << (idx - h + 1));
 
       // clear hop bit
-      _hops[h] ^= ((Traits::HopType)1 << (i - h)); 
+      _hops[h] ^= ((Traits::HopType)1 << (i - h + 1)); 
 
       idx = i;
     }
 
     // now that we've moved everything, we can finally construct the element at
     // it's rightful place.
-    _allocator.construct(_values + idx, val);
+    _allocator.construct(_values + idx, std::move(val));
     _keys[idx] = std::move(key);
-    _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx));
+    _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx + 1));
     ++_size;
     return true;
   }
@@ -174,7 +179,7 @@ public:
   inline T& find(size_t key, bool& success) {
     size_t idx = Traits::h(_hash(key), _max_size, _mask);
 
-    Traits::HopType hops = _hops[idx];
+    Traits::HopType hops = _hops[idx] >> 1;
 
     while (hops) {
       if ((hops & 1) && (key == _keys[idx])) {
@@ -192,7 +197,7 @@ public:
   inline const T& find(size_t key, bool& success) const {
     size_t idx = Traits::h(_hash(key), _max_size, _mask);
 
-    Traits::HopType hops = _hops[idx];
+    Traits::HopType hops = _hops[idx] >> 1;
     while (hops) {
       if ((hops & 1) && (key == _keys[idx])) {
         success = true;
@@ -228,14 +233,11 @@ private:
     size_t old_size = _max_size;
     init_data(_max_size * Traits::RESIZE_PERCENTAGE / 100);
 
-    Traits::HopType hops = 0;
     for (size_t i=0; i<old_size + Traits::HOP_SIZE; ++i) {
-      hops |= old_hops[i];
-      if (hops & 1) {
+      if (old_keys[i] != (size_t)-1) {
         insert(old_keys[i], old_values[i]);
         _allocator.destroy(old_values + i);
       }
-      hops >>= 1;
     }
 
     delete[] old_keys;
