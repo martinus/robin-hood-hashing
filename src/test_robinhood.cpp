@@ -116,9 +116,50 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<T, H> " << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch<T, H, HopScotchFast> " << r.size() << " " << f << std::endl;
   }
-
+  {
+    HopScotch<T, H, HopScotchDefault> r;
+    rand.seed(seed);
+    size_t f = 0;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
+        r.insert(rand(), value);
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        bool success;
+        r.find(rand(), success);
+        if (success) {
+          ++f;
+        }
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " HopScotch<T, H, HopScotchDefault> " << r.size() << " " << f << std::endl;
+  }
+  {
+    HopScotch<T, H, HopScotchCompact> r;
+    rand.seed(seed);
+    size_t f = 0;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
+        r.insert(rand(), value);
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        bool success;
+        r.find(rand(), success);
+        if (success) {
+          ++f;
+        }
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " HopScotch<T, H, HopScotchCompact> " << r.size() << " " << f << std::endl;
+  }
   {
     RobinHoodHashMap<T, H> r;
     rand.seed(seed);
@@ -377,21 +418,35 @@ struct HashX : public std::unary_function<size_t, X> {
 
 int main(int argc, char** argv) {
   std::unordered_map<X, X, HashX> m;
-
   m[32] = 123;
 
   try {
-    std::cout << "test DummyHash" << std::endl;
-    test_map1<DummyHash<size_t> >(500000);
 
-    std::cout << "\nstd::hash" << std::endl;
-    test_map1<std::hash<size_t> >(10000000);
+    std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
+    size_t insertions = 200*1000;
+    size_t queries = 10*1000*1000;
+    size_t times = 1;
+    std::cout << "int, std::hash" << std::endl;
+    bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
+    std::cout << "int, DummyHash" << std::endl;
+    bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
+    std::cout << "int, MultiplyHash" << std::endl;
+    bench1<int, MultiplyHash<size_t> >(insertions, queries, times, 1231);
+    std::cout << "std::string, DummyHash" << std::endl;
+    bench1<std::string, DummyHash<size_t> >(insertions, queries, times, "fklajlejklahseh");
+    std::cout << "std::string, std::hash" << std::endl;
+    bench1<std::string, std::hash<size_t> >(insertions, queries, times, "lfklkajasjefj");
+
+    //std::cout << "test DummyHash" << std::endl;
+    //test_map1<DummyHash<size_t> >(500000);
+    //std::cout << "\nstd::hash" << std::endl;
+    //test_map1<std::hash<size_t> >(10000000);
 
 
 
     //test_compare<MultiplyHash<size_t> >(10000000);
 
-    size_t i = 20*1000*1000;
+    size_t i = 200*1000;
     size_t q = 100*1000*1000;
     size_t t = 1;
 
@@ -414,20 +469,6 @@ int main(int argc, char** argv) {
     */
 
 
-    std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
-    size_t insertions = 1*1000*1000;
-    size_t queries = 100*1000*1000;
-    size_t times = 1;
-    std::cout << "int, std::hash" << std::endl;
-    bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
-    std::cout << "int, DummyHash" << std::endl;
-    bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
-    std::cout << "int, MultiplyHash" << std::endl;
-    bench1<int, MultiplyHash<size_t> >(insertions, queries, times, 1231);
-    std::cout << "std::string, DummyHash" << std::endl;
-    bench1<std::string, DummyHash<size_t> >(insertions, queries, times, "fklajlejklahseh");
-    std::cout << "std::string, std::hash" << std::endl;
-    bench1<std::string, std::hash<size_t> >(insertions, queries, times, "lfklkajasjefj");
 
     std::cout << std::endl << ">>>>>>>>> Tests <<<<<<<<<<<<<" << std::endl;
 
