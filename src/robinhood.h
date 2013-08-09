@@ -2,7 +2,64 @@
 
 #include <algorithm>
 #include <unordered_map>
+#include <cstdint>
 
+struct MurmurHash2 : public std::unary_function<size_t, std::string> {
+  inline size_t operator()(const std::string& t) const {
+    const size_t m = 0x5bd1e995;
+    const int r = 24;
+    size_t len = t.size();
+    size_t h = len;
+
+    size_t step_size = std::max((size_t)4, len/10);
+
+    const unsigned char* data = (const unsigned char*)t.c_str();
+    while (len >= 4) {
+      uint32_t k = *(uint32_t*)data;
+      k *= m;
+      k ^= k >> r;
+      k *= m;
+
+      h *= m;
+      h ^= k;
+
+      data += step_size;
+      len -= step_size;
+    }
+
+    switch (len) {
+    case 3:
+      h ^= data[2] << 16;
+    case 2:
+      h ^= data[1] << 8;
+    case 1:
+      h ^= data[0];
+      h *= m;
+    };
+
+    // Do a few final mixes of the hash to ensure the last few
+    // bytes are well-incorporated.
+
+    h ^= h >> 13;
+    h *= m;
+    h ^= h >> 15;
+
+    return h;
+  }
+};
+
+struct Fnv : public std::unary_function<size_t, std::string> {
+  inline size_t operator()(const std::string& t) const {
+    size_t hash = 2166136261U;
+    size_t first = 0;
+    size_t last = t.size();
+    size_t stride = 1 + last/10;
+    for (; first < last; first += stride) {
+      hash = (16777619U * hash) ^ (size_t)(t[first]);
+    }
+    return hash;
+  }
+};
 
 template<class T>
 struct DummyHash : public std::unary_function<T, T> {

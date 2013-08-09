@@ -91,6 +91,99 @@ void test4() {
   }
 }
 
+template<class H>
+void bench_str(size_t insertions, size_t queries, size_t times) {
+  MarsagliaMWC99 rand(insertions*5);
+  const int seed = 23154;
+
+  size_t key_length = 40;
+  size_t val_length = 0;
+
+  {
+    HopScotch<std::string, std::string, H, HopScotchFast> r;
+    rand.seed(seed);
+    size_t f = 0;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
+        r.insert(rand_str(rand, key_length), rand_str(rand, val_length));
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        bool success;
+        r.find(rand_str(rand, key_length), success);
+        if (success) {
+          ++f;
+        }
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " HopScotch<std::string, std::string, H, HopScotchFast> with move " << r.size() << " " << f << std::endl;
+  }
+  {
+    HopScotch<std::string, std::string, H, HopScotchDefault> r;
+    rand.seed(seed);
+    size_t f = 0;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
+        r.insert(rand_str(rand, key_length), rand_str(rand, val_length));
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        bool success;
+        r.find(rand_str(rand, key_length), success);
+        if (success) {
+          ++f;
+        }
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " HopScotch<std::string, std::string, H, HopScotchDefault> with move " << r.size() << " " << f << std::endl;
+  }
+  {
+    HopScotch<std::string, std::string, H, HopScotchCompact> r;
+    rand.seed(seed);
+    size_t f = 0;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
+        r.insert(rand_str(rand, key_length), rand_str(rand, val_length));
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        bool success;
+        r.find(rand_str(rand, key_length), success);
+        if (success) {
+          ++f;
+        }
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " HopScotch<std::string, std::string, H, HopScotchCompact> with move " << r.size() << " " << f << std::endl;
+  }
+
+  {
+    std::unordered_map<std::string, std::string, H> r;
+    rand.seed(seed);
+    size_t f = 0;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
+        r[rand_str(rand, key_length)] = rand_str(rand, val_length);
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        if (r.find(rand_str(rand, key_length)) != r.end()) {
+          ++f;
+        }
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " std::unordered_map<std::string, std::string, H> " << r.size() << " " << f << std::endl;
+  }
+}
+
 
 template<class T, class H>
 void bench1(size_t insertions, size_t queries, size_t times, T value) {
@@ -105,7 +198,8 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
     Timer t;
     for (size_t its=0; its<times; ++its) {
       for (size_t i=0; i<insertions; ++i) {
-        r.insert(rand(), std::move(value));
+        size_t x = rand();
+        r.insert(x, std::move(value));
       }
     
       for (size_t i=0; i<queries; ++i) {
@@ -452,15 +546,16 @@ std::string rand_str(MarsagliaMWC99& rand, const size_t num_letters) {
 void test_compare_str(size_t count) {
   typedef std::unordered_map<std::string, std::string> StdMap;
   StdMap ms;
-  HopScotch<std::string, std::string> hs;
+  HopScotch<std::string, std::string, std::hash<std::string>, HopScotchFast> hs;
+
 
 
   MarsagliaMWC99 rand;
   rand.seed(123);
   size_t found_count = 0;
   for (size_t i=0; i<count; ++i) {
-    std::string key = rand_str(rand, 2);
-    std::string val = rand_str(rand, 10);
+    std::string key = rand_str(rand, 40);
+    std::string val = rand_str(rand, 0);
 
     std::pair<StdMap::iterator, bool> p = ms.insert(StdMap::value_type(key, val));
     bool was_inserted = hs.insert(key, val);
@@ -470,7 +565,7 @@ void test_compare_str(size_t count) {
     }
 
     bool is_there;
-    key = rand_str(rand, 2);
+    key = rand_str(rand, 40);
     hs.find(key, is_there);
     bool found_stdmap = ms.find(key) != ms.end();
     if (is_there) {
@@ -490,19 +585,25 @@ int main(int argc, char** argv) {
   m[32] = 123;
 
   try {
-    test_compare_str(100000);
-    test_compare<MultiplyHash<size_t> >(10000000);
+    //test_compare_str(1000000);
+    //test_compare<MultiplyHash<size_t> >(10000000);
 
 
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
-    size_t insertions = 200*1000;
-    size_t queries = 100*1000*1000;
+    size_t insertions = 2000*1000;
+    size_t queries = 00*1000*1000;
     size_t times = 1;
+
+    //bench_str<std::hash<std::string> >(insertions, queries, times);
+    bench_str<MurmurHash2>(insertions, queries, times);
+    bench_str<Fnv>(insertions, queries, times);
+
+    insertions = 200*1000;
+    queries = 100*1000*1000;
+    times = 1;
 
     std::cout << "std::string, DummyHash" << std::endl;
     bench1<std::string, DummyHash<size_t> >(insertions, queries, times, "fklajlejklahseklsjd fjklals jlfasefjklasjlfejlasdjlfajlgd hashdgksadhas dhkhklsdahk sakhh");
-
-
     std::cout << "int, DummyHash" << std::endl;
     bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
     std::cout << "int, std::hash" << std::endl;

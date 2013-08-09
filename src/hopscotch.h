@@ -8,6 +8,8 @@
 // http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
 // https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
 
+
+
 // TODO
 // * get rid of sentinel: use one bit of the hop table to check if it's full.
 //   if (hops & 1) {
@@ -68,7 +70,7 @@ public:
 
   HopScotch()
   {
-    init_data(Traits::HOP_SIZE);
+    init_data(Traits::HOP_SIZE + 1);
   }
 
   void clear() {
@@ -95,10 +97,16 @@ public:
     _alloc_key.deallocate(_keys, _size);
   }
 
+  inline bool insert(const Key& key, Val&& val) {
+    return insert_impl(std::move(Key(key)), std::forward<Val>(val));
+  }
+
+  inline bool insert(Key&& key, const Val& val) {
+    return insert_impl(std::forward<Key>(key), std::move(Val(val)));
+  }
+
   inline bool insert(const Key& key, const Val& val) {
-    Val v(val);
-    Key k(key);
-    return insert_impl(std::move(k), std::move(v));
+    return insert_impl(std::move(Key(key)), std::move(Val(val)));
   }
 
   inline bool insert(Key&& key, Val&& val) {
