@@ -8,19 +8,24 @@
 // http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
 // https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
 
-// TODO's: get rid of sentinel: use one bit of the hop table to check if it's full.
-// if (hops & 1) {
-//   // we are full!
-// } else {
-//   // this is empty.
-// }
-// hops >>= 1; // after that, hops are defined as it was. Just with one less element at the end.
+// TODO
+// * get rid of sentinel: use one bit of the hop table to check if it's full.
+//   if (hops & 1) {
+//     // we are full!
+//   } else {
+//     // this is empty.
+//   }
+//   hops >>= 1; // after that, hops are defined as it was. Just with one less element at the end.
+//
+// * Use allocator for keys. Needs another allocator, because different type.
+// * Make sure memory requirements stay OK (e.g. minimum fullness? max size?)
+//   maybe automatically switch to HopScotchDefault if fast does not work any more?
 
 struct HopScotchFast {
   typedef std::uint8_t HopType;
   enum Debug { DEBUG = 0 };
   enum resize_percentage { RESIZE_PERCENTAGE = 200 };
-  enum hop_size { HOP_SIZE = 8 };
+  enum hop_size { HOP_SIZE = 7 };
   enum add_range { ADD_RANGE = 512 };
   inline static size_t h(size_t v, size_t s, size_t mask) {
     return v & mask;
@@ -31,7 +36,7 @@ struct HopScotchDefault {
   typedef std::uint32_t HopType;
   enum Debug { DEBUG = 0 };
   enum resize_percentage { RESIZE_PERCENTAGE = 200 };
-  enum hop_size { HOP_SIZE = 32 };
+  enum hop_size { HOP_SIZE = 31 };
   enum add_range { ADD_RANGE = 512 };
   inline static size_t h(size_t v, size_t s, size_t mask) {
     return v & mask;
@@ -42,7 +47,7 @@ struct HopScotchCompact {
   typedef std::uint64_t HopType;
   enum Debug { DEBUG = 0 };
   enum resize_percentage { RESIZE_PERCENTAGE = 120 };
-  enum hop_size { HOP_SIZE = 64 };
+  enum hop_size { HOP_SIZE = 63 };
   enum add_range { ADD_RANGE = 1024 };
   inline static size_t h(size_t v, size_t s, size_t mask) {
     return v % s;
