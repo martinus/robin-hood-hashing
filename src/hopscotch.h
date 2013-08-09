@@ -8,6 +8,14 @@
 // http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
 // https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
 
+// TODO's: get rid of sentinel: use one bit of the hop table to check if it's full.
+// if (hops & 1) {
+//   // we are full!
+// } else {
+//   // this is empty.
+// }
+// hops >>= 1; // after that, hops are defined as it was. Just with one less element at the end.
+
 struct HopScotchFast {
   typedef std::uint8_t HopType;
   enum Debug { DEBUG = 0 };
