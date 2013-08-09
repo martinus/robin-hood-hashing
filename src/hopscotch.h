@@ -71,9 +71,8 @@ public:
 
   void clear() {
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-      if (_keys[i] != (size_t)-1) {
+      if (_hops[i] & 1) {
         _allocator.destroy(_values + i);
-        _keys[i] = -1;
       }
       _hops[i] = (HopType)0;
     }
@@ -82,7 +81,7 @@ public:
 
   ~HopScotch() {
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-      if (_keys[i] != (size_t)-1) {
+      if (_hops[i] & 1) {
         _allocator.destroy(_values + i);
       }
     }
@@ -94,8 +93,6 @@ public:
 
   // inline because it should be fast
   inline bool insert(size_t key, T val) {
-    const size_t sentinel = -1;
-
     size_t initial_idx = Traits::h(_hash(key), _max_size, _mask);
 
     // now, idx is the preferred position for this element. Search forward to find an empty place.
@@ -118,7 +115,7 @@ public:
     // key is not there, so find an empty spot
     idx = initial_idx;
     size_t e = std::min(_max_size + Traits::HOP_SIZE, initial_idx + Traits::ADD_RANGE);
-    while (idx < e && _keys[idx] != sentinel) {
+    while ((idx < e) && (_hops[idx] & 1)) {
       ++idx;
     }
 
@@ -157,6 +154,8 @@ public:
 
       // found a place! move hole to the front
       _keys[idx] = std::move(_keys[i]);
+      _hops[idx] |= (Traits::HopType)1;
+
       _allocator.construct(_values + idx, std::move(_values[i]));
       _allocator.destroy(_values + i);
       _hops[h] |= ((Traits::HopType)1 << (idx - h + 1));
@@ -171,6 +170,8 @@ public:
     // it's rightful place.
     _allocator.construct(_values + idx, std::move(val));
     _keys[idx] = std::move(key);
+    _hops[idx] |= (Traits::HopType)1;
+
     _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx + 1));
     ++_size;
     return true;
@@ -234,7 +235,7 @@ private:
     init_data(_max_size * Traits::RESIZE_PERCENTAGE / 100);
 
     for (size_t i=0; i<old_size + Traits::HOP_SIZE; ++i) {
-      if (old_keys[i] != (size_t)-1) {
+      if (old_hops[i] & 1) {
         insert(old_keys[i], old_values[i]);
         _allocator.destroy(old_values + i);
       }
@@ -254,7 +255,6 @@ private:
     _hops = new Traits::HopType[_max_size + Traits::HOP_SIZE];
     _values = _allocator.allocate(_max_size + Traits::HOP_SIZE);
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-      _keys[i] = (size_t)-1;
       _hops[i] = (Traits::HopType)0;
     }
 

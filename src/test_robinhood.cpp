@@ -424,7 +424,7 @@ int main(int argc, char** argv) {
 
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
     size_t insertions = 200*1000;
-    size_t queries = 10*1000*1000;
+    size_t queries = 100*1000*1000;
     size_t times = 1;
     std::cout << "int, std::hash" << std::endl;
     bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
