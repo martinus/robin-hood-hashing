@@ -123,8 +123,9 @@ public:
       return insert(key, val);
     }
 
-    // we have found an empty spot, but it might be far away. We have to move the hole to the front
-    // until we are at the right step. idx is the empty spot.
+    // we have found an empty spot at idx, but it might be far away.
+    // We have to move the hole to the front until we are at the
+    // right step.
     while (idx > initial_idx + Traits::HOP_SIZE - 1) {
       // h: where the hash wants to be
       // i: where it actually is
