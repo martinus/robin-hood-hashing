@@ -55,16 +55,18 @@ struct HopScotchCompact {
 };
 
 template<
+  class Key,
   class Val, 
-  class H = DummyHash<size_t>, 
+  class H = std::hash<Key>, 
   class Traits = HopScotchDefault,
-  class A = std::allocator<Val> >
+  class AVal = std::allocator<Val>,
+  class AKey = std::allocator<Key>
+>
 class HopScotch {
 public:
   typedef Val value_type;
 
   HopScotch()
-  : _allocator()
   {
     init_data(Traits::HOP_SIZE);
   }
@@ -72,7 +74,8 @@ public:
   void clear() {
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
       if (_hops[i] & 1) {
-        _allocator.destroy(_values + i);
+        _alloc_val.destroy(_values + i);
+        _alloc_key.destroy(_keys + i);
       }
       _hops[i] = (HopType)0;
     }
@@ -82,23 +85,29 @@ public:
   ~HopScotch() {
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
       if (_hops[i] & 1) {
-        _allocator.destroy(_values + i);
+        _alloc_val.destroy(_values + i);
+        _alloc_key.destroy(_keys + i);
       }
     }
 
-    delete[] _keys;
     delete[] _hops;
-    _allocator.deallocate(_values, _size);
+    _alloc_val.deallocate(_values, _size);
+    _alloc_key.deallocate(_keys, _size);
   }
 
-  inline bool insert(size_t key, const Val& val) {
+  inline bool insert(const Key& key, const Val& val) {
     Val v(val);
-    return insert(key, std::move(v));
+    Key k(key);
+    return insert_impl(std::move(k), std::move(v));
+  }
+
+  inline bool insert(Key&& key, Val&& val) {
+    return insert_impl(std::forward<Key>(key), std::forward<Val>(val));
   }
 
   // inline because it should be fast
-  // todo use &&
-  inline bool insert(size_t key, Val&& val) {
+  // todo use && for key as well
+  inline bool insert_impl(Key&& key, Val&& val) {
     size_t initial_idx = Traits::h(_hash(key), _max_size, _mask);
 
     // now, idx is the preferred position for this element. Search forward to find an empty place.
@@ -110,8 +119,8 @@ public:
     while (hops) {
       if ((hops & 1) && (_keys[idx] == key)) {
         // found the key! replace value
-        _allocator.destroy(_values + idx);
-        _allocator.construct(_values + idx, std::move(val));
+        _alloc_val.destroy(_values + idx);
+        _alloc_val.construct(_values + idx, std::move(val));
         return false;
       }
       ++idx;
@@ -129,8 +138,11 @@ public:
     if (idx == e) {
       // retry insert
       increase_size();
-      return insert(key, std::forward<Val>(val));
+      return insert(std::forward<Key>(key), std::forward<Val>(val));
     }
+
+    // set the empty spot's hop bit
+    _hops[idx] |= (Traits::HopType)1;
 
     // we have found an empty spot, but it might be far away. We have to move the hole to the front
     // until we are at the right step. idx is the empty spot.
@@ -154,16 +166,19 @@ public:
 
       // insertion failed? resize and try again.
       if (i >= idx) {
+        // insertion failed, undo _hop[idx]
+        _hops[idx] &= (Traits::HopType)-2;
         increase_size();
-        return insert(key, std::forward<Val>(val));
+        return insert(std::forward<Key>(key), std::forward<Val>(val));
       }
 
       // found a place! move hole to the front
-      _keys[idx] = std::move(_keys[i]);
-      _hops[idx] |= (Traits::HopType)1;
+      _alloc_key.construct(_keys + idx, std::move(_keys[i]));
+      _alloc_key.destroy(_keys + i);
+      // no need to set _hops[idx] & 1
 
-      _allocator.construct(_values + idx, std::move(_values[i]));
-      _allocator.destroy(_values + i);
+      _alloc_val.construct(_values + idx, std::move(_values[i]));
+      _alloc_val.destroy(_values + i);
       _hops[h] |= ((Traits::HopType)1 << (idx - h + 1));
 
       // clear hop bit
@@ -174,8 +189,8 @@ public:
 
     // now that we've moved everything, we can finally construct the element at
     // it's rightful place.
-    _allocator.construct(_values + idx, std::move(val));
-    _keys[idx] = std::move(key);
+    _alloc_val.construct(_values + idx, std::move(val));
+    _alloc_key.construct(_keys + idx, std::move(key));
     _hops[idx] |= (Traits::HopType)1;
 
     _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx + 1));
@@ -183,7 +198,7 @@ public:
     return true;
   }
 
-  inline Val& find(size_t key, bool& success) {
+  inline Val& find(const Key& key, bool& success) {
     size_t idx = Traits::h(_hash(key), _max_size, _mask);
 
     Traits::HopType hops = _hops[idx] >> 1;
@@ -201,7 +216,7 @@ public:
     return _values[0];
   }
 
-  inline const Val& find(size_t key, bool& success) const {
+  inline const Val& find(const Key& key, bool& success) const {
     size_t idx = Traits::h(_hash(key), _max_size, _mask);
 
     Traits::HopType hops = _hops[idx] >> 1;
@@ -233,7 +248,7 @@ private:
       // calculate memory requirements
       std::cout << "resize: " << _max_size << "\t" << 1.0*_size / (_max_size + Traits::HOP_SIZE) << std::endl;
     }
-    size_t* old_keys = _keys;
+    Key* old_keys = _keys;
     Val* old_values = _values;
     Traits::HopType* old_hops = _hops;
 
@@ -242,14 +257,15 @@ private:
 
     for (size_t i=0; i<old_size + Traits::HOP_SIZE; ++i) {
       if (old_hops[i] & 1) {
-        insert(old_keys[i], old_values[i]);
-        _allocator.destroy(old_values + i);
+        insert(std::move(old_keys[i]), std::move(old_values[i]));
+        _alloc_val.destroy(old_values + i);
+        _alloc_key.destroy(old_keys + i);
       }
     }
 
-    delete[] old_keys;
     delete[] old_hops;
-    _allocator.deallocate(old_values, old_size);
+    _alloc_val.deallocate(old_values, old_size);
+    _alloc_key.deallocate(old_keys, old_size);
   }
 
 
@@ -257,9 +273,9 @@ private:
     _size = 0;
     _max_size = new_size;
     _mask = _max_size - 1;
-    _keys = new size_t[_max_size + Traits::HOP_SIZE];
+    _keys = _alloc_key.allocate(_max_size + Traits::HOP_SIZE);
+    _values = _alloc_val.allocate(_max_size + Traits::HOP_SIZE, _keys);
     _hops = new Traits::HopType[_max_size + Traits::HOP_SIZE];
-    _values = _allocator.allocate(_max_size + Traits::HOP_SIZE);
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
       _hops[i] = (Traits::HopType)0;
     }
@@ -276,7 +292,7 @@ private:
     _max_fullness = _max_size + Traits::HOP_SIZE - 1;
   }
 
-  size_t* _keys;
+  Key* _keys;
   typename Traits::HopType* _hops;
   Val* _values;
 
@@ -286,5 +302,6 @@ private:
   size_t _max_size;
   size_t _max_fullness;
 
-  A _allocator;
+  AVal _alloc_val;
+  AKey _alloc_key;
 };
