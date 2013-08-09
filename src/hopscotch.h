@@ -55,13 +55,13 @@ struct HopScotchCompact {
 };
 
 template<
-  class T, 
+  class Val, 
   class H = DummyHash<size_t>, 
   class Traits = HopScotchDefault,
-  class A = std::allocator<T> >
+  class A = std::allocator<Val> >
 class HopScotch {
 public:
-  typedef T value_type;
+  typedef Val value_type;
 
   HopScotch()
   : _allocator()
@@ -91,8 +91,14 @@ public:
     _allocator.deallocate(_values, _size);
   }
 
+  inline bool insert(size_t key, const Val& val) {
+    Val v(val);
+    return insert(key, std::move(v));
+  }
+
   // inline because it should be fast
-  inline bool insert(size_t key, T val) {
+  // todo use &&
+  inline bool insert(size_t key, Val&& val) {
     size_t initial_idx = Traits::h(_hash(key), _max_size, _mask);
 
     // now, idx is the preferred position for this element. Search forward to find an empty place.
@@ -123,7 +129,7 @@ public:
     if (idx == e) {
       // retry insert
       increase_size();
-      return insert(key, val);
+      return insert(key, std::forward<Val>(val));
     }
 
     // we have found an empty spot, but it might be far away. We have to move the hole to the front
@@ -149,7 +155,7 @@ public:
       // insertion failed? resize and try again.
       if (i >= idx) {
         increase_size();
-        return insert(key, val);
+        return insert(key, std::forward<Val>(val));
       }
 
       // found a place! move hole to the front
@@ -177,7 +183,7 @@ public:
     return true;
   }
 
-  inline T& find(size_t key, bool& success) {
+  inline Val& find(size_t key, bool& success) {
     size_t idx = Traits::h(_hash(key), _max_size, _mask);
 
     Traits::HopType hops = _hops[idx] >> 1;
@@ -195,7 +201,7 @@ public:
     return _values[0];
   }
 
-  inline const T& find(size_t key, bool& success) const {
+  inline const Val& find(size_t key, bool& success) const {
     size_t idx = Traits::h(_hash(key), _max_size, _mask);
 
     Traits::HopType hops = _hops[idx] >> 1;
@@ -228,7 +234,7 @@ private:
       std::cout << "resize: " << _max_size << "\t" << 1.0*_size / (_max_size + Traits::HOP_SIZE) << std::endl;
     }
     size_t* old_keys = _keys;
-    T* old_values = _values;
+    Val* old_values = _values;
     Traits::HopType* old_hops = _hops;
 
     size_t old_size = _max_size;
@@ -261,7 +267,7 @@ private:
     if (Traits::DEBUG) {
       size_t keys = sizeof(size_t) * (_max_size + Traits::HOP_SIZE);
       size_t hops = sizeof(Traits::HopType) * (_max_size + Traits::HOP_SIZE);
-      size_t values = sizeof(T) * (_max_size + Traits::HOP_SIZE);
+      size_t values = sizeof(Val) * (_max_size + Traits::HOP_SIZE);
       std::cout << (keys + hops + values) << " bytes (" << keys << " keys, " << hops << " hops, " << values << " values)" << std::endl;
     }
 
@@ -272,7 +278,7 @@ private:
 
   size_t* _keys;
   typename Traits::HopType* _hops;
-  T* _values;
+  Val* _values;
 
   const H _hash;
   size_t _size;

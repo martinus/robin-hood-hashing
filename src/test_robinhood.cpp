@@ -104,6 +104,28 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
     Timer t;
     for (size_t its=0; its<times; ++its) {
       for (size_t i=0; i<insertions; ++i) {
+        r.insert(rand(), std::move(value));
+      }
+    
+      for (size_t i=0; i<queries; ++i) {
+        bool success;
+        r.find(rand(), success);
+        if (success) {
+          ++f;
+        }
+      }
+    }
+    std::cout << t.elapsed();
+    std::cout << " HopScotch<T, H, HopScotchFast> with move" << r.size() << " " << f << std::endl;
+  }
+
+  {
+    HopScotch<T, H, HopScotchFast> r;
+    rand.seed(seed);
+    size_t f = 0;
+    Timer t;
+    for (size_t its=0; its<times; ++its) {
+      for (size_t i=0; i<insertions; ++i) {
         r.insert(rand(), value);
       }
     
@@ -116,8 +138,9 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<T, H, HopScotchFast> " << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch<T, H, HopScotchFast> no move" << r.size() << " " << f << std::endl;
   }
+
   {
     HopScotch<T, H, HopScotchDefault> r;
     rand.seed(seed);
@@ -426,14 +449,17 @@ int main(int argc, char** argv) {
     size_t insertions = 200*1000;
     size_t queries = 100*1000*1000;
     size_t times = 1;
-    std::cout << "int, std::hash" << std::endl;
-    bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
+
+    std::cout << "std::string, DummyHash" << std::endl;
+    bench1<std::string, DummyHash<size_t> >(insertions, queries, times, "fklajlejklahseklsjd fjklals jlfasefjklasjlfejlasdjlfajlgd hashdgksadhas dhkhklsdahk sakhh");
+
+
     std::cout << "int, DummyHash" << std::endl;
     bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
+    std::cout << "int, std::hash" << std::endl;
+    bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
     std::cout << "int, MultiplyHash" << std::endl;
     bench1<int, MultiplyHash<size_t> >(insertions, queries, times, 1231);
-    std::cout << "std::string, DummyHash" << std::endl;
-    bench1<std::string, DummyHash<size_t> >(insertions, queries, times, "fklajlejklahseh");
     std::cout << "std::string, std::hash" << std::endl;
     bench1<std::string, std::hash<size_t> >(insertions, queries, times, "lfklkajasjefj");
 
