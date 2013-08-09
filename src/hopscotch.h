@@ -1,7 +1,5 @@
 #pragma once
 
-#include <algorithm>
-#include <unordered_map>
 #include <cstdint>
 
 // HopScotch algorithm. Based on
@@ -9,9 +7,9 @@
 // https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
 
 // todo
-// * check how often stuff is copied (make own int class and use a static counter).
 // * Make sure memory requirements stay OK (e.g. minimum fullness? max size?)
 //   maybe automatically switch to HopScotchDefault if fast does not work any more?
+
 
 struct HopScotchFast {
   typedef std::uint8_t HopType;
@@ -64,7 +62,8 @@ template<
   class H = std::hash<Key>, 
   class Traits = HopScotchDefault,
   class AVal = std::allocator<Val>,
-  class AKey = std::allocator<Key>
+  class AKey = std::allocator<Key>,
+  class AHop = std::allocator<Traits::HopType>
 >
 class HopScotch {
 public:
@@ -78,7 +77,7 @@ public:
   void clear() {
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
       if (_hops[i] & 1) {
-        _alloc_val.destroy(_values + i);
+        _alloc_val.destroy(_vals + i);
         _alloc_key.destroy(_keys + i);
       }
       _hops[i] = (HopType)0;
@@ -89,14 +88,15 @@ public:
   ~HopScotch() {
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
       if (_hops[i] & 1) {
-        _alloc_val.destroy(_values + i);
+        _alloc_val.destroy(_vals + i);
         _alloc_key.destroy(_keys + i);
+        _alloc_hop.destroy(_hops + i);
       }
     }
 
-    delete[] _hops;
-    _alloc_val.deallocate(_values, _size);
+    _alloc_val.deallocate(_vals, _size);
     _alloc_key.deallocate(_keys, _size);
+    _alloc_hop.deallocate(_hops, _size);
   }
 
   inline bool insert(const Key& key, Val&& val) {
@@ -129,8 +129,8 @@ public:
     while (hops) {
       if ((hops & 1) && (_keys[idx] == key)) {
         // found the key! replace value
-        _alloc_val.destroy(_values + idx);
-        _alloc_val.construct(_values + idx, std::move(val));
+        _alloc_val.destroy(_vals + idx);
+        _alloc_val.construct(_vals + idx, std::move(val));
         return false;
       }
       ++idx;
@@ -187,8 +187,8 @@ public:
       _alloc_key.destroy(_keys + i);
       // no need to set _hops[idx] & 1
 
-      _alloc_val.construct(_values + idx, std::move(_values[i]));
-      _alloc_val.destroy(_values + i);
+      _alloc_val.construct(_vals + idx, std::move(_vals[i]));
+      _alloc_val.destroy(_vals + i);
       _hops[h] |= ((Traits::HopType)1 << (idx - h + 1));
 
       // clear hop bit
@@ -199,7 +199,7 @@ public:
 
     // now that we've moved everything, we can finally construct the element at
     // it's rightful place.
-    _alloc_val.construct(_values + idx, std::move(val));
+    _alloc_val.construct(_vals + idx, std::move(val));
     _alloc_key.construct(_keys + idx, std::move(key));
     _hops[idx] |= (Traits::HopType)1;
 
@@ -216,14 +216,14 @@ public:
     while (hops) {
       if ((hops & 1) && (key == _keys[idx])) {
         success = true;
-        return _values[idx];
+        return _vals[idx];
       }
       hops >>= 1;
       ++idx;
     }
 
     success = false;
-    return _values[0];
+    return _vals[0];
   }
 
   inline const Val& find(const Key& key, bool& success) const {
@@ -233,14 +233,14 @@ public:
     while (hops) {
       if ((hops & 1) && (key == _keys[idx])) {
         success = true;
-        return _values[idx];
+        return _vals[idx];
       }
       hops >>= 1;
       ++idx;
     }
 
     success = false;
-    return _values[0];
+    return _vals[0];
   }
 
   inline size_t size() const {
@@ -259,7 +259,7 @@ private:
       std::cout << "resize: " << _max_size << "\t" << 1.0*_size / (_max_size + Traits::HOP_SIZE) << std::endl;
     }
     Key* old_keys = _keys;
-    Val* old_values = _values;
+    Val* old_vals = _vals;
     Traits::HopType* old_hops = _hops;
 
     size_t old_size = _max_size;
@@ -267,15 +267,16 @@ private:
 
     for (size_t i=0; i<old_size + Traits::HOP_SIZE; ++i) {
       if (old_hops[i] & 1) {
-        insert_impl(std::move(old_keys[i]), std::move(old_values[i]));
-        _alloc_val.destroy(old_values + i);
+        insert_impl(std::move(old_keys[i]), std::move(old_vals[i]));
+        _alloc_val.destroy(old_vals + i);
         _alloc_key.destroy(old_keys + i);
+        _alloc_hop.destroy(old_hops + i);
       }
     }
 
-    delete[] old_hops;
-    _alloc_val.deallocate(old_values, old_size);
+    _alloc_val.deallocate(old_vals, old_size);
     _alloc_key.deallocate(old_keys, old_size);
+    _alloc_hop.deallocate(old_hops, old_size);
   }
 
 
@@ -283,11 +284,13 @@ private:
     _size = 0;
     _max_size = new_size;
     _mask = _max_size - 1;
-    _keys = _alloc_key.allocate(_max_size + Traits::HOP_SIZE);
-    _values = _alloc_val.allocate(_max_size + Traits::HOP_SIZE, _keys);
-    _hops = new Traits::HopType[_max_size + Traits::HOP_SIZE];
+
+    _hops = _alloc_hop.allocate(_max_size + Traits::HOP_SIZE);
+    _keys = _alloc_key.allocate(_max_size + Traits::HOP_SIZE, _hops);
+    _vals = _alloc_val.allocate(_max_size + Traits::HOP_SIZE, _keys);
+
     for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-      _hops[i] = (Traits::HopType)0;
+      _alloc_hop.construct(_hops + i, 0);
     }
 
     if (Traits::DEBUG) {
@@ -302,9 +305,9 @@ private:
     _max_fullness = _max_size + Traits::HOP_SIZE - 1;
   }
 
+  Val* _vals;
   Key* _keys;
   typename Traits::HopType* _hops;
-  Val* _values;
 
   const H _hash;
   size_t _size;
@@ -314,4 +317,5 @@ private:
 
   AVal _alloc_val;
   AKey _alloc_key;
+  AHop _alloc_hop;
 };

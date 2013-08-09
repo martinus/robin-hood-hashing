@@ -1,6 +1,7 @@
+#include <hopscotch.h>
+
 #include <timer.h>
 #include <robinhood.h>
-#include <hopscotch.h>
 #include <marsagliamwc99.h>
 #include <rh_hash_table.hpp>
 
@@ -634,7 +635,16 @@ int main(int argc, char** argv) {
   std::unordered_map<X, X, HashX> m;
   m[32] = 123;
 
+  size_t insertions = 2000*1000;
+  size_t queries = 100*1000*1000;
+  size_t times = 1;
+
+
   try {
+    std::cout << "int, DummyHash" << std::endl;
+    bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
+
+
     test_count(65434);
     test_compare_str(1000000);
     test_compare<MultiplyHash<size_t> >(10000000);
@@ -662,9 +672,9 @@ int main(int argc, char** argv) {
 
 
 
-    size_t insertions = 2000*1000;
-    size_t queries = 1*1000*1000;
-    size_t times = 1;
+    insertions = 2000*1000;
+    queries = 1*1000*1000;
+    times = 1;
 
     //bench_str<std::hash<std::string> >(insertions, queries, times);
     std::cout << ">>>>>>>>> String Benchmarks <<<<<<<<<<<<<" << std::endl;
