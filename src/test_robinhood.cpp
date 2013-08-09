@@ -10,8 +10,6 @@
 
 
 
-
-
 // test some hashing stuff
 template<class T>
 double bench_hashing(int& data) {
@@ -221,11 +219,31 @@ void test_map1(size_t times) {
     Timer t;
     MarsagliaMWC99 rand;
     rand.seed(321);
-    HopScotch<int, T> r;
+    HopScotch<int, T, HopScotchFast> r;
     for (size_t i=0; i<times; ++i) {
       r.insert(rand(i+1), i);
     }
-    std::cout << t.elapsed() << " HopScotch<int> " << r.size() << std::endl;
+    std::cout << t.elapsed() << " HopScotch<int, T, HopScotchFast> " << r.size() << std::endl;
+  }
+  {
+    Timer t;
+    MarsagliaMWC99 rand;
+    rand.seed(321);
+    HopScotch<int, T, HopScotchDefault> r;
+    for (size_t i=0; i<times; ++i) {
+      r.insert(rand(i+1), i);
+    }
+    std::cout << t.elapsed() << " HopScotch<int, T, HopScotchDefault> " << r.size() << std::endl;
+  }
+  {
+    Timer t;
+    MarsagliaMWC99 rand;
+    rand.seed(321);
+    HopScotch<int, T, HopScotchCompact> r;
+    for (size_t i=0; i<times; ++i) {
+      r.insert(rand(i+1), i);
+    }
+    std::cout << t.elapsed() << " HopScotch<int, T, HopScotchCompact> " << r.size() << std::endl;
   }
   {
     Timer t;
@@ -316,49 +334,61 @@ void test_compare(size_t times) {
 }
 
 
-void bench_java() {
-  size_t n = 10*1000*1000;
-
-  std::vector<float> v;
-  v.push_back(0);
-  v.push_back(1);
-  v.push_back(2);
-  v.push_back(3);
-  v.push_back(4);
-
-  Timer t;
-  HopScotch<std::vector<float>*, DummyHash<size_t>, HopScotchFast> r;
-  for (size_t i=0; i<n; ++i) {
-    r.insert(i, &v);
+class X {
+public:
+  X()
+  : x(0)
+  {
+    std::cout << "default ctor" << std::endl;
   }
-  double e = t.elapsed();
-  std::cout << e << " insert HopScotch" << std::endl;
 
-  t.restart();
-  std::unordered_map<size_t, std::vector<float>*, DummyHash<size_t> > m;
-  for (size_t i=0; i<n; ++i) {
-    m[i] = &v;
+  X(X&& o)
+  : x(o.x)
+  {
+    std::cout << "moving o " << x << std::endl;
   }
-  e = t.elapsed();
-  std::cout << e << " insert std::unordered_map" << std::endl;
 
-  t.restart();
-  size_t c=0;
-  for (size_t i=0; i<n; ++i) {
-    bool f;
-    r.find(i, f);
-    if (f) {
-      ++c;
-    }
+  X(const X& o)
+  : x(o.x)
+  {
+    std::cout << "ctor " << x << std::endl;
   }
-  e = t.elapsed();
-  std::cout << e << " get HopScotch " << c << std::endl;
-}
+  bool operator==(const X& o) const {
+    std::cout << "operator==" << std::endl;
+    return x == o.x;
+  }
+
+  X(int x_)
+  : x(x_)
+  {
+    std::cout << x << std::endl;
+  }
+
+public:
+  int x;
+};
+
+struct HashX : public std::unary_function<size_t, X> {
+  inline size_t operator()(const X& t) const {
+    return std::hash<int>()(t.x);
+  }
+};
 
 
 int main(int argc, char** argv) {
+  std::unordered_map<X, X, HashX> m;
+
+  m[32] = 123;
+
   try {
-    bench_java();
+    std::cout << "test DummyHash" << std::endl;
+    test_map1<DummyHash<size_t> >(500000);
+
+    std::cout << "\nstd::hash" << std::endl;
+    test_map1<std::hash<size_t> >(10000000);
+
+
+
     //test_compare<MultiplyHash<size_t> >(10000000);
 
     size_t i = 20*1000*1000;
@@ -385,9 +415,9 @@ int main(int argc, char** argv) {
 
 
     std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
-    size_t insertions = 200*1000;
-    size_t queries = 10*1000*1000;
-    size_t times = 5;
+    size_t insertions = 1*1000*1000;
+    size_t queries = 100*1000*1000;
+    size_t times = 1;
     std::cout << "int, std::hash" << std::endl;
     bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
     std::cout << "int, DummyHash" << std::endl;
@@ -401,12 +431,6 @@ int main(int argc, char** argv) {
 
     std::cout << std::endl << ">>>>>>>>> Tests <<<<<<<<<<<<<" << std::endl;
 
-
-    std::cout << "test DummyHash" << std::endl;
-    test_map1<DummyHash<size_t> >(500000);
-
-    std::cout << "\nstd::hash" << std::endl;
-    test_map1<std::hash<size_t> >(10000000);
 
 
 
