@@ -63,8 +63,7 @@ void test2() {
   }
 }
 
-void test3() {
-  RobinHoodHashMap<int> h;
+void test3() {RobinHoodHashMap<int> h;
   for (size_t i=0; i<4; ++i) {
     h.insert(i * 8 + 14, 123);
     h.insert(i * 8 + 15, 123);
@@ -96,8 +95,8 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
   MarsagliaMWC99 rand(insertions*5);
   const int seed = 23154;
 
-  size_t key_length = 40;
-  size_t val_length = 0;
+  size_t key_length = 5;
+  size_t val_length = 10;
 
   {
     HopScotch<std::string, std::string, H, HopScotchFast> r;
@@ -211,7 +210,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<size_t, T, H, HopScotchFast> with move" << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch<size_t, T, H, HopScotchFast> with move " << r.size() << " " << f << std::endl;
   }
 
   {
@@ -233,7 +232,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<size_t, T, H, HopScotchFast> no move" << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch<size_t, T, H, HopScotchFast> no move " << r.size() << " " << f << std::endl;
   }
 
   {
@@ -493,34 +492,62 @@ void test_compare(size_t times) {
 }
 
 
+static size_t x_ctor = 0;
+static size_t x_mov = 0;
+static size_t x_copyctor = 0;
+static size_t x_operatoreq = 0;
+static size_t x_intctor = 0;
+static size_t x_hash = 0;
+
+void print_x(std::string msg) {
+  std::cout << msg << std::endl;
+  std::cout << "  x_ctor " << x_ctor << std::endl;
+  std::cout << "  x_mov " << x_mov << std::endl;
+  std::cout << "  x_copyctor " << x_copyctor << std::endl;
+  std::cout << "  x_operatoreq " << x_operatoreq << std::endl;
+  std::cout << "  x_intctor " << x_intctor << std::endl;
+  std::cout << "  x_intctor " << x_intctor << std::endl;
+  std::cout << "  x_hash " << x_hash << std::endl;
+  std::cout << std::endl;
+}
+
+void reset_x() {
+  x_ctor = 0;
+  x_mov = 0;
+  x_copyctor = 0;
+  x_operatoreq = 0;
+  x_intctor = 0;
+  x_hash = 0;
+}
+
 class X {
 public:
   X()
   : x(0)
   {
-    std::cout << "default ctor" << std::endl;
+    ++x_ctor;
   }
 
   X(X&& o)
   : x(o.x)
   {
-    std::cout << "moving o " << x << std::endl;
+    ++x_mov;
   }
 
   X(const X& o)
   : x(o.x)
   {
-    std::cout << "ctor " << x << std::endl;
+    ++x_copyctor;
   }
   bool operator==(const X& o) const {
-    std::cout << "operator==" << std::endl;
+    ++x_operatoreq;
     return x == o.x;
   }
 
   X(int x_)
   : x(x_)
   {
-    std::cout << x << std::endl;
+    ++x_intctor;
   }
 
 public:
@@ -529,6 +556,7 @@ public:
 
 struct HashX : public std::unary_function<size_t, X> {
   inline size_t operator()(const X& t) const {
+    ++x_hash;
     return std::hash<int>()(t.x);
   }
 };
@@ -543,12 +571,34 @@ std::string rand_str(MarsagliaMWC99& rand, const size_t num_letters) {
   return std::move(s);
 }
 
+void test_count(size_t times) {
+  MarsagliaMWC99 rand;
+  reset_x();
+  {
+    rand.seed(123);
+    typedef std::unordered_map<X, int, HashX> StdMap;
+    StdMap ms;
+    for (size_t i=0; i<times; ++i) {
+      std::pair<StdMap::iterator, bool> p = ms.insert(StdMap::value_type(rand(), i));
+    }
+  }
+  print_x("std::unordered_map");
+  reset_x();
+  {
+    rand.seed(123);
+    HopScotch<X, int, HashX, HopScotchFast> hs;
+    for (size_t i=0; i<times; ++i) {
+      hs.insert(rand(), i);
+    }
+  }
+  print_x("HopScotch");
+  reset_x();
+}
+
 void test_compare_str(size_t count) {
   typedef std::unordered_map<std::string, std::string> StdMap;
   StdMap ms;
   HopScotch<std::string, std::string, std::hash<std::string>, HopScotchFast> hs;
-
-
 
   MarsagliaMWC99 rand;
   rand.seed(123);
@@ -585,47 +635,15 @@ int main(int argc, char** argv) {
   m[32] = 123;
 
   try {
-    //test_compare_str(1000000);
-    //test_compare<MultiplyHash<size_t> >(10000000);
-
-
-    std::cout << ">>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
-    size_t insertions = 2000*1000;
-    size_t queries = 00*1000*1000;
-    size_t times = 1;
-
-    //bench_str<std::hash<std::string> >(insertions, queries, times);
-    bench_str<MurmurHash2>(insertions, queries, times);
-    bench_str<Fnv>(insertions, queries, times);
-
-    insertions = 200*1000;
-    queries = 100*1000*1000;
-    times = 1;
-
-    std::cout << "std::string, DummyHash" << std::endl;
-    bench1<std::string, DummyHash<size_t> >(insertions, queries, times, "fklajlejklahseklsjd fjklals jlfasefjklasjlfejlasdjlfajlgd hashdgksadhas dhkhklsdahk sakhh");
-    std::cout << "int, DummyHash" << std::endl;
-    bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
-    std::cout << "int, std::hash" << std::endl;
-    bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
-    std::cout << "int, MultiplyHash" << std::endl;
-    bench1<int, MultiplyHash<size_t> >(insertions, queries, times, 1231);
-    std::cout << "std::string, std::hash" << std::endl;
-    bench1<std::string, std::hash<size_t> >(insertions, queries, times, "lfklkajasjefj");
-
-    //std::cout << "test DummyHash" << std::endl;
-    //test_map1<DummyHash<size_t> >(500000);
-    //std::cout << "\nstd::hash" << std::endl;
-    //test_map1<std::hash<size_t> >(10000000);
-
+    test_count(65434);
+    test_compare_str(1000000);
+    test_compare<MultiplyHash<size_t> >(10000000);
 
 
 
     size_t i = 200*1000;
     size_t q = 100*1000*1000;
     size_t t = 1;
-
-    /*
     bh<HopScotch<size_t, int, std::hash<size_t> > >(i, q, t, 1231, "HopScotch<size_t, int, std::hash<size_t> >");
     bh<HopScotch<size_t, int, std::hash<size_t>, HopScotchDefault> >(i, q, t, 1231, "HopScotch<size_t, int, std::hash<size_t>, HopScotchDefault>");
     bh<HopScotch<size_t, int, std::hash<size_t>, HopScotchCompact> >(i, q, t, 1231, "HopScotch<size_t, int, std::hash<size_t>, HopScotchCompact>");
@@ -641,8 +659,42 @@ int main(int argc, char** argv) {
     bh<HopScotch<size_t, std::string, std::hash<size_t> > >(i, q, t, "lfklkajasjefj", "HopScotch<size_t, std::string, std::hash<size_t> >");
     bh<HopScotch<size_t, std::string, std::hash<size_t>, HopScotchDefault> >(i, q, t, "lfklkajasjefj", "HopScotch<size_t, std::string, std::hash<size_t>, HopScotchDefault>");
     bh<HopScotch<size_t, std::string, std::hash<size_t>, HopScotchCompact> >(i, q, t, "lfklkajasjefj", "HopScotch<size_t, std::string, std::hash<size_t>, HopScotchCompact>");
-    */
 
+
+
+    size_t insertions = 2000*1000;
+    size_t queries = 1*1000*1000;
+    size_t times = 1;
+
+    //bench_str<std::hash<std::string> >(insertions, queries, times);
+    std::cout << ">>>>>>>>> String Benchmarks <<<<<<<<<<<<<" << std::endl;
+    std::cout << "MurmurHash2" << std::endl;
+    bench_str<MurmurHash2>(insertions, queries, times);
+    std::cout << "Fnv" << std::endl;
+    bench_str<Fnv>(insertions, queries, times);
+    std::cout << "std::hash" << std::endl;
+    bench_str<std::hash<std::string> >(insertions, queries, times);
+
+    insertions = 200*1000;
+    queries = 100*1000*1000;
+    times = 1;
+
+    std::cout << "\n>>>>>>>>> Benchmarking <<<<<<<<<<<<<" << std::endl;
+    std::cout << "std::string, DummyHash" << std::endl;
+    bench1<std::string, DummyHash<size_t> >(insertions, queries, times, "fklajlejklahseklsjd fjklals jlfasefjklasjlfejlasdjlfajlgd hashdgksadhas dhkhklsdahk sakhh");
+    std::cout << "int, DummyHash" << std::endl;
+    bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
+    std::cout << "int, std::hash" << std::endl;
+    bench1<int, std::hash<size_t> >(insertions, queries, times, 1231);
+    std::cout << "int, MultiplyHash" << std::endl;
+    bench1<int, MultiplyHash<size_t> >(insertions, queries, times, 1231);
+    std::cout << "std::string, std::hash" << std::endl;
+    bench1<std::string, std::hash<size_t> >(insertions, queries, times, "lfklkajasjefj");
+
+    std::cout << "test DummyHash" << std::endl;
+    test_map1<DummyHash<size_t> >(500000);
+    std::cout << "\nstd::hash" << std::endl;
+    test_map1<std::hash<size_t> >(10000000);
 
 
     std::cout << std::endl << ">>>>>>>>> Tests <<<<<<<<<<<<<" << std::endl;

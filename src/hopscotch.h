@@ -8,25 +8,15 @@
 // http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
 // https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
 
-
-
-// TODO
-// * get rid of sentinel: use one bit of the hop table to check if it's full.
-//   if (hops & 1) {
-//     // we are full!
-//   } else {
-//     // this is empty.
-//   }
-//   hops >>= 1; // after that, hops are defined as it was. Just with one less element at the end.
-//
-// * Use allocator for keys. Needs another allocator, because different type.
+// todo
+// * check how often stuff is copied (make own int class and use a static counter).
 // * Make sure memory requirements stay OK (e.g. minimum fullness? max size?)
 //   maybe automatically switch to HopScotchDefault if fast does not work any more?
 
 struct HopScotchFast {
   typedef std::uint8_t HopType;
   enum Debug { DEBUG = 0 };
-  enum resize_percentage { RESIZE_PERCENTAGE = 200 };
+  enum resize_percentage { RESIZE_PERCENTAGE = 800 };
   enum hop_size { HOP_SIZE = 8-1 };
   enum add_range { ADD_RANGE = 512 };
   inline static size_t h(size_t v, size_t s, size_t mask) {
@@ -37,7 +27,7 @@ struct HopScotchFast {
 struct HopScotchDefault {
   typedef std::uint32_t HopType;
   enum Debug { DEBUG = 0 };
-  enum resize_percentage { RESIZE_PERCENTAGE = 200 };
+  enum resize_percentage { RESIZE_PERCENTAGE = 400 };
   enum hop_size { HOP_SIZE = 32-1 };
   enum add_range { ADD_RANGE = 512 };
   inline static size_t h(size_t v, size_t s, size_t mask) {
@@ -56,6 +46,18 @@ struct HopScotchCompact {
   }
 };
 
+
+struct HopScotchFastHash {
+  typedef std::uint64_t HopType;
+  enum Debug { DEBUG = 1 };
+  enum resize_percentage { RESIZE_PERCENTAGE = 800 };
+  enum hop_size { HOP_SIZE = 64-1 };
+  enum add_range { ADD_RANGE = 1024 };
+  inline static size_t h(size_t v, size_t s, size_t mask) {
+    return v & mask;
+  }
+};
+
 template<
   class Key,
   class Val, 
@@ -70,7 +72,7 @@ public:
 
   HopScotch()
   {
-    init_data(Traits::HOP_SIZE + 1);
+    init_data(32);
   }
 
   void clear() {
@@ -265,7 +267,7 @@ private:
 
     for (size_t i=0; i<old_size + Traits::HOP_SIZE; ++i) {
       if (old_hops[i] & 1) {
-        insert(std::move(old_keys[i]), std::move(old_values[i]));
+        insert_impl(std::move(old_keys[i]), std::move(old_values[i]));
         _alloc_val.destroy(old_values + i);
         _alloc_key.destroy(old_keys + i);
       }
