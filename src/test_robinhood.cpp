@@ -641,12 +641,13 @@ int main(int argc, char** argv) {
 
 
   try {
+    test_compare_str(1000000);
+
+    test_count(65434);
     std::cout << "int, DummyHash" << std::endl;
     bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
 
 
-    test_count(65434);
-    test_compare_str(1000000);
     test_compare<MultiplyHash<size_t> >(10000000);
 
 

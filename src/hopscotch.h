@@ -7,6 +7,7 @@
 // https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
 
 // todo
+// * document all the little tricks
 // * Make sure memory requirements stay OK (e.g. minimum fullness? max size?)
 //   maybe automatically switch to HopScotchDefault if fast does not work any more?
 
@@ -45,17 +46,6 @@ struct HopScotchCompact {
 };
 
 
-struct HopScotchFastHash {
-  typedef std::uint64_t HopType;
-  enum Debug { DEBUG = 1 };
-  enum resize_percentage { RESIZE_PERCENTAGE = 800 };
-  enum hop_size { HOP_SIZE = 64-1 };
-  enum add_range { ADD_RANGE = 1024 };
-  inline static size_t h(size_t v, size_t s, size_t mask) {
-    return v & mask;
-  }
-};
-
 template<
   class Key,
   class Val, 
@@ -82,6 +72,7 @@ public:
       }
       _hops[i] = (HopType)0;
     }
+    memset(_hops, 0, (_max_size + Traits::HOP_SIZE)*sizeof(Traits::HopType));
     _size = 0;
   }
 
@@ -130,16 +121,16 @@ public:
       if ((hops & 1) && (_keys[idx] == key)) {
         // found the key! replace value
         _alloc_val.destroy(_vals + idx);
-        _alloc_val.construct(_vals + idx, std::move(val));
+        _alloc_val.construct(_vals + idx, std::forward<Val>(val));
         return false;
       }
       ++idx;
       hops >>= 1;
     }
 
-    // key is not there, so find an empty spot
+    // key is not there, find an empty spot
     idx = initial_idx;
-    size_t e = std::min(_max_size + Traits::HOP_SIZE, initial_idx + Traits::ADD_RANGE);
+    const size_t e = std::min(_max_size + Traits::HOP_SIZE, initial_idx + Traits::ADD_RANGE);
     while ((idx < e) && (_hops[idx] & 1)) {
       ++idx;
     }
@@ -154,6 +145,7 @@ public:
     // set the empty spot's hop bit
     _hops[idx] |= (Traits::HopType)1;
 
+    // TODO can this be made faster?
     // we have found an empty spot, but it might be far away. We have to move the hole to the front
     // until we are at the right step. idx is the empty spot.
     while (idx > initial_idx + Traits::HOP_SIZE - 1) {
@@ -183,11 +175,11 @@ public:
       }
 
       // found a place! move hole to the front
-      _alloc_key.construct(_keys + idx, std::move(_keys[i]));
+      _alloc_key.construct(_keys + idx, std::forward<Key>(_keys[i]));
       _alloc_key.destroy(_keys + i);
       // no need to set _hops[idx] & 1
 
-      _alloc_val.construct(_vals + idx, std::move(_vals[i]));
+      _alloc_val.construct(_vals + idx, std::forward<Val>(_vals[i]));
       _alloc_val.destroy(_vals + i);
       _hops[h] |= ((Traits::HopType)1 << (idx - h + 1));
 
@@ -199,8 +191,8 @@ public:
 
     // now that we've moved everything, we can finally construct the element at
     // it's rightful place.
-    _alloc_val.construct(_vals + idx, std::move(val));
-    _alloc_key.construct(_keys + idx, std::move(key));
+    _alloc_val.construct(_vals + idx, std::forward<Val>(val));
+    _alloc_key.construct(_keys + idx, std::forward<Key>(key));
     _hops[idx] |= (Traits::HopType)1;
 
     _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx + 1));
