@@ -255,7 +255,18 @@ private:
     Traits::HopType* old_hops = _hops;
 
     size_t old_size = _max_size;
-    init_data(_max_size * Traits::RESIZE_PERCENTAGE / 100);
+
+    size_t new_size = _max_size * Traits::RESIZE_PERCENTAGE / 100;
+    if (new_size < old_size) {
+      // overflow! just double the size.
+      new_size = old_size*2;
+      if (new_size < old_size) {
+        // another overflow! break.
+        // TODO do something smart here
+        throw std::exception("can't resize");
+      }
+    }
+    init_data(new_size);
 
     for (size_t i=0; i<old_size + Traits::HOP_SIZE; ++i) {
       if (old_hops[i] & 1) {
