@@ -110,9 +110,7 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
       }
     
       for (size_t i=0; i<queries; ++i) {
-        bool success;
-        r.find(rand_str(rand, key_length), success);
-        if (success) {
+        if (r.find(rand_str(rand, key_length)) != nullptr) {
           ++f;
         }
       }
@@ -131,9 +129,7 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
       }
     
       for (size_t i=0; i<queries; ++i) {
-        bool success;
-        r.find(rand_str(rand, key_length), success);
-        if (success) {
+        if (r.find(rand_str(rand, key_length)) != nullptr) {
           ++f;
         }
       }
@@ -152,9 +148,7 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
       }
     
       for (size_t i=0; i<queries; ++i) {
-        bool success;
-        r.find(rand_str(rand, key_length), success);
-        if (success) {
+        if (r.find(rand_str(rand, key_length)) != nullptr) {
           ++f;
         }
       }
@@ -200,12 +194,10 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       for (size_t i=0; i<insertions; ++i) {
         size_t x = rand();
         r.insert(x, std::move(value));
-      }
+      }      
     
       for (size_t i=0; i<queries; ++i) {
-        bool success;
-        r.find(rand(), success);
-        if (success) {
+        if (r.find(rand()) != nullptr) {
           ++f;
         }
       }
@@ -225,9 +217,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     
       for (size_t i=0; i<queries; ++i) {
-        bool success;
-        r.find(rand(), success);
-        if (success) {
+        if (r.find(rand()) != nullptr) {
           ++f;
         }
       }
@@ -247,9 +237,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     
       for (size_t i=0; i<queries; ++i) {
-        bool success;
-        r.find(rand(), success);
-        if (success) {
+        if (r.find(rand()) != nullptr) {
           ++f;
         }
       }
@@ -268,9 +256,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     
       for (size_t i=0; i<queries; ++i) {
-        bool success;
-        r.find(rand(), success);
-        if (success) {
+        if (r.find(rand()) != nullptr) {
           ++f;
         }
       }
@@ -278,6 +264,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
     std::cout << t.elapsed();
     std::cout << " HopScotch<size_t, T, H, HopScotchCompact> " << r.size() << " " << f << std::endl;
   }
+
   {
     RobinHoodHashMap<T, H> r;
     rand.seed(seed);
@@ -360,9 +347,7 @@ void bh(size_t insertions, size_t queries, size_t times, const typename H::value
       }
     
       for (size_t i=0; i<queries; ++i) {
-        bool success;
-        r.find(rand(), success);
-        if (success) {
+        if (r.find(rand()) != nullptr) {
           ++f;
         }
       }
@@ -481,9 +466,8 @@ void test_compare(size_t times) {
       std::cout << i << ": " << v << " " << was_inserted << " " << p.second << std::endl;
     }
 
-    bool is_there;
     v = rand(i + 100);
-    r.find(v, is_there);
+    bool is_there = (r.find(v) != nullptr);
     bool found_stdmap = m.find(v) != m.end();
     if (found_stdmap != is_there) {
       std::cout << i << ": " << v << " " << found_stdmap << " " << is_there << std::endl;
@@ -494,6 +478,9 @@ void test_compare(size_t times) {
 
 
 static size_t x_ctor = 0;
+static size_t x_dtor = 0;
+static size_t x_eq_move = 0;
+static size_t x_eq = 0;
 static size_t x_mov = 0;
 static size_t x_copyctor = 0;
 static size_t x_operatoreq = 0;
@@ -503,10 +490,12 @@ static size_t x_hash = 0;
 void print_x(std::string msg) {
   std::cout << msg << std::endl;
   std::cout << "  x_ctor " << x_ctor << std::endl;
+  std::cout << "  x_dtor " << x_dtor << std::endl;
+  std::cout << "  x_eq_move " << x_eq_move << std::endl;
+  std::cout << "  x_eq " << x_eq << std::endl;
   std::cout << "  x_mov " << x_mov << std::endl;
   std::cout << "  x_copyctor " << x_copyctor << std::endl;
   std::cout << "  x_operatoreq " << x_operatoreq << std::endl;
-  std::cout << "  x_intctor " << x_intctor << std::endl;
   std::cout << "  x_intctor " << x_intctor << std::endl;
   std::cout << "  x_hash " << x_hash << std::endl;
   std::cout << std::endl;
@@ -514,12 +503,16 @@ void print_x(std::string msg) {
 
 void reset_x() {
   x_ctor = 0;
+  x_dtor = 0;
+  x_eq = 0;
+  x_eq_move = 0;
   x_mov = 0;
   x_copyctor = 0;
   x_operatoreq = 0;
   x_intctor = 0;
   x_hash = 0;
 }
+
 
 class X {
 public:
@@ -540,6 +533,24 @@ public:
   {
     ++x_copyctor;
   }
+
+  X& operator=(X&& o) {
+    x = o.x;
+    ++x_eq_move;
+    return *this;
+  }
+
+  X& operator=(const X& o) {
+    x = o.x;
+    ++x_eq;
+    return *this;
+  }
+
+  ~X()
+  {
+    ++x_dtor;
+  }
+
   bool operator==(const X& o) const {
     ++x_operatoreq;
     return x == o.x;
@@ -558,7 +569,8 @@ public:
 struct HashX : public std::unary_function<size_t, X> {
   inline size_t operator()(const X& t) const {
     ++x_hash;
-    return std::hash<int>()(t.x);
+    return t.x;
+    //return std::hash<int>()(t.x);
   }
 };
 
@@ -573,26 +585,42 @@ std::string rand_str(MarsagliaMWC99& rand, const size_t num_letters) {
 }
 
 void test_count(size_t times) {
-  MarsagliaMWC99 rand;
+  MarsagliaMWC99 rand(times*3);
   reset_x();
   {
     rand.seed(123);
-    typedef std::unordered_map<X, int, HashX> StdMap;
+    HopScotch<X, X, HashX, HopScotchFast> hs;
+    for (size_t i=0; i<times; ++i) {
+      hs.insert(rand(), i);
+    }
+
+    size_t f = 0;
+    for (size_t i=0; i<times*10; ++i) {
+      if (hs.find(rand()) != nullptr) {
+        ++f;
+      }
+    }
+    std::cout << f;
+  }
+  print_x("HopScotch");
+
+  reset_x();
+  {
+    rand.seed(123);
+    typedef std::unordered_map<X, X, HashX> StdMap;
     StdMap ms;
     for (size_t i=0; i<times; ++i) {
       std::pair<StdMap::iterator, bool> p = ms.insert(StdMap::value_type(rand(), i));
     }
+    size_t f = 0;
+    for (size_t i=0; i<times*10; ++i) {
+      if (ms.find(rand()) != ms.end()) {
+        ++f;
+      }
+    }
+    std::cout << f;
   }
   print_x("std::unordered_map");
-  reset_x();
-  {
-    rand.seed(123);
-    HopScotch<X, int, HashX, HopScotchFast> hs;
-    for (size_t i=0; i<times; ++i) {
-      hs.insert(rand(), i);
-    }
-  }
-  print_x("HopScotch");
   reset_x();
 }
 
@@ -615,15 +643,14 @@ void test_compare_str(size_t count) {
       throw std::exception("string insert failure");
     }
 
-    bool is_there;
     key = rand_str(rand, 40);
-    hs.find(key, is_there);
     bool found_stdmap = ms.find(key) != ms.end();
-    if (is_there) {
+    const std::string* item = hs.find(key);
+    if (item != nullptr) {
       ++found_count;
     }
-    if (found_stdmap != is_there) {
-      std::cout << i << ": " << key << " " << found_stdmap << " " << is_there << std::endl;
+    if (found_stdmap != (item != nullptr)) {
+      std::cout << i << ": " << key << " " << found_stdmap << " " << (item != nullptr) << std::endl;
     }
   }
 
@@ -635,18 +662,17 @@ int main(int argc, char** argv) {
   std::unordered_map<X, X, HashX> m;
   m[32] = 123;
 
-  size_t insertions = 2000*1000;
+  size_t insertions = 200*1000;
   size_t queries = 100*1000*1000;
   size_t times = 1;
 
 
   try {
-    test_compare_str(1000000);
+    //test_compare_str(1000000);
 
-    test_count(65434);
+    test_count(244342);
     std::cout << "int, DummyHash" << std::endl;
     bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
-
 
     test_compare<MultiplyHash<size_t> >(10000000);
 
@@ -718,8 +744,6 @@ int main(int argc, char** argv) {
     test4();
     test3();
     test2();
-
-
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
     return 1;

@@ -17,7 +17,7 @@ struct HopScotchFast {
   enum Debug { DEBUG = 0 };
   enum resize_percentage { RESIZE_PERCENTAGE = 800 };
   enum hop_size { HOP_SIZE = 8-1 };
-  enum add_range { ADD_RANGE = 512 };
+  enum add_range { ADD_RANGE = 64 };
   inline static size_t h(size_t v, size_t s, size_t mask) {
     return v & mask;
   }
@@ -28,7 +28,7 @@ struct HopScotchDefault {
   enum Debug { DEBUG = 0 };
   enum resize_percentage { RESIZE_PERCENTAGE = 400 };
   enum hop_size { HOP_SIZE = 32-1 };
-  enum add_range { ADD_RANGE = 512 };
+  enum add_range { ADD_RANGE = 256 };
   inline static size_t h(size_t v, size_t s, size_t mask) {
     return v & mask;
   }
@@ -120,8 +120,9 @@ public:
     while (hops) {
       if ((hops & 1) && (_keys[idx] == key)) {
         // found the key! replace value
-        _alloc_val.destroy(_vals + idx);
-        _alloc_val.construct(_vals + idx, std::forward<Val>(val));
+        _vals[idx] = std::forward<Val>(val);
+        //_alloc_val.destroy(_vals + idx);
+        //_alloc_val.construct(_vals + idx, );
         return false;
       }
       ++idx;
@@ -141,6 +142,8 @@ public:
       increase_size();
       return insert(std::forward<Key>(key), std::forward<Val>(val));
     }
+
+    //++_counts[idx - initial_idx];
 
     // set the empty spot's hop bit
     _hops[idx] |= (Traits::HopType)1;
@@ -200,39 +203,35 @@ public:
     return true;
   }
 
-  inline Val& find(const Key& key, bool& success) {
+  inline Val* find(const Key& key) {
     size_t idx = Traits::h(_hash(key), _max_size, _mask);
 
     Traits::HopType hops = _hops[idx] >> 1;
 
     while (hops) {
       if ((hops & 1) && (key == _keys[idx])) {
-        success = true;
-        return _vals[idx];
+        return &_vals[idx];
       }
       hops >>= 1;
       ++idx;
     }
 
-    success = false;
-    return _vals[0];
+    return nullptr;
   }
 
-  inline const Val& find(const Key& key, bool& success) const {
+  inline const Val* find(const Key& key) const {
     size_t idx = Traits::h(_hash(key), _max_size, _mask);
 
     Traits::HopType hops = _hops[idx] >> 1;
     while (hops) {
       if ((hops & 1) && (key == _keys[idx])) {
-        success = true;
-        return _vals[idx];
+        return &_vals[idx];
       }
       hops >>= 1;
       ++idx;
     }
 
-    success = false;
-    return _vals[0];
+    return nullptr;
   }
 
   inline size_t size() const {
