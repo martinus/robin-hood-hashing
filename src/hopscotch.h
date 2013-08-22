@@ -183,29 +183,30 @@ namespace HopScotch {
         size_t i = start_h - 1;
         do {
           ++i;
-          // find i's h
+          // find the hash place h for element i by looking through the hops
           h = start_h;
-          while (h <= i 
-            && !(_hops[h] & ((Traits::HopType)1 << (i - h + 1))))
+          Traits::HopType hop_mask = (Traits::HopType)1 << (i - h + 1);
+          while (h <= i && !(_hops[h] & hop_mask))
           {
             ++h;
+            hop_mask >>= 1;
           }
         } while (i < idx && h > i);
 
         // insertion failed? resize and try again.
         if (i >= idx) {
           // insertion failed, undo _hop[idx]
-          _hops[idx] &= (Traits::HopType)-2;
+          _hops[idx] ^= (Traits::HopType)1;
           increase_size();
           return insert(std::forward<Key>(key), std::forward<Val>(val));
         }
 
         // found a place! move hole to the front
-        _alloc_key.construct(_keys + idx, std::forward<Key>(_keys[i]));
+        _alloc_key.construct(_keys + idx, std::move(_keys[i]));
         _alloc_key.destroy(_keys + i);
         // no need to set _hops[idx] & 1
 
-        _alloc_val.construct(_vals + idx, std::forward<Val>(_vals[i]));
+        _alloc_val.construct(_vals + idx, std::move(_vals[i]));
         _alloc_val.destroy(_vals + i);
         _hops[h] |= ((Traits::HopType)1 << (idx - h + 1));
 

@@ -186,7 +186,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
   const int seed = 23154;
 
   {
-    HopScotch::Map<size_t, T, H, HopScotch::Style::Fast, true> r;
+    HopScotch::Map<size_t, T, H, HopScotch::Style::Fast> r;
     rand.seed(seed);
     size_t f = 0;
     Timer t;
@@ -669,12 +669,12 @@ int main(int argc, char** argv) {
 
   try {
     //test_compare_str(1000000);
+    test_compare<MultiplyHash<size_t> >(10000000);
 
     test_count(244342);
     std::cout << "int, DummyHash" << std::endl;
     bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
 
-    test_compare<MultiplyHash<size_t> >(10000000);
 
 
 
