@@ -154,7 +154,10 @@ namespace HopScotch {
 
       // key is not there, find an empty spot
       idx = initial_idx;
-      const size_t e = std::min(_max_size + Traits::HOP_SIZE, initial_idx + Traits::ADD_RANGE);
+      size_t e = initial_idx + Traits::ADD_RANGE;
+      if (e > _max_size + Traits::HOP_SIZE) {
+        e = _max_size + Traits::HOP_SIZE;
+      }
       while ((idx < e) && (_hops[idx] & 1)) {
         ++idx;
       }
@@ -218,8 +221,8 @@ namespace HopScotch {
 
       // now that we've moved everything, we can finally construct the element at
       // it's rightful place.
-      _alloc_val.construct(_vals + idx, std::forward<Val>(val));
-      _alloc_key.construct(_keys + idx, std::forward<Key>(key));
+      _alloc_val.construct(_vals + idx, std::move(val));
+      _alloc_key.construct(_keys + idx, std::move(key));
       _hops[idx] |= (Traits::HopType)1;
 
       _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx + 1));

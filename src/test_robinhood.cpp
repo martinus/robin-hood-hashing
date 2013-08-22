@@ -657,8 +657,17 @@ void test_compare_str(size_t count) {
   std::cout << "string test: " << ms.size() << " " << hs.size() << " " << found_count << std::endl;
 }
 
+void test_move() {
+  HopScotch::Map<int, int, DummyHash<int> > m;
+  int a = 234;
+  m.insert(a, 3+4);
+  int* x = m.find(234);
+  std::cout << x << std::endl;
+  std::cout << m.size() << std::endl;
+}
 
 int main(int argc, char** argv) {
+  test_move();
   std::unordered_map<X, X, HashX> m;
   m[32] = 123;
 
