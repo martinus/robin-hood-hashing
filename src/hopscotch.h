@@ -120,9 +120,9 @@ public:
     while (hops) {
       if ((hops & 1) && (_keys[idx] == key)) {
         // found the key! replace value
-        _vals[idx] = std::forward<Val>(val);
+        _vals[idx] = std::move(val);
         //_alloc_val.destroy(_vals + idx);
-        //_alloc_val.construct(_vals + idx, );
+        //_alloc_val.construct(_vals + idx, std::forward<Val>(val));
         return false;
       }
       ++idx;
