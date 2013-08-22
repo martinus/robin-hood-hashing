@@ -186,7 +186,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
   const int seed = 23154;
 
   {
-    HopScotch::Map<size_t, T, H, HopScotch::Style::Fast> r;
+    HopScotch::Map<size_t, T, H, HopScotch::Style::Fast, true> r;
     rand.seed(seed);
     size_t f = 0;
     Timer t;
@@ -227,7 +227,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
   }
 
   {
-    HopScotch::Map<size_t, T, H, HopScotch::Style::Default, true> r;
+    HopScotch::Map<size_t, T, H, HopScotch::Style::Default> r;
     rand.seed(seed);
     size_t f = 0;
     Timer t;
