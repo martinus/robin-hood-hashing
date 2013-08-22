@@ -100,7 +100,7 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
   size_t val_length = 10;
 
   {
-    HopScotch<std::string, std::string, H, HopScotchFast> r;
+    HopScotch::Map<std::string, std::string, H, HopScotch::Style::Fast> r;
     rand.seed(seed);
     size_t f = 0;
     Timer t;
@@ -116,10 +116,10 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<std::string, std::string, H, HopScotchFast> with move " << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch::Map<std::string, std::string, H, HopScotch::Style::Fast> with move " << r.size() << " " << f << std::endl;
   }
   {
-    HopScotch<std::string, std::string, H, HopScotchDefault> r;
+    HopScotch::Map<std::string, std::string, H, HopScotch::Style::Default> r;
     rand.seed(seed);
     size_t f = 0;
     Timer t;
@@ -135,10 +135,10 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<std::string, std::string, H, HopScotchDefault> with move " << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch::Map<std::string, std::string, H, HopScotch::Style::Default> with move " << r.size() << " " << f << std::endl;
   }
   {
-    HopScotch<std::string, std::string, H, HopScotchCompact> r;
+    HopScotch::Map<std::string, std::string, H, HopScotch::Style::Compact> r;
     rand.seed(seed);
     size_t f = 0;
     Timer t;
@@ -154,7 +154,7 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<std::string, std::string, H, HopScotchCompact> with move " << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch::Map<std::string, std::string, H, HopScotch::Style::Compact> with move " << r.size() << " " << f << std::endl;
   }
 
   {
@@ -186,7 +186,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
   const int seed = 23154;
 
   {
-    HopScotch<size_t, T, H, HopScotchFast> r;
+    HopScotch::Map<size_t, T, H, HopScotch::Style::Fast> r;
     rand.seed(seed);
     size_t f = 0;
     Timer t;
@@ -203,11 +203,11 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<size_t, T, H, HopScotchFast> with move " << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Fast> with move " << r.size() << " " << f << std::endl;
   }
 
   {
-    HopScotch<size_t, T, H, HopScotchFast> r;
+    HopScotch::Map<size_t, T, H, HopScotch::Style::Fast> r;
     rand.seed(seed);
     size_t f = 0;
     Timer t;
@@ -223,11 +223,11 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<size_t, T, H, HopScotchFast> no move " << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Fast> no move " << r.size() << " " << f << std::endl;
   }
 
   {
-    HopScotch<size_t, T, H, HopScotchDefault> r;
+    HopScotch::Map<size_t, T, H, HopScotch::Style::Default, true> r;
     rand.seed(seed);
     size_t f = 0;
     Timer t;
@@ -243,10 +243,10 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<size_t, T, H, HopScotchDefault> " << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Default> " << r.size() << " " << f << std::endl;
   }
   {
-    HopScotch<size_t, T, H, HopScotchCompact> r;
+    HopScotch::Map<size_t, T, H, HopScotch::Style::Compact> r;
     rand.seed(seed);
     size_t f = 0;
     Timer t;
@@ -262,7 +262,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
       }
     }
     std::cout << t.elapsed();
-    std::cout << " HopScotch<size_t, T, H, HopScotchCompact> " << r.size() << " " << f << std::endl;
+    std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Compact> " << r.size() << " " << f << std::endl;
   }
 
   {
@@ -363,31 +363,31 @@ void test_map1(size_t times) {
     Timer t;
     MarsagliaMWC99 rand;
     rand.seed(321);
-    HopScotch<size_t, int, T, HopScotchFast> r;
+    HopScotch::Map<size_t, int, T, HopScotch::Style::Fast> r;
     for (size_t i=0; i<times; ++i) {
       r.insert(rand(i+1), i);
     }
-    std::cout << t.elapsed() << " HopScotch<size_t, int, T, HopScotchFast> " << r.size() << std::endl;
+    std::cout << t.elapsed() << " HopScotch::Map<size_t, int, T, HopScotch::Style::Fast> " << r.size() << std::endl;
   }
   {
     Timer t;
     MarsagliaMWC99 rand;
     rand.seed(321);
-    HopScotch<size_t, int, T, HopScotchDefault> r;
+    HopScotch::Map<size_t, int, T, HopScotch::Style::Default> r;
     for (size_t i=0; i<times; ++i) {
       r.insert(rand(i+1), i);
     }
-    std::cout << t.elapsed() << " HopScotch<size_t, int, T, HopScotchDefault> " << r.size() << std::endl;
+    std::cout << t.elapsed() << " HopScotch::Map<size_t, int, T, HopScotch::Style::Default> " << r.size() << std::endl;
   }
   {
     Timer t;
     MarsagliaMWC99 rand;
     rand.seed(321);
-    HopScotch<size_t, int, T, HopScotchCompact> r;
+    HopScotch::Map<size_t, int, T, HopScotch::Style::Compact> r;
     for (size_t i=0; i<times; ++i) {
       r.insert(rand(i+1), i);
     }
-    std::cout << t.elapsed() << " HopScotch<size_t, int, T, HopScotchCompact> " << r.size() << std::endl;
+    std::cout << t.elapsed() << " HopScotch::Map<size_t, int, T, HopScotch::Style::Compact> " << r.size() << std::endl;
   }
   {
     Timer t;
@@ -450,7 +450,7 @@ void test_compare(size_t times) {
   size_t seed = 142323;
   rand.seed(seed);
   
-  HopScotch<size_t, int, T> r;
+  HopScotch::Map<size_t, int, T> r;
   typedef std::unordered_map<size_t, int, T> StdMap;
   StdMap m;
 
@@ -589,7 +589,7 @@ void test_count(size_t times) {
   reset_x();
   {
     rand.seed(123);
-    HopScotch<X, X, HashX, HopScotchFast> hs;
+    HopScotch::Map<X, X, HashX, HopScotch::Style::Fast> hs;
     for (size_t i=0; i<times; ++i) {
       hs.insert(rand(), i);
     }
@@ -627,7 +627,7 @@ void test_count(size_t times) {
 void test_compare_str(size_t count) {
   typedef std::unordered_map<std::string, std::string> StdMap;
   StdMap ms;
-  HopScotch<std::string, std::string, std::hash<std::string>, HopScotchFast> hs;
+  HopScotch::Map<std::string, std::string, std::hash<std::string>, HopScotch::Style::Fast> hs;
 
   MarsagliaMWC99 rand;
   rand.seed(123);
@@ -681,21 +681,21 @@ int main(int argc, char** argv) {
     size_t i = 200*1000;
     size_t q = 100*1000*1000;
     size_t t = 1;
-    bh<HopScotch<size_t, int, std::hash<size_t> > >(i, q, t, 1231, "HopScotch<size_t, int, std::hash<size_t> >");
-    bh<HopScotch<size_t, int, std::hash<size_t>, HopScotchDefault> >(i, q, t, 1231, "HopScotch<size_t, int, std::hash<size_t>, HopScotchDefault>");
-    bh<HopScotch<size_t, int, std::hash<size_t>, HopScotchCompact> >(i, q, t, 1231, "HopScotch<size_t, int, std::hash<size_t>, HopScotchCompact>");
-    bh<HopScotch<size_t, int, DummyHash<size_t> > >(i, q, t, 1231, "HopScotch<size_t, int, DummyHash<size_t> >");
-    bh<HopScotch<size_t, int, DummyHash<size_t>, HopScotchDefault> >(i, q, t, 1231, "HopScotch<size_t, int, DummyHash<size_t>, HopScotchDefault>");
-    bh<HopScotch<size_t, int, DummyHash<size_t>, HopScotchCompact> >(i, q, t, 1231, "HopScotch<size_t, int, DummyHash<size_t>, HopScotchCompact>");
-    bh<HopScotch<size_t, int, MultiplyHash<size_t> > >(i, q, t, 1231, "HopScotch<size_t, int, MultiplyHash<size_t> >");
-    bh<HopScotch<size_t, int, MultiplyHash<size_t>, HopScotchDefault> >(i, q, t, 1231, "HopScotch<size_t, int, MultiplyHash<size_t>, HopScotchDefault>");
-    bh<HopScotch<size_t, int, MultiplyHash<size_t>, HopScotchCompact> >(i, q, t, 1231, "HopScotch<size_t, int, MultiplyHash<size_t>, HopScotchCompact>");
-    bh<HopScotch<size_t, std::string, DummyHash<size_t> > >(i, q, t, "fklajlejklahseh", "HopScotch<size_t, std::string, DummyHash<size_t> >");
-    bh<HopScotch<size_t, std::string, DummyHash<size_t>, HopScotchDefault> >(i, q, t, "fklajlejklahseh", "HopScotch<size_t, std::string, DummyHash<size_t>, HopScotchDefault>");
-    bh<HopScotch<size_t, std::string, DummyHash<size_t>, HopScotchCompact> >(i, q, t, "fklajlejklahseh", "HopScotch<size_t, std::string, DummyHash<size_t>, HopScotchCompact>");
-    bh<HopScotch<size_t, std::string, std::hash<size_t> > >(i, q, t, "lfklkajasjefj", "HopScotch<size_t, std::string, std::hash<size_t> >");
-    bh<HopScotch<size_t, std::string, std::hash<size_t>, HopScotchDefault> >(i, q, t, "lfklkajasjefj", "HopScotch<size_t, std::string, std::hash<size_t>, HopScotchDefault>");
-    bh<HopScotch<size_t, std::string, std::hash<size_t>, HopScotchCompact> >(i, q, t, "lfklkajasjefj", "HopScotch<size_t, std::string, std::hash<size_t>, HopScotchCompact>");
+    bh<HopScotch::Map<size_t, int, std::hash<size_t> > >(i, q, t, 1231, "HopScotch::Map<size_t, int, std::hash<size_t> >");
+    bh<HopScotch::Map<size_t, int, std::hash<size_t>, HopScotch::Style::Default> >(i, q, t, 1231, "HopScotch::Map<size_t, int, std::hash<size_t>, HopScotch::Style::Default>");
+    bh<HopScotch::Map<size_t, int, std::hash<size_t>, HopScotch::Style::Compact> >(i, q, t, 1231, "HopScotch::Map<size_t, int, std::hash<size_t>, HopScotch::Style::Compact>");
+    bh<HopScotch::Map<size_t, int, DummyHash<size_t> > >(i, q, t, 1231, "HopScotch::Map<size_t, int, DummyHash<size_t> >");
+    bh<HopScotch::Map<size_t, int, DummyHash<size_t>, HopScotch::Style::Default> >(i, q, t, 1231, "HopScotch::Map<size_t, int, DummyHash<size_t>, HopScotch::Style::Default>");
+    bh<HopScotch::Map<size_t, int, DummyHash<size_t>, HopScotch::Style::Compact> >(i, q, t, 1231, "HopScotch::Map<size_t, int, DummyHash<size_t>, HopScotch::Style::Compact>");
+    bh<HopScotch::Map<size_t, int, MultiplyHash<size_t> > >(i, q, t, 1231, "HopScotch::Map<size_t, int, MultiplyHash<size_t> >");
+    bh<HopScotch::Map<size_t, int, MultiplyHash<size_t>, HopScotch::Style::Default> >(i, q, t, 1231, "HopScotch::Map<size_t, int, MultiplyHash<size_t>, HopScotch::Style::Default>");
+    bh<HopScotch::Map<size_t, int, MultiplyHash<size_t>, HopScotch::Style::Compact> >(i, q, t, 1231, "HopScotch::Map<size_t, int, MultiplyHash<size_t>, HopScotch::Style::Compact>");
+    bh<HopScotch::Map<size_t, std::string, DummyHash<size_t> > >(i, q, t, "fklajlejklahseh", "HopScotch::Map<size_t, std::string, DummyHash<size_t> >");
+    bh<HopScotch::Map<size_t, std::string, DummyHash<size_t>, HopScotch::Style::Default> >(i, q, t, "fklajlejklahseh", "HopScotch::Map<size_t, std::string, DummyHash<size_t>, HopScotch::Style::Default>");
+    bh<HopScotch::Map<size_t, std::string, DummyHash<size_t>, HopScotch::Style::Compact> >(i, q, t, "fklajlejklahseh", "HopScotch::Map<size_t, std::string, DummyHash<size_t>, HopScotch::Style::Compact>");
+    bh<HopScotch::Map<size_t, std::string, std::hash<size_t> > >(i, q, t, "lfklkajasjefj", "HopScotch::Map<size_t, std::string, std::hash<size_t> >");
+    bh<HopScotch::Map<size_t, std::string, std::hash<size_t>, HopScotch::Style::Default> >(i, q, t, "lfklkajasjefj", "HopScotch::Map<size_t, std::string, std::hash<size_t>, HopScotch::Style::Default>");
+    bh<HopScotch::Map<size_t, std::string, std::hash<size_t>, HopScotch::Style::Compact> >(i, q, t, "lfklkajasjefj", "HopScotch::Map<size_t, std::string, std::hash<size_t>, HopScotch::Style::Compact>");
 
 
 
