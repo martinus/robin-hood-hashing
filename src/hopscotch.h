@@ -108,9 +108,9 @@ namespace HopScotch {
         }
       }
 
-      _alloc_val.deallocate(_vals, _size);
-      _alloc_key.deallocate(_keys, _size);
-      _alloc_hop.deallocate(_hops, _size);
+      _alloc_val.deallocate(_vals, _size + Traits::HOP_SIZE);
+      _alloc_key.deallocate(_keys, _size + Traits::HOP_SIZE);
+      _alloc_hop.deallocate(_hops, _size + Traits::HOP_SIZE);
     }
 
     inline bool insert(const Key& key, Val&& val) {
@@ -303,9 +303,9 @@ namespace HopScotch {
         }
       }
 
-      _alloc_val.deallocate(old_vals, old_size);
-      _alloc_key.deallocate(old_keys, old_size);
-      _alloc_hop.deallocate(old_hops, old_size);
+      _alloc_val.deallocate(old_vals, old_size + Traits::HOP_SIZE);
+      _alloc_key.deallocate(old_keys, old_size + Traits::HOP_SIZE);
+      _alloc_hop.deallocate(old_hops, old_size + Traits::HOP_SIZE);
     }
 
 
