@@ -143,9 +143,8 @@ namespace HopScotch {
       while (hops) {
         if ((hops & 1) && (_keys[idx] == key)) {
           // found the key! replace value
-          _vals[idx] = val;
-          //_alloc_val.destroy(_vals + idx);
-          //_alloc_val.construct(_vals + idx, );
+          _alloc_val.destroy(_vals + idx);
+          _alloc_val.construct(_vals + idx, std::forward<Val>(val));
           return false;
         }
         ++idx;
@@ -177,6 +176,9 @@ namespace HopScotch {
       // TODO can this be made faster?
       // we have found an empty spot, but it might be far away. We have to move the hole to the front
       // until we are at the right step. idx is the empty spot.
+
+      // This tries to find a swappable element that is as far away as possible. To do that, it tries to
+      // find out if the element furthest away can be moved, by finding the hop for this element.
       while (idx > initial_idx + Traits::HOP_SIZE - 1) {
         // h: where the hash wants to be
         // i: where it actually is
@@ -221,8 +223,8 @@ namespace HopScotch {
 
       // now that we've moved everything, we can finally construct the element at
       // it's rightful place.
-      _alloc_val.construct(_vals + idx, std::move(val));
-      _alloc_key.construct(_keys + idx, std::move(key));
+      _alloc_val.construct(_vals + idx, std::forward<Val>(val));
+      _alloc_key.construct(_keys + idx, std::forward<Key>(key));
       _hops[idx] |= (Traits::HopType)1;
 
       _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx + 1));
@@ -231,7 +233,7 @@ namespace HopScotch {
     }
 
     inline Val* find(const Key& key) {
-      size_t idx = Traits::h(_hash(key), _max_size, _mask);
+      auto idx = Traits::h(_hash(key), _max_size, _mask);
 
       Traits::HopType hops = _hops[idx] >> 1;
 
@@ -247,7 +249,7 @@ namespace HopScotch {
     }
 
     inline const Val* find(const Key& key) const {
-      size_t idx = Traits::h(_hash(key), _max_size, _mask);
+      auto idx = Traits::h(_hash(key), _max_size, _mask);
 
       Traits::HopType hops = _hops[idx] >> 1;
       while (hops) {
