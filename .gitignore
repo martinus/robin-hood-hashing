@@ -213,3 +213,5 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+/vc/robinhood.VC.db
+/vc/robinhood.VC.VC.opendb
