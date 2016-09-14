@@ -85,8 +85,8 @@ void test4() {
 
   MarsagliaMWC99 rand;
 
-  for (size_t i=0; i<100000; ++i) {
-    size_t val = rand(i+1);
+  for (unsigned i=0; i<100000; ++i) {
+    size_t val = static_cast<size_t>(rand(i+1));
     CHECK(u.insert(val).second == r.insert(val, 123));
   }
 }
@@ -365,7 +365,7 @@ void test_map1(size_t times) {
     rand.seed(321);
     HopScotch::Map<size_t, int, T, HopScotch::Style::Fast> r;
     for (size_t i=0; i<times; ++i) {
-      r.insert(rand(i+1), i);
+      r.insert(rand(i+1), static_cast<int>(i));
     }
     std::cout << t.elapsed() << " HopScotch::Map<size_t, int, T, HopScotch::Style::Fast> " << r.size() << std::endl;
   }
@@ -375,7 +375,7 @@ void test_map1(size_t times) {
     rand.seed(321);
     HopScotch::Map<size_t, int, T, HopScotch::Style::Default> r;
     for (size_t i=0; i<times; ++i) {
-      r.insert(rand(i+1), i);
+      r.insert(rand(i+1), static_cast<int>(i));
     }
     std::cout << t.elapsed() << " HopScotch::Map<size_t, int, T, HopScotch::Style::Default> " << r.size() << std::endl;
   }
@@ -385,7 +385,7 @@ void test_map1(size_t times) {
     rand.seed(321);
     HopScotch::Map<size_t, int, T, HopScotch::Style::Compact> r;
     for (size_t i=0; i<times; ++i) {
-      r.insert(rand(i+1), i);
+      r.insert(rand(i+1), static_cast<int>(i));
     }
     std::cout << t.elapsed() << " HopScotch::Map<size_t, int, T, HopScotch::Style::Compact> " << r.size() << std::endl;
   }
@@ -395,7 +395,7 @@ void test_map1(size_t times) {
     rand.seed(321);
     hash_table<size_t, int, T> ht;
     for (size_t i=0; i<times; ++i) {
-      ht.insert(rand(i+1), i);
+      ht.insert(rand(i+1), static_cast<int>(i));
     }
     std::cout << t.elapsed() << " hash_table<size_t, int> " << ht.size() << std::endl;
   }
@@ -405,7 +405,7 @@ void test_map1(size_t times) {
     rand.seed(321);
     RobinHoodHashMap<int, T> r;
     for (size_t i=0; i<times; ++i) {
-      r.insert(rand(i+1), i);
+      r.insert(rand(i+1), static_cast<int>(i));
     }
     std::cout << t.elapsed() << " RobinHoodHashMap<int> " << r.size() << std::endl;
     r.print_moves();
@@ -417,7 +417,7 @@ void test_map1(size_t times) {
     rand.seed(321);
     std::unordered_map<size_t, int, T> u;
     for (size_t i=0; i<times; ++i) {
-      u[rand(i+1)] = i;
+      u[rand(i+1)] = static_cast<int>(i);
     }
     std::cout << t.elapsed() << " std::unordered_map<size_t, int> " << u.size() << std::endl;
   }
@@ -459,8 +459,8 @@ void test_compare(size_t times) {
 
   for (size_t i=0; i<times; ++i) {
     size_t v = rand(i + 100);
-    std::pair<StdMap::iterator, bool> p = m.insert(StdMap::value_type(v, i));
-    bool was_inserted = r.insert(v, i);
+    std::pair<StdMap::iterator, bool> p = m.insert(StdMap::value_type(v, static_cast<int>(i)));
+    bool was_inserted = r.insert(v, static_cast<int>(i));
 
     if (m.size() != r.size() || was_inserted != p.second) {
       std::cout << i << ": " << v << " " << was_inserted << " " << p.second << std::endl;
@@ -591,7 +591,7 @@ void test_count(size_t times) {
     rand.seed(123);
     HopScotch::Map<X, X, HashX, HopScotch::Style::Fast> hs;
     for (size_t i=0; i<times; ++i) {
-      hs.insert(rand(), i);
+      hs.insert(static_cast<int>(rand()), static_cast<int>(i));
     }
 
     size_t f = 0;
@@ -610,7 +610,7 @@ void test_count(size_t times) {
     typedef std::unordered_map<X, X, HashX> StdMap;
     StdMap ms;
     for (size_t i=0; i<times; ++i) {
-      std::pair<StdMap::iterator, bool> p = ms.insert(StdMap::value_type(rand(), i));
+      std::pair<StdMap::iterator, bool> p = ms.insert(StdMap::value_type(static_cast<int>(rand()), static_cast<int>(i)));
     }
     size_t f = 0;
     for (size_t i=0; i<times*10; ++i) {

@@ -23,19 +23,19 @@ private:
 public:
   MarsagliaMWC99()
   : _range(std::numeric_limits<unsigned>::max()),
-    _w(521288629 + ticks()),
-    _z(362436069 + ticks())
+    _w(521288629 + static_cast<unsigned>(ticks())),
+    _z(362436069 + static_cast<unsigned>(ticks()))
   { }
     
-  MarsagliaMWC99(unsigned range)
-  : _range(range),
-    _w(521288629 + ticks()),
-    _z(362436069 + ticks())
+  MarsagliaMWC99(size_t range)
+  : _range(static_cast<unsigned>(range)),
+    _w(521288629 + static_cast<unsigned>(ticks())),
+    _z(362436069 + static_cast<unsigned>(ticks()))
   { }
 
-  void seed(unsigned val) {
+  void seed(size_t val) {
     _z = 362436069;
-    _w = val;
+    _w = static_cast<unsigned>(val);
   }
 
   // This is the heart of the generator.
@@ -59,8 +59,8 @@ public:
   }
 
   // Generates using the given range. This has a modulo bias.
-  inline unsigned operator()(unsigned range) {
-    return next() % range;
+  inline unsigned operator()(size_t range) {
+    return next() % static_cast<unsigned>(range);
   }
 
 private:
