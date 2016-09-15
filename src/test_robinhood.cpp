@@ -10,7 +10,8 @@
 #include <unordered_set>
 #include <unordered_map>
 
-
+#include <Windows.h>
+#include <psapi.h>
 
 // test some hashing stuff
 template<class T>
@@ -585,11 +586,11 @@ std::string rand_str(MarsagliaMWC99& rand, const size_t num_letters) {
 }
 
 void test_count(size_t times) {
-  MarsagliaMWC99 rand(times*3);
+  MarsagliaMWC99 rand(times*5);
   reset_x();
   {
     rand.seed(123);
-    HopScotch::Map<X, X, HashX, HopScotch::Style::Fast> hs;
+    HopScotch::Map<X, X, HashX, HopScotch::Style::Default> hs;
     for (size_t i=0; i<times; ++i) {
       hs.insert(static_cast<int>(rand()), static_cast<int>(i));
     }
@@ -666,6 +667,139 @@ void test_move() {
   std::cout << m.size() << std::endl;
 }
 
+size_t get_mem() {
+    PROCESS_MEMORY_COUNTERS objProcessMemoryInfo;
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &objProcessMemoryInfo, sizeof(objProcessMemoryInfo))) {
+        return objProcessMemoryInfo.PagefileUsage;
+    }
+    return 0;
+}
+
+struct Stats {
+    double elapsed;
+    size_t mem;
+    size_t num;
+};
+
+void print(const std::vector<std::vector<Stats>>& s) {
+    auto elems = s[0].size();
+    std::cout << "time:" << std::endl;
+    for (size_t e = 0; e < elems; ++e) {
+        for (size_t i = 0; i < s.size(); ++i) {
+            const auto& st = s[i][e];
+            std::cout << st.elapsed << ";";
+        }
+        std::cout << std::endl;
+    }
+
+    std::cout << std::endl << "mem:" << std::endl;
+    for (size_t e = 0; e < elems; ++e) {
+        for (size_t i = 0; i < s.size(); ++i) {
+            const auto& st = s[i][e];
+            std::cout << st.mem << ";";
+        }
+        std::cout << std::endl;
+    }
+
+    std::cout << std::endl << "num:" << std::endl;
+    for (size_t e = 0; e < elems; ++e) {
+        for (size_t i = 0; i < s.size(); ++i) {
+            const auto& st = s[i][e];
+            std::cout << st.num << ";";
+        }
+        std::cout << std::endl;
+    }
+}
+
+template<class HS>
+void bench_sequential_insert(size_t upTo, size_t times, std::vector<std::vector<Stats>>& all_stats) {
+    std::vector<Stats> stats;
+    Stats s;
+    Timer t;
+    size_t mem_before = get_mem();
+    HS r;
+    int i = 0;
+    for (size_t ti = 0; ti < times; ++ti) {
+        for (size_t up = 0; up < upTo; ++up) {
+            r.insert(i, i);
+            ++i;
+        }
+        s.elapsed = t.elapsed();
+        s.mem = get_mem() - mem_before;
+        s.num = r.size();
+        stats.push_back(s);
+    }
+
+    std::cout << t.elapsed() << "; ";
+    t.restart();
+    size_t found = 0;
+    for (int i = 0, stop = static_cast<int>(upTo*times*2); i < stop; ++i) {
+        if (nullptr != r.find(i)) {
+            ++found;
+        }
+    }
+    std::cout << "existing: " << t.elapsed() << "; " << (get_mem() - mem_before) << " (found=" << found << ")" << std::endl;
+
+    std::cout << t.elapsed() << "; ";
+    t.restart();
+    for (int i = static_cast<int>(upTo*times+1), stop = static_cast<int>(upTo*times * 2); i < stop; ++i) {
+        if (nullptr != r.find(i)) {
+            ++found;
+        }
+    }
+    std::cout << "nonexisting: " << t.elapsed() << "; " << (get_mem() - mem_before) << " (found=" << found << ")" << std::endl;
+
+    all_stats.push_back(stats);
+}
+
+template<class H>
+std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t times) {
+    std::vector<std::vector<Stats>> all_stats;
+    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Default>>(upTo, times, all_stats);
+    {
+        std::vector<Stats> stats;
+        Stats s;
+        Timer t;
+        size_t mem_before = get_mem();
+        std::unordered_map<int, int, H> r;
+        int i = 0;
+        for (size_t ti = 0; ti < times; ++ti) {
+            for (size_t up = 0; up < upTo; ++up) {
+                r.emplace(i, i);
+                ++i;
+            }
+            s.elapsed = t.elapsed();
+            s.mem = get_mem() - mem_before;
+            s.num = r.size();
+            stats.push_back(s);
+        }
+
+        std::cout << t.elapsed() << "; ";
+        t.restart();
+        size_t found = 0;
+        auto e = r.end();
+        for (int i = 0, stop = static_cast<int>(upTo*times); i < stop; ++i) {
+            if (e != r.find(i)) {
+                ++found;
+            }
+        }
+        std::cout << "existing: " << t.elapsed() << "; " << (get_mem() - mem_before) << " (found=" << found << ")" << std::endl;
+
+        std::cout << t.elapsed() << "; ";
+        t.restart();
+        for (int i = static_cast<int>(upTo*times+1), stop = static_cast<int>(upTo*times*2); i < stop; ++i) {
+            if (e != r.find(i)) {
+                ++found;
+            }
+        }
+        std::cout << "nonexisting: " << t.elapsed() << "; " << (get_mem() - mem_before) << " (found=" << found << ")" << std::endl;
+
+        all_stats.push_back(stats);
+    }
+
+    return all_stats;
+}
+
 int main(int argc, char** argv) {
   test_move();
   std::unordered_map<X, X, HashX> m;
@@ -677,12 +811,16 @@ int main(int argc, char** argv) {
 
 
   try {
-    //test_compare_str(1000000);
-    test_compare<MultiplyHash<size_t> >(10000000);
+    auto stats = bench_sequential_insert<std::hash<size_t>>(100*1000, 300);
+    print(stats);
+    return 0;
 
-    test_count(244342);
+    //test_compare_str(1000000);
+    //test_compare<MultiplyHash<size_t> >(10000000);
+    test_count(2443421);
     std::cout << "int, DummyHash" << std::endl;
-    bench1<int, DummyHash<size_t> >(insertions, queries, times, 1231);
+    bench1<int, std::hash<size_t>>(insertions, queries, times, 1231);
+    bench_str<std::hash<std::string> >(insertions, queries, times);
 
 
 
