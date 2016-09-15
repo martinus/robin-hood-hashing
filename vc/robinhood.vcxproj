@@ -165,6 +165,7 @@
     <ClInclude Include="..\src\marsagliamwc99.h" />
     <ClInclude Include="..\src\rh_hash_table.hpp" />
     <ClInclude Include="..\src\robinhood.h" />
+    <ClInclude Include="..\src\RobinHood2.h" />
     <ClInclude Include="..\src\timer.h" />
   </ItemGroup>
   <ItemGroup>
