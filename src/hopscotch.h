@@ -1,59 +1,54 @@
 /// HopScotch Algorithm from https://github.com/martinus/robin-hood-hashing/
 ///
-/// @author martin.ankerl@profactor.at
-
+/// @author martin.ankerl@gmail.com
 
 #pragma once
 
 #include <cstdint>
-
-
-// todo
-// * document all the little tricks
-// * Make sure memory requirements stay OK (e.g. minimum fullness? max size?)
-//   maybe automatically switch to HopScotchDefault if fast does not work any more?
+#include <iostream>
 
 namespace HopScotch {
 
-  namespace Style {
+namespace Style {
 
-    // Very aggressive data structure. Use only for small number of elements,
-    // e.g. 10.000 or so. Use with a good hash. Enable debugging to see
-    // the fullness of the hashmap.
-    struct Fast {
-      typedef std::uint8_t HopType;
-      enum resize_percentage { RESIZE_PERCENTAGE = 800 };
-      enum hop_size { HOP_SIZE = 8-1 };
-      enum add_range { ADD_RANGE = 64 };
-      inline static size_t h(size_t v, size_t s, size_t mask) {
+// Very aggressive data structure. Use only for small number of elements,
+// e.g. 10.000 or so. Use with a good hash. Enable debugging to see
+// the fullness of the hashmap.
+struct Fast {
+    typedef std::uint16_t HopType;
+    enum resize_percentage { RESIZE_PERCENTAGE = 400 };
+    enum hop_size { HOP_SIZE = 16 - 1 };
+    enum add_range { ADD_RANGE = 496 };
+    inline static size_t h(size_t v, size_t s, size_t mask) {
         return v & mask;
-      }
-    };
+    }
+};
 
-    // Default setting, with 32 bit hop. This is usually a good choice
-    // that scales very well and is quite fast.
-    struct Default {
-      typedef std::uint32_t HopType;
-      enum resize_percentage { RESIZE_PERCENTAGE = 400 };
-      enum hop_size { HOP_SIZE = 32-1 };
-      enum add_range { ADD_RANGE = 256 };
-      inline static size_t h(size_t v, size_t s, size_t mask) {
+// Default setting, with 32 bit hop. This is usually a good choice
+// that scales very well and is quite fast.
+struct Default {
+    typedef std::uint32_t HopType;
+    enum resize_percentage { RESIZE_PERCENTAGE = 200 };
+    enum hop_size { HOP_SIZE = 16 - 1 };
+    enum add_range { ADD_RANGE = 496 };
+    inline static size_t h(size_t v, size_t s, size_t mask) {
         return v & mask;
-      }
-    };
+    }
+};
 
-    // Very compact hash map. Can have fullness of 90% or more.
-    // Has a 64 bit hop.
-    struct Compact {
-      typedef std::uint64_t HopType;
-      enum resize_percentage { RESIZE_PERCENTAGE = 120 };
-      enum hop_size { HOP_SIZE = 64-1 };
-      enum add_range { ADD_RANGE = 1024 };
-      inline static size_t h(size_t v, size_t s, size_t mask) {
-        return v % s;
-      }
-    };
-  }
+
+// Very compact hash map. Can have fullness of 90% or more.
+// Has a 64 bit hop.
+struct Compact {
+    typedef std::uint64_t HopType;
+    enum resize_percentage { RESIZE_PERCENTAGE = 200 };
+    enum hop_size { HOP_SIZE = 64 - 1 };
+    enum add_range { ADD_RANGE = 496 };
+    inline static size_t h(size_t v, size_t s, size_t mask) {
+        return v & mask;
+    }
+};
+}
 
   /// This is a hash map implementation, based on the hopscotch algorithm. For details see
   /// http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
@@ -238,11 +233,11 @@ namespace HopScotch {
       Traits::HopType hops = _hops[idx] >> 1;
 
       while (hops) {
-        if ((hops & 1) && (key == _keys[idx])) {
-          return &_vals[idx];
-        }
-        hops >>= 1;
-        ++idx;
+          if ((hops & 1) && (key == _keys[idx])) {
+              return &_vals[idx];
+          }
+          hops >>= 1;
+          ++idx;
       }
 
       return nullptr;
