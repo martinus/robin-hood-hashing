@@ -94,6 +94,7 @@ template<
 class Map {
 public:
     typedef Val value_type;
+    typedef Map<Key, Val, H, Traits, Debug, AVals, AKeys, AInfo> Self;
 
     /// Creates an empty hash map.
     Map()
@@ -112,30 +113,81 @@ public:
     }
 
     inline bool insert(const Key& key, Val&& val) {
-        return insert_impl(std::move(Key(key)), std::forward<Val>(val));
+        Key k(key);
+        return insert(std::move(k), std::forward<Val>(val));
     }
 
     inline bool insert(Key&& key, const Val& val) {
-        return insert_impl(std::forward<Key>(key), std::move(Val(val)));
+        Val v(val);
+        return insert(std::forward<Key>(key), std::move(v));
     }
 
     inline bool insert(const Key& key, const Val& val) {
-        return insert_impl(std::move(Key(key)), std::move(Val(val)));
+        Key k(key);
+        Val v(val);
+        return insert(std::move(k), std::move(v));
     }
 
     inline bool insert(Key&& key, Val&& val) {
-        return insert_impl(std::forward<Key>(key), std::forward<Val>(val));
-    }
+        auto h = _hash(key);
 
-    // inline because it should be fast
-    inline bool insert_impl(Key&& key, Val&& val) {
+        // create info field: offset is bucket is taken, offset is 0, with hash info.
+        Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK | ((h >> _level_shift) & Traits::HASH_MASK);
+
+        // calculate array position
+        size_t idx = h & _mask;
+
+        // search forward, until we find an entry "richer" than us
+        // (closer to it's original position).
+        while (true) {
+            // while we are richer than what's already
+            while (info < _info[idx]) {
+                idx = (idx + 1) & _mask;
+                info += Traits::OFFSET_INC;
+            }
+
+            while (info == _info[idx]) {
+                if (_keys[idx] == key) {
+                    // same! replace value, then bail out.
+                    _alloc_vals.destroy(_vals + idx);
+                    _alloc_vals.construct(_vals + idx, std::forward<Val>(val));
+                    return false;
+                }
+                idx = (idx + 1) & _mask;
+                info += Traits::OFFSET_INC;
+            }
+
+            if (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK) {
+                // bucket taken! Steal it, then continue the loop.
+                // we also steal it when offset is the same but hashbits are lower.
+                // TODO is this necessary?
+                std::swap(key, _keys[idx]);
+                std::swap(val, _vals[idx]);
+                std::swap(info, _info[idx]);
+
+                idx = (idx + 1) & _mask;
+                info += Traits::OFFSET_INC;
+            } else {
+                // bucket is empty! Place it, then bail out.
+                _alloc_keys.construct(_keys + idx, std::forward<Key>(key));
+                _alloc_vals.construct(_vals + idx, std::forward<Val>(val));
+                _info[idx] = info;
+                ++_num_elements;
+                return true;
+            }
+        }
+
         // TODO
         return true;
     }
 
     inline Val* find(const Key& key) {
+        return const_cast<Val*>(static_cast<const Self&>(*this).find(key));
+    }
+
+    inline const Val* find(const Key& key) const {
         auto h = _hash(key);
-        
+
         // create info field: offset is bucket is taken, offset is 0, with hash info.
         Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK | ((h >> _level_shift) & Traits::HASH_MASK);
 
@@ -146,7 +198,6 @@ public:
 
         // find info field
         while (info < _info[idx]) {
-            // TODO use if (++idx == ...)?
             idx = (idx + 1) & _mask;
             info += Traits::OFFSET_INC;
         }
@@ -156,7 +207,6 @@ public:
             if (_keys[idx] == key) {
                 return &_vals[idx];
             }
-            // TODO use if (++idx == ...)?
             idx = (idx + 1) & _mask;
             info += Traits::OFFSET_INC;
         }
@@ -165,19 +215,12 @@ public:
         return nullptr;
     }
 
-    inline const Val* find(const Key& key) const {
-        // TODO
-        return nullptr;
-    }
-
     inline size_t size() const {
-        // TODO
-        return 0;
+        return _num_elements;
     }
 
     inline size_t max_size() const {
-        // TODO
-        return 0;
+        return _max_elements;
     }
 
 private:
