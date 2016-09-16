@@ -10,6 +10,8 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#include <RobinHood2.h>
+
 #include <Windows.h>
 #include <psapi.h>
 
@@ -755,6 +757,7 @@ void bench_sequential_insert(size_t upTo, size_t times, std::vector<std::vector<
 template<class H>
 std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t times) {
     std::vector<std::vector<Stats>> all_stats;
+    bench_sequential_insert<RobinHood::Map<int, int, H, RobinHood::Style::Default>>(upTo, times, all_stats);
     bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Default>>(upTo, times, all_stats);
     {
         std::vector<Stats> stats;

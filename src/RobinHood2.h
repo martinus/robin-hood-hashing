@@ -30,339 +30,143 @@ namespace RobinHood {
 
 namespace Style {
 
-// Very aggressive data structure. Use only for small number of elements,
-// e.g. 10.000 or so. Use with a good hash. Enable debugging to see
-// the fullness of the hashmap.
-struct Fast {
-    typedef std::uint16_t HopType;
-    enum resize_percentage { RESIZE_PERCENTAGE = 400 };
-    enum hop_size { HOP_SIZE = 16 - 1 };
-    enum add_range { ADD_RANGE = 496 };
-    inline static size_t h(size_t v, size_t s, size_t mask) {
-        return v & mask;
-    }
+struct Default {
+    // bits: | 7 | 6   5   4   3 | 2   1   0 |
+    //         ^ |    offset     | hash bits |
+    //         |
+    //       full?
+    typedef std::uint8_t InfoType;
+    enum is_bucket_taken_mask { IS_BUCKET_TAKEN_MASK = 128 };
+    enum offset_mask { OFFSET_MASK = 120 };
+    enum offset_shift { OFFSET_RSHIFT = 3 };
+    enum overflow_area_size { OVERFLOW_AREA_SIZE = 16 + 1 };
 };
 
 // Default setting, with 32 bit hop. This is usually a good choice
 // that scales very well and is quite fast.
-struct Default {
-    typedef std::uint32_t HopType;
-    enum resize_percentage { RESIZE_PERCENTAGE = 200 };
-    enum hop_size { HOP_SIZE = 16 - 1 };
-    enum add_range { ADD_RANGE = 496 };
-    inline static size_t h(size_t v, size_t s, size_t mask) {
-        return v & mask;
-    }
-};
-
-
-// Very compact hash map. Can have fullness of 90% or more.
-// Has a 64 bit hop.
-struct Compact {
-    typedef std::uint64_t HopType;
-    enum resize_percentage { RESIZE_PERCENTAGE = 200 };
-    enum hop_size { HOP_SIZE = 64 - 1 };
-    enum add_range { ADD_RANGE = 496 };
-    inline static size_t h(size_t v, size_t s, size_t mask) {
-        return v & mask;
-    }
+struct Large {
+    // bits: | 15| 14  13  12  11  10 | 9   8   7   6   5   4   3   2   1   0|
+    //       | ^ |   offset           |  additional hash bits                |
+    //         |
+    //       full? 
+    typedef std::uint16_t InfoType;
+    enum is_bucket_taken_mask { IS_BUCKET_TAKEN_MASK = 32768 };
+    enum offset_mask { OFFSET_MASK = 31744 };
+    enum offset_shift { OFFSET_RSHIFT = 10 };
+    enum overflow_area_size { OVERFLOW_AREA_SIZE = 32 + 1 };
 };
 }
 
-  /// This is a hash map implementation, based on the hopscotch algorithm. For details see
-  /// http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
-  /// https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
-  ///
-  /// In many cases, the hashmap should be faster than std::unordered_map.
-  /// It is flexible with the use of different styles (fast, to compact).
-  ///
-  /// When insertion fails, the hashmap resizes automatically.
-  template<
+/// This is a hash map implementation based on Robin Hood Hashing.
+/// It is somewhat inspired by Hopscotch, and uses a (to the best of my
+/// knowledge) novel bitset representation for each entry.
+///
+/// http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
+/// https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
+///
+/// The goal is to create a hashmap that is 
+/// * more memory efficient than std::unordered_map
+/// * faster for insert, find, delete.
+template<
     class Key,
-    class Val, 
-    class H = std::hash<Key>, 
+    class Val,
+    class H = std::hash<Key>,
     class Traits = Style::Default,
     bool Debug = false,
-    class AVal = std::allocator<Val>,
-    class AKey = std::allocator<Key>,
-    class AHop = std::allocator<Traits::HopType>
-  >
-  class Map {
-  public:
+    class AVals = std::allocator<Val>,
+    class AKeys = std::allocator<Key>,
+    class AInfo = std::allocator<Traits::InfoType>
+>
+class Map {
+public:
     typedef Val value_type;
 
     /// Creates an empty hash map.
     Map()
+        : _level(0)
     {
-      init_data(32);
+        init_data(32);
     }
 
     /// Clears all data, without resizing.
     void clear() {
-      for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-        if (_hops[i] & 1) {
-          _alloc_val.destroy(_vals + i);
-          _alloc_key.destroy(_keys + i);
-        }
-        _hops[i] = (Traits::HopType)0;
-      }
-      _size = 0;
+        // TODO
     }
 
     /// Destroys the map and all it's contents.
     ~Map() {
-      if (Debug) {
-        std::cout << "dtor: " << _size << " entries\t" << 1.0*_size / (_max_size + Traits::HOP_SIZE) << std::endl;
-      }
-      for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-        if (_hops[i] & 1) {
-          _alloc_val.destroy(_vals + i);
-          _alloc_key.destroy(_keys + i);
-          _alloc_hop.destroy(_hops + i);
-        }
-      }
-
-      _alloc_val.deallocate(_vals, _size + Traits::HOP_SIZE);
-      _alloc_key.deallocate(_keys, _size + Traits::HOP_SIZE);
-      _alloc_hop.deallocate(_hops, _size + Traits::HOP_SIZE);
+        // TODO
     }
 
     inline bool insert(const Key& key, Val&& val) {
-      return insert_impl(std::move(Key(key)), std::forward<Val>(val));
+        return insert_impl(std::move(Key(key)), std::forward<Val>(val));
     }
 
     inline bool insert(Key&& key, const Val& val) {
-      return insert_impl(std::forward<Key>(key), std::move(Val(val)));
+        return insert_impl(std::forward<Key>(key), std::move(Val(val)));
     }
 
     inline bool insert(const Key& key, const Val& val) {
-      return insert_impl(std::move(Key(key)), std::move(Val(val)));
+        return insert_impl(std::move(Key(key)), std::move(Val(val)));
     }
 
     inline bool insert(Key&& key, Val&& val) {
-      return insert_impl(std::forward<Key>(key), std::forward<Val>(val));
+        return insert_impl(std::forward<Key>(key), std::forward<Val>(val));
     }
 
     // inline because it should be fast
-    // todo use && for key as well
     inline bool insert_impl(Key&& key, Val&& val) {
-      size_t initial_idx = Traits::h(_hash(key), _max_size, _mask);
-
-      // now, idx is the preferred position for this element. Search forward to find an empty place.
-      // we use overflow area, so no modulo is required.
-      size_t idx = initial_idx;
-
-      // find key & replace if found
-      Traits::HopType hops = _hops[idx] >> 1;
-      while (hops) {
-        if ((hops & 1) && (_keys[idx] == key)) {
-          // found the key! replace value
-          _alloc_val.destroy(_vals + idx);
-          _alloc_val.construct(_vals + idx, std::forward<Val>(val));
-          return false;
-        }
-        ++idx;
-        hops >>= 1;
-      }
-
-      // key is not there, find an empty spot
-      idx = initial_idx;
-      size_t e = initial_idx + Traits::ADD_RANGE;
-      if (e > _max_size + Traits::HOP_SIZE) {
-        e = _max_size + Traits::HOP_SIZE;
-      }
-      while ((idx < e) && (_hops[idx] & 1)) {
-        ++idx;
-      }
-
-      // no insert possible? resize and retry.
-      if (idx == e) {
-        // retry insert
-        increase_size();
-        return insert(std::forward<Key>(key), std::forward<Val>(val));
-      }
-
-      //++_counts[idx - initial_idx];
-
-      // set the empty spot's hop bit
-      _hops[idx] |= (Traits::HopType)1;
-
-      // TODO can this be made faster?
-      // we have found an empty spot, but it might be far away. We have to move the hole to the front
-      // until we are at the right step. idx is the empty spot.
-
-      // This tries to find a swappable element that is as far away as possible. To do that, it tries to
-      // find out if the element furthest away can be moved, by finding the hop for this element.
-      while (idx > initial_idx + Traits::HOP_SIZE - 1) {
-        // h: where the hash wants to be
-        // i: where it actually is
-        // idx: where it can be moved
-        size_t start_h = idx < Traits::HOP_SIZE ? 0 : idx - Traits::HOP_SIZE + 1;
-        size_t h;
-        size_t i = start_h - 1;
-        do {
-          ++i;
-          // find the hash place h for element i by looking through the hops
-          h = start_h;
-          Traits::HopType hop_mask = (Traits::HopType)1 << (i - h + 1);
-          while (h <= i && !(_hops[h] & hop_mask))
-          {
-            ++h;
-            hop_mask >>= 1;
-          }
-        } while (i < idx && h > i);
-
-        // insertion failed? resize and try again.
-        if (i >= idx) {
-          // insertion failed, undo _hop[idx]
-          _hops[idx] ^= (Traits::HopType)1;
-          increase_size();
-          return insert(std::forward<Key>(key), std::forward<Val>(val));
-        }
-
-        // found a place! move hole to the front
-        _alloc_key.construct(_keys + idx, std::move(_keys[i]));
-        _alloc_key.destroy(_keys + i);
-        // no need to set _hops[idx] & 1
-
-        _alloc_val.construct(_vals + idx, std::move(_vals[i]));
-        _alloc_val.destroy(_vals + i);
-        _hops[h] |= ((Traits::HopType)1 << (idx - h + 1));
-
-        // clear hop bit
-        _hops[h] ^= ((Traits::HopType)1 << (i - h + 1)); 
-
-        idx = i;
-      }
-
-      // now that we've moved everything, we can finally construct the element at
-      // it's rightful place.
-      _alloc_val.construct(_vals + idx, std::forward<Val>(val));
-      _alloc_key.construct(_keys + idx, std::forward<Key>(key));
-      _hops[idx] |= (Traits::HopType)1;
-
-      _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx + 1));
-      ++_size;
-      return true;
+        // TODO
+        return true;
     }
 
     inline Val* find(const Key& key) {
-      auto idx = Traits::h(_hash(key), _max_size, _mask);
+        auto h = _hash(key);
 
-      Traits::HopType hops = _hops[idx] >> 1;
-
-      while (hops) {
-          if ((hops & 1) && (key == _keys[idx])) {
-              return &_vals[idx];
-          }
-          hops >>= 1;
-          ++idx;
-      }
-
-      return nullptr;
+        /// finds 
+        // TODO
+        return nullptr;
     }
 
     inline const Val* find(const Key& key) const {
-      auto idx = Traits::h(_hash(key), _max_size, _mask);
-
-      Traits::HopType hops = _hops[idx] >> 1;
-      while (hops) {
-        if ((hops & 1) && (key == _keys[idx])) {
-          return &_vals[idx];
-        }
-        hops >>= 1;
-        ++idx;
-      }
-
-      return nullptr;
+        // TODO
+        return nullptr;
     }
 
     inline size_t size() const {
-      return _size;
+        // TODO
+        return 0;
     }
 
     inline size_t max_size() const {
-      return _max_size;
+        // TODO
+        return 0;
     }
 
-  private:
-    // doubles size
-    void increase_size() {
-      if (Debug) {
-        // calculate memory requirements
-        std::cout << "resize: " << _max_size << "\t" << 1.0*_size / (_max_size + Traits::HOP_SIZE) << std::endl;
-      }
-      Key* old_keys = _keys;
-      Val* old_vals = _vals;
-      Traits::HopType* old_hops = _hops;
-
-      size_t old_size = _max_size;
-
-      size_t new_size = _max_size * Traits::RESIZE_PERCENTAGE / 100;
-      if (new_size < old_size) {
-        // overflow! just double the size.
-        new_size = old_size*2;
-        if (new_size < old_size) {
-          // another overflow! break.
-          // TODO do something smart here
-          throw std::exception("can't resize");
-        }
-      }
-      init_data(new_size);
-
-      for (size_t i=0; i<old_size + Traits::HOP_SIZE; ++i) {
-        if (old_hops[i] & 1) {
-          insert_impl(std::move(old_keys[i]), std::move(old_vals[i]));
-          _alloc_val.destroy(old_vals + i);
-          _alloc_key.destroy(old_keys + i);
-          _alloc_hop.destroy(old_hops + i);
-        }
-      }
-
-      _alloc_val.deallocate(old_vals, old_size + Traits::HOP_SIZE);
-      _alloc_key.deallocate(old_keys, old_size + Traits::HOP_SIZE);
-      _alloc_hop.deallocate(old_hops, old_size + Traits::HOP_SIZE);
-    }
-
-
+private:
     void init_data(size_t new_size) {
-      _size = 0;
-      _max_size = new_size;
-      _mask = _max_size - 1;
+        _num_elements = 0;
+        _max_elements = new_size;
 
-      _hops = _alloc_hop.allocate(_max_size + Traits::HOP_SIZE);
-      _keys = _alloc_key.allocate(_max_size + Traits::HOP_SIZE, _hops);
-      _vals = _alloc_val.allocate(_max_size + Traits::HOP_SIZE, _keys);
+        _info = _alloc_info.allocate(_max_elements + Traits::OVERFLOW_AREA_SIZE);
+        _keys = _alloc_keys.allocate(_max_elements + Traits::OVERFLOW_AREA_SIZE, _info);
+        _vals = _alloc_vals.allocate(_max_elements + Traits::OVERFLOW_AREA_SIZE, _keys);
 
-      for (size_t i=0; i<_max_size + Traits::HOP_SIZE; ++i) {
-        _alloc_hop.construct(_hops + i, 0);
-      }
-
-      if (Debug) {
-        size_t keys = sizeof(size_t) * (_max_size + Traits::HOP_SIZE);
-        size_t hops = sizeof(Traits::HopType) * (_max_size + Traits::HOP_SIZE);
-        size_t values = sizeof(Val) * (_max_size + Traits::HOP_SIZE);
-        std::cout << (keys + hops + values) << " bytes (" << keys << " keys, " << hops << " hops, " << values << " values)" << std::endl;
-      }
-
-
-      //_max_fullness = (_max_size + HOP_SIZE) * 80/100;
-      _max_fullness = _max_size + Traits::HOP_SIZE - 1;
+        std::memset(_info, 0, sizeof(Traits::InfoType) * (_max_elements + Traits::OVERFLOW_AREA_SIZE));
     }
 
     Val* _vals;
     Key* _keys;
-    typename Traits::HopType* _hops;
+    typename Traits::InfoType* _info;
 
     const H _hash;
-    size_t _size;
-    size_t _mask;
-    size_t _max_size;
-    size_t _max_fullness;
+    size_t _level;
+    size_t _num_elements;
+    size_t _max_elements;
 
-    AVal _alloc_val;
-    AKey _alloc_key;
-    AHop _alloc_hop;
-  };
+    AVals _alloc_vals;
+    AKeys _alloc_keys;
+    AInfo _alloc_info;
+};
 
 }
