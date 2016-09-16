@@ -39,7 +39,18 @@ struct Default {
     enum is_bucket_taken_mask { IS_BUCKET_TAKEN_MASK = 128 };
     enum offset_mask { OFFSET_MASK = 120 };
     enum offset_shift { OFFSET_RSHIFT = 3 };
-    enum overflow_area_size { OVERFLOW_AREA_SIZE = 16 + 1 };
+    enum offset_inc { OFFSET_INC = 8 };
+    enum initial_level { INITIAL_LEVEL = 5 };
+
+    enum hash_mask { HASH_MASK = (1 << OFFSET_RSHIFT) - 1 };
+
+    // calculate hash bits based on h:
+    // level 5:  32 elements: info |= (h >> level) & 7
+    // level 1:  64 elements: info |= (h >> level) & 7
+    // level 2: 128 elements: info |= (h >> level) & 7
+    // level 3: 256 elements: info |= (h >> level) & 7
+    // level 4: 512 elements: info |= (h >> level) & 7;
+
 };
 
 // Default setting, with 32 bit hop. This is usually a good choice
@@ -53,7 +64,10 @@ struct Large {
     enum is_bucket_taken_mask { IS_BUCKET_TAKEN_MASK = 32768 };
     enum offset_mask { OFFSET_MASK = 31744 };
     enum offset_shift { OFFSET_RSHIFT = 10 };
-    enum overflow_area_size { OVERFLOW_AREA_SIZE = 32 + 1 };
+    enum offset_inc { OFFSET_INC = 1024 };
+    enum initial_level { INITIAL_LEVEL = 5 };
+
+    enum hash_mask { HASH_MASK = (1 << OFFSET_RSHIFT) - 1 };
 };
 }
 
@@ -83,9 +97,8 @@ public:
 
     /// Creates an empty hash map.
     Map()
-        : _level(0)
     {
-        init_data(32);
+        init_data(Traits::INITIAL_LEVEL);
     }
 
     /// Clears all data, without resizing.
@@ -122,9 +135,33 @@ public:
 
     inline Val* find(const Key& key) {
         auto h = _hash(key);
+        
+        // create info field: offset is bucket is taken, offset is 0, with hash info.
+        Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK | ((h >> _level_shift) & Traits::HASH_MASK);
 
-        /// finds 
-        // TODO
+        // calculate array position
+        size_t idx = h & _mask;
+
+        // TODO do we have to check for info overflow?
+
+        // find info field
+        while (info < _info[idx]) {
+            // TODO use if (++idx == ...)?
+            idx = (idx + 1) & _mask;
+            info += Traits::OFFSET_INC;
+        }
+
+        // check while it seems we have the correct element
+        while (info == _info[idx]) {
+            if (_keys[idx] == key) {
+                return &_vals[idx];
+            }
+            // TODO use if (++idx == ...)?
+            idx = (idx + 1) & _mask;
+            info += Traits::OFFSET_INC;
+        }
+
+        // now info is > _info[idx], that means we have not found the entry.
         return nullptr;
     }
 
@@ -144,15 +181,28 @@ public:
     }
 
 private:
-    void init_data(size_t new_size) {
+    void init_data(size_t level) {
         _num_elements = 0;
-        _max_elements = new_size;
+        _max_elements = (size_t)1 << level;
+        _mask = _max_elements - 1;
+     
+        // e.g. for initial_level 5, rshift 3: 
+        // level  5: (( 5 - 5) / 3) * 3 + 5 = 5
+        // level  6: (( 6 - 5) / 3) * 3 + 5 = 5
+        // level  7: (( 7 - 5) / 3) * 3 + 5 = 5
+        // level  8: (( 8 - 5) / 3) * 3 + 5 = 8
+        // level  9: (( 9 - 5) / 3) * 3 + 5 = 8
+        // level 10: ((10 - 5) / 3) * 3 + 5 = 8
+        // level 11: ((11 - 5) / 3) * 3 + 5 = 11
+        // level 12: ((12 - 5) / 3) * 3 + 5 = 11
+        // level 13: ((13 - 5) / 3) * 3 + 5 = 11
+        _level_shift = ((level - Traits::INITIAL_LEVEL) / Traits::OFFSET_RSHIFT) * Traits::OFFSET_RSHIFT + Traits::INITIAL_LEVEL;
 
-        _info = _alloc_info.allocate(_max_elements + Traits::OVERFLOW_AREA_SIZE);
-        _keys = _alloc_keys.allocate(_max_elements + Traits::OVERFLOW_AREA_SIZE, _info);
-        _vals = _alloc_vals.allocate(_max_elements + Traits::OVERFLOW_AREA_SIZE, _keys);
+        _info = _alloc_info.allocate(_max_elements);
+        _keys = _alloc_keys.allocate(_max_elements, _info);
+        _vals = _alloc_vals.allocate(_max_elements, _keys);
 
-        std::memset(_info, 0, sizeof(Traits::InfoType) * (_max_elements + Traits::OVERFLOW_AREA_SIZE));
+        std::memset(_info, 0, sizeof(Traits::InfoType) * _max_elements);
     }
 
     Val* _vals;
@@ -160,9 +210,13 @@ private:
     typename Traits::InfoType* _info;
 
     const H _hash;
+
+    // level 0: 32 elements (5 bits of hash)
     size_t _level;
+    size_t _level_shift;
     size_t _num_elements;
     size_t _max_elements;
+    size_t _mask;
 
     AVals _alloc_vals;
     AKeys _alloc_keys;
