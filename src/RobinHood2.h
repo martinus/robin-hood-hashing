@@ -6,6 +6,7 @@
 // Here are some tricks that I want to use:
 //
 // - todo - 
+// * hopscotch: try to move as little as possible (not as much as possible, like its now. Search from right to left).
 // http://bannalia.blogspot.co.at/2014/01/a-better-hash-table-clang.html
 // https://probablydance.com/2014/05/03/i-wrote-a-fast-hash-table/
 // * keep key, val, info interleaved?
@@ -13,6 +14,7 @@
 // * Remember minimum and maximum search distance so far? (minimum search can be used to speed up search.
 // * keep median number of searches, and search outwards? maybe not useful.
 // * instead of hashbits, store number of elements hashed to this index? Would that do any good?
+// * adaptive hopscotch (with offsets). Max offset starts with e.g. 4. If we can't insert, increase max offset by 1 and try again.
 //
 // - done -
 // * Keep a byte of distance around
