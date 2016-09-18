@@ -41,6 +41,14 @@ public:
     return elapsed_ticks()/(double)frequency();
   }
 
+  inline double elapsed_restart() {
+      LARGE_INTEGER stop;
+      QueryPerformanceCounter(&stop);
+      auto diff = stop.QuadPart - _start.QuadPart;
+      _start = stop;
+      return diff / (double)frequency();
+  }
+
 private:
   LARGE_INTEGER _start;
 };
