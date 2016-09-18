@@ -36,13 +36,12 @@ struct Default {
     //         |
     //       full?
     typedef std::uint8_t InfoType;
-    enum is_bucket_taken_mask { IS_BUCKET_TAKEN_MASK = 128 };
-    enum offset_mask { OFFSET_MASK = 120 };
-    enum offset_shift { OFFSET_RSHIFT = 3 };
-    enum offset_inc { OFFSET_INC = 8 };
-    enum initial_level { INITIAL_LEVEL = 5 };
-
-    enum hash_mask { HASH_MASK = (1 << OFFSET_RSHIFT) - 1 };
+    static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1<<7;
+    static constexpr InfoType NUM_HASH_BITS = 3;
+    static constexpr InfoType OFFSET_INC = 1 << NUM_HASH_BITS;
+    static constexpr InfoType OFFSET_MASK = (IS_BUCKET_TAKEN_MASK - 1) ^ (OFFSET_INC - 1);
+    static constexpr InfoType INITIAL_LEVEL = 5;
+    static constexpr InfoType HASH_MASK = (1 << NUM_HASH_BITS) - 1;
 
     // calculate hash bits based on h:
     // level 5:  32 elements: info |= (h >> level) & 7
@@ -61,22 +60,52 @@ struct Large {
     //         |
     //       full? 
     typedef std::uint16_t InfoType;
-    enum is_bucket_taken_mask { IS_BUCKET_TAKEN_MASK = 32768 };
-    enum offset_mask { OFFSET_MASK = 31744 };
-    enum offset_shift { OFFSET_RSHIFT = 10 };
-    enum offset_inc { OFFSET_INC = 1024 };
-    enum initial_level { INITIAL_LEVEL = 5 };
+    static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 15;
+    static constexpr InfoType NUM_HASH_BITS = 3;
+    static constexpr InfoType OFFSET_INC = 1 << NUM_HASH_BITS;
+    static constexpr InfoType OFFSET_MASK = (IS_BUCKET_TAKEN_MASK - 1) ^ (OFFSET_INC - 1);
+    static constexpr InfoType INITIAL_LEVEL = 5;
+    static constexpr InfoType HASH_MASK = (1 << NUM_HASH_BITS) - 1;
+};
 
-    enum hash_mask { HASH_MASK = (1 << OFFSET_RSHIFT) - 1 };
+// Default setting, with 32 bit hop. This is usually a good choice
+// that scales very well and is quite fast.
+struct Big {
+    // bits: | 15| 14  13  12  11  10 | 9   8   7   6   5   4   3   2   1   0|
+    //       | ^ |   offset           |  additional hash bits                |
+    //         |
+    //       full? 
+    typedef std::uint32_t InfoType;
+    static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 31;
+    static constexpr InfoType NUM_HASH_BITS = 3;
+    static constexpr InfoType OFFSET_INC = 1 << NUM_HASH_BITS;
+    static constexpr InfoType OFFSET_MASK = (IS_BUCKET_TAKEN_MASK - 1) ^ (OFFSET_INC - 1);
+    static constexpr InfoType INITIAL_LEVEL = 5;
+    static constexpr InfoType HASH_MASK = (1 << NUM_HASH_BITS) - 1;
+};
+
+
+// Default setting, with 32 bit hop. This is usually a good choice
+// that scales very well and is quite fast.
+struct Huge {
+    // bits: | 15| 14  13  12  11  10 | 9   8   7   6   5   4   3   2   1   0|
+    //       | ^ |   offset           |  additional hash bits                |
+    //         |
+    //       full? 
+    typedef std::uint64_t InfoType;
+    static constexpr InfoType IS_BUCKET_TAKEN_MASK = (InfoType)1 << 63;
+    static constexpr InfoType NUM_HASH_BITS = 58;
+    static constexpr InfoType OFFSET_INC = (InfoType)1 << NUM_HASH_BITS;
+    static constexpr InfoType OFFSET_MASK = (IS_BUCKET_TAKEN_MASK - 1) ^ (OFFSET_INC - 1);
+    static constexpr InfoType INITIAL_LEVEL = 5;
+    static constexpr InfoType HASH_MASK = ((InfoType)1 << NUM_HASH_BITS) - 1;
 };
 }
 
 /// This is a hash map implementation based on Robin Hood Hashing.
-/// It is somewhat inspired by Hopscotch, and uses a (to the best of my
-/// knowledge) novel bitset representation for each entry.
+/// It is somewhat inspired by Hopscotch, and uses a bitset
+/// representation for each entry.
 ///
-/// http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
-/// https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
 ///
 /// The goal is to create a hashmap that is 
 /// * more memory efficient than std::unordered_map
@@ -98,8 +127,9 @@ public:
 
     /// Creates an empty hash map.
     Map()
+        : _level(Traits::INITIAL_LEVEL)
     {
-        init_data(Traits::INITIAL_LEVEL);
+        init_data();
     }
 
     /// Clears all data, without resizing.
@@ -129,9 +159,13 @@ public:
     }
 
     inline bool insert(Key&& key, Val&& val) {
+        if (_num_elements == _max_num_num_elements_allowed) {
+            increase_size();
+        }
+
         auto h = _hash(key);
 
-        // create info field: offset is bucket is taken, offset is 0, with hash info.
+        // create info field: IS_BUCKET_TAKEN_MASK, offset is 0, with hash info.
         Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK | ((h >> _level_shift) & Traits::HASH_MASK);
 
         // calculate array position
@@ -142,8 +176,13 @@ public:
         while (true) {
             // while we are richer than what's already
             while (info < _info[idx]) {
-                idx = (idx + 1) & _mask;
+                ++idx;
+                idx &= _mask;
                 info += Traits::OFFSET_INC;
+                if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
+                    increase_size();
+                    return insert(std::forward<Key>(key), std::forward<Val>(val));
+                }
             }
 
             while (info == _info[idx]) {
@@ -153,8 +192,13 @@ public:
                     _alloc_vals.construct(_vals + idx, std::forward<Val>(val));
                     return false;
                 }
-                idx = (idx + 1) & _mask;
+                ++idx;
+                idx &= _mask;
                 info += Traits::OFFSET_INC;
+                if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
+                    increase_size();
+                    return insert(std::forward<Key>(key), std::forward<Val>(val));
+                }
             }
 
             if (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK) {
@@ -164,9 +208,14 @@ public:
                 std::swap(key, _keys[idx]);
                 std::swap(val, _vals[idx]);
                 std::swap(info, _info[idx]);
-
-                idx = (idx + 1) & _mask;
+                ++idx;
+                idx &= _mask;
                 info += Traits::OFFSET_INC;
+
+                if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
+                    increase_size();
+                    return insert(std::forward<Key>(key), std::forward<Val>(val));
+                }
             } else {
                 // bucket is empty! Place it, then bail out.
                 _alloc_keys.construct(_keys + idx, std::forward<Key>(key));
@@ -181,11 +230,11 @@ public:
         return true;
     }
 
-    inline Val* find(const Key& key) {
-        return const_cast<Val*>(static_cast<const Self&>(*this).find(key));
+    Val* find(const Key& key) {
+        return const_cast<Val*>(static_cast<const Self*>(this)->find(key));
     }
 
-    inline const Val* find(const Key& key) const {
+    const Val* find(const Key& key) const {
         auto h = _hash(key);
 
         // create info field: offset is bucket is taken, offset is 0, with hash info.
@@ -194,24 +243,24 @@ public:
         // calculate array position
         size_t idx = h & _mask;
 
-        // TODO do we have to check for info overflow?
-
         // find info field
         while (info < _info[idx]) {
-            idx = (idx + 1) & _mask;
+            ++idx;
+            idx &= _mask;
             info += Traits::OFFSET_INC;
         }
 
         // check while it seems we have the correct element
-        while (info == _info[idx]) {
-            if (_keys[idx] == key) {
-                return &_vals[idx];
-            }
-            idx = (idx + 1) & _mask;
+        while (info == _info[idx] && key != _keys[idx]) {
+            ++idx;
+            idx &= _mask;
             info += Traits::OFFSET_INC;
         }
 
-        // now info is > _info[idx], that means we have not found the entry.
+        if (info == _info[idx]) {
+            return _vals + idx;
+        }
+
         return nullptr;
     }
 
@@ -224,10 +273,14 @@ public:
     }
 
 private:
-    void init_data(size_t level) {
+    void init_data() {
         _num_elements = 0;
-        _max_elements = (size_t)1 << level;
+        _max_elements = (size_t)1 << _level;
         _mask = _max_elements - 1;
+
+        // max * (1 - 1/50) = max * 0.98
+        // we allow a maximum fullness of 98%.
+        _max_num_num_elements_allowed = _max_elements - std::max((size_t)1, _max_elements / 20);
      
         // e.g. for initial_level 5, rshift 3: 
         // level  5: (( 5 - 5) / 3) * 3 + 5 = 5
@@ -239,13 +292,40 @@ private:
         // level 11: ((11 - 5) / 3) * 3 + 5 = 11
         // level 12: ((12 - 5) / 3) * 3 + 5 = 11
         // level 13: ((13 - 5) / 3) * 3 + 5 = 11
-        _level_shift = ((level - Traits::INITIAL_LEVEL) / Traits::OFFSET_RSHIFT) * Traits::OFFSET_RSHIFT + Traits::INITIAL_LEVEL;
+        _level_shift = ((_level - Traits::INITIAL_LEVEL) / Traits::NUM_HASH_BITS) * Traits::NUM_HASH_BITS + Traits::INITIAL_LEVEL;
 
         _info = _alloc_info.allocate(_max_elements);
         _keys = _alloc_keys.allocate(_max_elements, _info);
         _vals = _alloc_vals.allocate(_max_elements, _keys);
 
         std::memset(_info, 0, sizeof(Traits::InfoType) * _max_elements);
+    }
+
+    void increase_size() {
+        //std::cout << (100.0*_num_elements / _max_elements) << "% full, resizing" << std::endl;
+        Key* old_keys = _keys;
+        Val* old_vals = _vals;
+        typename Traits::InfoType* old_info = _info;
+
+        size_t old_max_elements = _max_elements;
+
+        ++_level;
+        init_data();
+
+        int num_ins = 0;
+        for (size_t i = 0; i < old_max_elements; ++i) {
+            if (old_info[i] & Traits::IS_BUCKET_TAKEN_MASK) {
+                ++num_ins;
+                // TODO reuse hash value! We already have it!
+                insert(std::move(old_keys[i]), std::move(old_vals[i]));
+                _alloc_vals.destroy(old_vals + i);
+                _alloc_keys.destroy(old_keys + i);
+            }
+        }
+
+        _alloc_vals.deallocate(old_vals, old_max_elements);
+        _alloc_keys.deallocate(old_keys, old_max_elements);
+        _alloc_info.deallocate(old_info, old_max_elements);
     }
 
     Val* _vals;
@@ -260,6 +340,8 @@ private:
     size_t _num_elements;
     size_t _max_elements;
     size_t _mask;
+    size_t _find_count;
+    size_t _max_num_num_elements_allowed;
 
     AVals _alloc_vals;
     AKeys _alloc_keys;
