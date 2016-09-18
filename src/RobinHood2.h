@@ -56,6 +56,8 @@ struct Default {
     static constexpr InfoType INITIAL_LEVEL = 5;
     static constexpr InfoType HASH_MASK = (1 << NUM_HASH_BITS) - 1;
 
+    static constexpr InfoType MAX_OFFSET = IS_BUCKET_TAKEN_MASK >> NUM_HASH_BITS;
+
     // calculate hash bits based on h:
     // level 5:  32 elements: info |= (h >> level) & 7
     // level 1:  64 elements: info |= (h >> level) & 7
@@ -74,11 +76,13 @@ struct Large {
     //       full? 
     typedef std::uint16_t InfoType;
     static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 15;
-    static constexpr InfoType NUM_HASH_BITS = 3;
+    static constexpr InfoType NUM_HASH_BITS = 11;
     static constexpr InfoType OFFSET_INC = 1 << NUM_HASH_BITS;
     static constexpr InfoType OFFSET_MASK = (IS_BUCKET_TAKEN_MASK - 1) ^ (OFFSET_INC - 1);
     static constexpr InfoType INITIAL_LEVEL = 5;
     static constexpr InfoType HASH_MASK = (1 << NUM_HASH_BITS) - 1;
+    static constexpr InfoType MAX_OFFSET = IS_BUCKET_TAKEN_MASK >> NUM_HASH_BITS;
+
 };
 
 // Default setting, with 32 bit hop. This is usually a good choice
@@ -90,11 +94,12 @@ struct Big {
     //       full? 
     typedef std::uint32_t InfoType;
     static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 31;
-    static constexpr InfoType NUM_HASH_BITS = 3;
+    static constexpr InfoType NUM_HASH_BITS = 27;
     static constexpr InfoType OFFSET_INC = 1 << NUM_HASH_BITS;
     static constexpr InfoType OFFSET_MASK = (IS_BUCKET_TAKEN_MASK - 1) ^ (OFFSET_INC - 1);
     static constexpr InfoType INITIAL_LEVEL = 5;
     static constexpr InfoType HASH_MASK = (1 << NUM_HASH_BITS) - 1;
+    static constexpr InfoType MAX_OFFSET = IS_BUCKET_TAKEN_MASK >> NUM_HASH_BITS;
 };
 
 
@@ -107,11 +112,12 @@ struct Huge {
     //       full? 
     typedef std::uint64_t InfoType;
     static constexpr InfoType IS_BUCKET_TAKEN_MASK = (InfoType)1 << 63;
-    static constexpr InfoType NUM_HASH_BITS = 58;
+    static constexpr InfoType NUM_HASH_BITS = 59;
     static constexpr InfoType OFFSET_INC = (InfoType)1 << NUM_HASH_BITS;
     static constexpr InfoType OFFSET_MASK = (IS_BUCKET_TAKEN_MASK - 1) ^ (OFFSET_INC - 1);
     static constexpr InfoType INITIAL_LEVEL = 5;
     static constexpr InfoType HASH_MASK = ((InfoType)1 << NUM_HASH_BITS) - 1;
+    static constexpr InfoType MAX_OFFSET = IS_BUCKET_TAKEN_MASK >> NUM_HASH_BITS;
 };
 }
 
@@ -152,7 +158,16 @@ public:
 
     /// Destroys the map and all it's contents.
     ~Map() {
-        // TODO
+        for (size_t i = 0; i < _max_elements + Traits::MAX_OFFSET + 1; ++i) {
+            if (_info[i] & Traits::IS_BUCKET_TAKEN_MASK) {
+                _alloc_vals.destroy(_vals + i);
+                _alloc_keys.destroy(_keys + i);
+            }
+        }
+
+        _alloc_vals.deallocate(_vals, _max_elements + Traits::MAX_OFFSET + 1);
+        _alloc_keys.deallocate(_keys, _max_elements + Traits::MAX_OFFSET + 1);
+        _alloc_info.deallocate(_info, _max_elements + Traits::MAX_OFFSET + 1);
     }
 
     inline bool insert(const Key& key, Val&& val) {
@@ -190,7 +205,7 @@ public:
             // while we are richer than what's already
             while (info < _info[idx]) {
                 ++idx;
-                idx &= _mask;
+                //idx &= _mask;
                 info += Traits::OFFSET_INC;
                 if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
                     increase_size();
@@ -206,7 +221,7 @@ public:
                     return false;
                 }
                 ++idx;
-                idx &= _mask;
+                //idx &= _mask;
                 info += Traits::OFFSET_INC;
                 if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
                     increase_size();
@@ -222,7 +237,7 @@ public:
                 std::swap(val, _vals[idx]);
                 std::swap(info, _info[idx]);
                 ++idx;
-                idx &= _mask;
+                //idx &= _mask;
                 info += Traits::OFFSET_INC;
 
                 if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
@@ -259,14 +274,14 @@ public:
         // find info field
         while (info < _info[idx]) {
             ++idx;
-            idx &= _mask;
+            //idx &= _mask;
             info += Traits::OFFSET_INC;
         }
 
         // check while it seems we have the correct element
         while (info == _info[idx] && key != _keys[idx]) {
             ++idx;
-            idx &= _mask;
+            //idx &= _mask;
             info += Traits::OFFSET_INC;
         }
 
@@ -307,11 +322,11 @@ private:
         // level 13: ((13 - 5) / 3) * 3 + 5 = 11
         _level_shift = ((_level - Traits::INITIAL_LEVEL) / Traits::NUM_HASH_BITS) * Traits::NUM_HASH_BITS + Traits::INITIAL_LEVEL;
 
-        _info = _alloc_info.allocate(_max_elements);
-        _keys = _alloc_keys.allocate(_max_elements, _info);
-        _vals = _alloc_vals.allocate(_max_elements, _keys);
+        _info = _alloc_info.allocate(_max_elements + Traits::MAX_OFFSET + 1);
+        _keys = _alloc_keys.allocate(_max_elements + Traits::MAX_OFFSET + 1, _info);
+        _vals = _alloc_vals.allocate(_max_elements + Traits::MAX_OFFSET + 1, _keys);
 
-        std::memset(_info, 0, sizeof(Traits::InfoType) * _max_elements);
+        std::memset(_info, 0, sizeof(Traits::InfoType) * (_max_elements + Traits::MAX_OFFSET + 1));
     }
 
     void increase_size() {
@@ -326,7 +341,7 @@ private:
         init_data();
 
         int num_ins = 0;
-        for (size_t i = 0; i < old_max_elements; ++i) {
+        for (size_t i = 0; i < old_max_elements + Traits::MAX_OFFSET + 1; ++i) {
             if (old_info[i] & Traits::IS_BUCKET_TAKEN_MASK) {
                 ++num_ins;
                 // TODO reuse hash value! We already have it!
@@ -336,9 +351,9 @@ private:
             }
         }
 
-        _alloc_vals.deallocate(old_vals, old_max_elements);
-        _alloc_keys.deallocate(old_keys, old_max_elements);
-        _alloc_info.deallocate(old_info, old_max_elements);
+        _alloc_vals.deallocate(old_vals, old_max_elements + Traits::MAX_OFFSET + 1);
+        _alloc_keys.deallocate(old_keys, old_max_elements + Traits::MAX_OFFSET + 1);
+        _alloc_info.deallocate(old_info, old_max_elements + Traits::MAX_OFFSET + 1);
     }
 
     Val* _vals;
