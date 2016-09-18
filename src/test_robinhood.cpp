@@ -41,11 +41,15 @@ void test1(int times) {
     CHECK(rhhs.size() == 0);
     CHECK(rhhs.insert(32145, 123));
     CHECK(rhhs.size() == 1);
+
     for (int i = 0; i < times; ++i) {
         CHECK(rhhs.insert(i * 4, i));
         auto found = rhhs.find(i * 4);
         CHECK(found != nullptr);
         CHECK(*found == i);
+        if (rhhs.size() != 2 + i) {
+            std::cout << "asdf" << std::endl;
+        }
         CHECK(rhhs.size() == 2 + i);
     }
 
@@ -691,18 +695,29 @@ size_t get_mem() {
 }
 
 struct Stats {
-    double elapsed;
+    double elapsed_insert;
+    double elapsed_find;
     size_t mem;
     size_t num;
+    size_t found;
 };
 
 void print(const std::vector<std::vector<Stats>>& s) {
     auto elems = s[0].size();
-    std::cout << "time:" << std::endl;
+    std::cout << "time insert:" << std::endl;
     for (size_t e = 0; e < elems; ++e) {
         for (size_t i = 0; i < s.size(); ++i) {
             const auto& st = s[i][e];
-            std::cout << st.elapsed << ";";
+            std::cout << st.elapsed_insert << ";";
+        }
+        std::cout << std::endl;
+    }
+
+    std::cout << "time find:" << std::endl;
+    for (size_t e = 0; e < elems; ++e) {
+        for (size_t i = 0; i < s.size(); ++i) {
+            const auto& st = s[i][e];
+            std::cout << st.elapsed_find << ";";
         }
         std::cout << std::endl;
     }
@@ -734,36 +749,44 @@ void bench_sequential_insert(size_t upTo, size_t times, std::vector<std::vector<
     size_t mem_before = get_mem();
     HS r;
     int i = 0;
+    size_t found = 0;
     for (size_t ti = 0; ti < times; ++ti) {
+        // insert
         for (size_t up = 0; up < upTo; ++up) {
             r.insert(i, i);
             ++i;
         }
-        s.elapsed = t.elapsed();
+        s.elapsed_insert = t.elapsed_restart();
         s.mem = get_mem() - mem_before;
         s.num = r.size();
+
+        // query
+        for (int j = 0; j < 5; ++j) {
+            for (int up = 0, e = static_cast<int>(upTo); up < e; ++up) {
+                if (r.find(up)) {
+                    ++found;
+                }
+            }
+            for (int up = static_cast<int>(times*upTo), e = static_cast<int>(times*upTo + upTo); up < e; ++up) {
+                if (r.find(up)) {
+                    ++found;
+                }
+            }
+        }
+        s.elapsed_find = t.elapsed_restart();
+        s.found = found;
         stats.push_back(s);
     }
 
-    std::cout << t.elapsed() << "; ";
-    t.restart();
-    size_t found = 0;
-    for (int i = 0, stop = static_cast<int>(upTo*times * 2); i < stop; ++i) {
-        if (nullptr != r.find(i)) {
-            ++found;
-        }
-    }
-    std::cout << "existing: " << t.elapsed() << "; " << (get_mem() - mem_before) << " (found=" << found << ")" << std::endl;
+    Stats sum;
+    sum.elapsed_find = 0;
+    sum.elapsed_insert = 0;
+    std::for_each(stats.begin(), stats.end(), [&sum](const Stats& s) {
+        sum.elapsed_find += s.elapsed_find;
+        sum.elapsed_insert += s.elapsed_insert;
+    });
 
-    std::cout << t.elapsed() << "; ";
-    t.restart();
-    for (int i = static_cast<int>(upTo*times + 1), stop = static_cast<int>(upTo*times * 2); i < stop; ++i) {
-        if (nullptr != r.find(i)) {
-            ++found;
-        }
-    }
-    std::cout << "nonexisting: " << t.elapsed() << "; " << (get_mem() - mem_before) << " (found=" << found << ")" << std::endl;
-
+    std::cout << sum.elapsed_insert << " sec insert, " << sum.elapsed_find << " sec find" << std::endl;
     all_stats.push_back(stats);
 }
 
@@ -771,6 +794,9 @@ template<class H>
 std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t times) {
     std::vector<std::vector<Stats>> all_stats;
     bench_sequential_insert<RobinHood::Map<int, int, H, RobinHood::Style::Default>>(upTo, times, all_stats);
+    bench_sequential_insert<RobinHood::Map<int, int, H, RobinHood::Style::Large>>(upTo, times, all_stats);
+    bench_sequential_insert<RobinHood::Map<int, int, H, RobinHood::Style::Big>>(upTo, times, all_stats);
+    bench_sequential_insert<RobinHood::Map<int, int, H, RobinHood::Style::Huge>>(upTo, times, all_stats);
     bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Default>>(upTo, times, all_stats);
     {
         std::vector<Stats> stats;
@@ -779,36 +805,45 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
         size_t mem_before = get_mem();
         std::unordered_map<int, int, H> r;
         int i = 0;
+        size_t found;
         for (size_t ti = 0; ti < times; ++ti) {
+            // insert
             for (size_t up = 0; up < upTo; ++up) {
                 r.emplace(i, i);
                 ++i;
             }
-            s.elapsed = t.elapsed();
+            s.elapsed_insert = t.elapsed_restart();
             s.mem = get_mem() - mem_before;
             s.num = r.size();
+
+            // query
+            for (int j = 0; j < 5; ++j) {
+                const auto endIt = r.end();
+                for (int up = 0, e = static_cast<int>(upTo); up < e; ++up) {
+                    if (endIt != r.find(up)) {
+                        ++found;
+                    }
+                }
+                for (int up = static_cast<int>(times*upTo), e = static_cast<int>(times*upTo + upTo); up < e; ++up) {
+                    if (endIt != r.find(up)) {
+                        ++found;
+                    }
+                }
+            }
+            s.elapsed_find = t.elapsed_restart();
+            s.found = found;
             stats.push_back(s);
         }
 
-        std::cout << t.elapsed() << "; ";
-        t.restart();
-        size_t found = 0;
-        auto e = r.end();
-        for (int i = 0, stop = static_cast<int>(upTo*times); i < stop; ++i) {
-            if (e != r.find(i)) {
-                ++found;
-            }
-        }
-        std::cout << "existing: " << t.elapsed() << "; " << (get_mem() - mem_before) << " (found=" << found << ")" << std::endl;
+        Stats sum;
+        sum.elapsed_find = 0;
+        sum.elapsed_insert = 0;
+        std::for_each(stats.begin(), stats.end(), [&sum](const Stats& s) {
+            sum.elapsed_find += s.elapsed_find;
+            sum.elapsed_insert += s.elapsed_insert;
+        });
 
-        std::cout << t.elapsed() << "; ";
-        t.restart();
-        for (int i = static_cast<int>(upTo*times + 1), stop = static_cast<int>(upTo*times * 2); i < stop; ++i) {
-            if (e != r.find(i)) {
-                ++found;
-            }
-        }
-        std::cout << "nonexisting: " << t.elapsed() << "; " << (get_mem() - mem_before) << " (found=" << found << ")" << std::endl;
+        std::cout << sum.elapsed_insert << " sec insert, " << sum.elapsed_find << " sec find" << std::endl;
 
         all_stats.push_back(stats);
     }
@@ -827,8 +862,8 @@ int main(int argc, char** argv) {
 
 
     try {
-        test1(31);
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 300);
+        test1(100000);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 800);
         print(stats);
         return 0;
 
