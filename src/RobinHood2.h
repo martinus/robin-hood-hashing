@@ -5,12 +5,25 @@
 
 // Here are some tricks that I want to use:
 //
-// * Keep a byte of distance around
-// * highest bit of distance byte is 1 if bucket is taken, otherwise 0.
+// - todo - 
+// * hopscotch: try to move as little as possible (not as much as possible, like its now. Search from right to left).
+// http://bannalia.blogspot.co.at/2014/01/a-better-hash-table-clang.html
+// https://probablydance.com/2014/05/03/i-wrote-a-fast-hash-table/
+// * keep key, val, info interleaved?
+// * steal from left and right? Maybe that leads to faster searches (less avalanche moves)
 // * Remember minimum and maximum search distance so far? (minimum search can be used to speed up search.
 // * keep median number of searches, and search outwards? maybe not useful.
+// * instead of hashbits, store number of elements hashed to this index? Would that do any good?
+// * adaptive hopscotch (with offsets). Max offset starts with e.g. 4. If we can't insert, increase max offset by 1 and try again.
+//
+// - done -
+// * Keep a byte of distance around
+// * highest bit of distance byte is 1 if bucket is taken, otherwise 0.
 // * Rehash if distance byte overflows? Rehash when maximum search distance is too large? /  maximum search distance reaches a maximum limit
-// * keep overflow area to the right (how big should that be?
+//
+// - won't do - 
+// * keep overflow area to the right (how big should that be?)
+
 
 // say max dist should be 16 => 5 bits needed.
 // max dist is 8: 4 bits needed (3210)
