@@ -201,60 +201,58 @@ public:
 
         // search forward, until we find an entry "richer" than us
         // (closer to it's original position).
-        while (true) {
-            // while we are richer than what's already
-            while (info < _info[idx]) {
-                ++idx;
-                //idx &= _mask;
-                info += Traits::OFFSET_INC;
-                if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
-                    increase_size();
-                    return insert(std::forward<Key>(key), std::forward<Val>(val));
-                }
-            }
 
-            while (info == _info[idx]) {
-                if (_keys[idx] == key) {
-                    // same! replace value, then bail out.
-                    _alloc_vals.destroy(_vals + idx);
-                    _alloc_vals.construct(_vals + idx, std::forward<Val>(val));
-                    return false;
-                }
-                ++idx;
-                //idx &= _mask;
-                info += Traits::OFFSET_INC;
-                if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
-                    increase_size();
-                    return insert(std::forward<Key>(key), std::forward<Val>(val));
-                }
-            }
-
-            if (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK) {
-                // bucket taken! Steal it, then continue the loop.
-                // we also steal it when offset is the same but hashbits are lower.
-                // TODO is this necessary?
-                std::swap(key, _keys[idx]);
-                std::swap(val, _vals[idx]);
-                std::swap(info, _info[idx]);
-                ++idx;
-                //idx &= _mask;
-                info += Traits::OFFSET_INC;
-
-                if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
-                    increase_size();
-                    return insert(std::forward<Key>(key), std::forward<Val>(val));
-                }
-            } else {
-                // bucket is empty! Place it, then bail out.
-                _alloc_keys.construct(_keys + idx, std::forward<Key>(key));
-                _alloc_vals.construct(_vals + idx, std::forward<Val>(val));
-                _info[idx] = info;
-                ++_num_elements;
-                return true;
+        // while we are richer than what's already there
+        while (info < _info[idx]) {
+            ++idx;
+            //idx &= _mask;
+            info += Traits::OFFSET_INC;
+            if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
+                increase_size();
+                return insert(std::forward<Key>(key), std::forward<Val>(val));
             }
         }
 
-        // TODO
+        // while we potentially have a match
+        while (info == _info[idx]) {
+            if (_keys[idx] == key) {
+                // same! replace value, then bail out.
+                _alloc_vals.destroy(_vals + idx);
+                _alloc_vals.construct(_vals + idx, std::forward<Val>(val));
+                return false;
+            }
+            ++idx;
+            //idx &= _mask;
+            info += Traits::OFFSET_INC;
+            if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
+                increase_size();
+                return insert(std::forward<Key>(key), std::forward<Val>(val));
+            }
+        }
+
+        while (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK) {
+            // bucket taken! Steal it, then continue the loop.
+            // we also steal it when offset is the same but hashbits are lower.
+            if (info > _info[idx]) {
+                // only swap when necessary
+                std::swap(key, _keys[idx]);
+                std::swap(val, _vals[idx]);
+                std::swap(info, _info[idx]);
+            }
+            ++idx;
+            //idx &= _mask;
+            info += Traits::OFFSET_INC;
+            if (!(info & Traits::IS_BUCKET_TAKEN_MASK)) {
+                increase_size();
+                return insert(std::forward<Key>(key), std::forward<Val>(val));
+            }
+        }
+
+        // bucket is empty! Place it, then bail out.
+        _alloc_keys.construct(_keys + idx, std::forward<Key>(key));
+        _alloc_vals.construct(_vals + idx, std::forward<Val>(val));
+        _info[idx] = info;
+        ++_num_elements;
         return true;
     }
 

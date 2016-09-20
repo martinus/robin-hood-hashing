@@ -11,6 +11,7 @@
 #include <unordered_map>
 
 #include <RobinHood2.h>
+#include <RobinHood3.h>
 
 #include <Windows.h>
 #include <psapi.h>
@@ -37,7 +38,7 @@ double bench_hashing(int& data) {
 
 
 void test1(int times) {
-    RobinHood::Map<int, int> rhhs;
+    RobinHood3::Map<int, int> rhhs;
     CHECK(rhhs.size() == 0);
     CHECK(rhhs.insert(32145, 123));
     CHECK(rhhs.size() == 1);
@@ -793,11 +794,14 @@ void bench_sequential_insert(size_t upTo, size_t times, std::vector<std::vector<
 template<class H>
 std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t times) {
     std::vector<std::vector<Stats>> all_stats;
+    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Default>>(upTo, times, all_stats);
+    bench_sequential_insert<RobinHood3::Map<int, int, H, RobinHood3::Style::Default>>(upTo, times, all_stats);
     bench_sequential_insert<RobinHood::Map<int, int, H, RobinHood::Style::Default>>(upTo, times, all_stats);
+    /*
     bench_sequential_insert<RobinHood::Map<int, int, H, RobinHood::Style::Large>>(upTo, times, all_stats);
     bench_sequential_insert<RobinHood::Map<int, int, H, RobinHood::Style::Big>>(upTo, times, all_stats);
     bench_sequential_insert<RobinHood::Map<int, int, H, RobinHood::Style::Huge>>(upTo, times, all_stats);
-    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Default>>(upTo, times, all_stats);
+    */
     {
         std::vector<Stats> stats;
         Stats s;
@@ -863,7 +867,7 @@ int main(int argc, char** argv) {
 
     try {
         test1(100000);
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 800);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 300);
         print(stats);
         return 0;
 
