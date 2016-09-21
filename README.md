@@ -13,7 +13,7 @@ All benchmarks done with Visual Studio 2015, Update 3, 64 bit.
 See detailed description of the different variants here:
 
 * [Part 1: Hopscotch & Robin Hood Hashing](http://martin.ankerl.com/2016/09/15/very-fast-hashmap-in-c-part-1/)
-* [Part 2: Implementation Variants](http://martin.ankerl.com/2016/09/15/very-fast-hashmap-in-c-part-2/)
-* [Part 3: Benchmark Results](http://martin.ankerl.com/2016/09/15/very-fast-hashmap-in-c-part-3/
+* [Part 2: Implementation Variants](http://martin.ankerl.com/2016/09/21/very-fast-hashmap-in-c-part-2/)
+* [Part 3: Benchmark Results](http://martin.ankerl.com/2016/09/21/very-fast-hashmap-in-c-part-3/)
 
-by [Martin Ankerl](martin.ankerl@gmail.com)
+by martinus
