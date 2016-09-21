@@ -39,9 +39,9 @@ struct Default {
 // Very compact hash map. Can have fullness of 90% or more.
 // Has a 64 bit hop.
 struct Compact {
-    typedef std::uint64_t HopType;
+    typedef std::uint32_t HopType;
     enum resize_percentage { RESIZE_PERCENTAGE = 200 };
-    enum hop_size { HOP_SIZE = 64 - 1 };
+    enum hop_size { HOP_SIZE = 32 - 1 };
     enum add_range { ADD_RANGE = 496 };
     inline static size_t h(size_t v, size_t s, size_t mask) {
         return v & mask;
@@ -92,7 +92,7 @@ public:
     /// Destroys the map and all it's contents.
     ~Map() {
         if (Debug) {
-            std::cout << "dtor: " << _size << " entries\t" << 1.0*_size / (_max_size + Traits::HOP_SIZE) << std::endl;
+            std::cout << "dtor: " << _num_elements << " entries\t" << 1.0*_num_elements / (_max_size + Traits::HOP_SIZE) << std::endl;
         }
         for (size_t i = 0; i < _max_size + Traits::HOP_SIZE; ++i) {
             if (_hops[i] & 1) {
@@ -102,9 +102,9 @@ public:
             }
         }
 
-        _alloc_val.deallocate(_vals, _size + Traits::HOP_SIZE);
-        _alloc_key.deallocate(_keys, _size + Traits::HOP_SIZE);
-        _alloc_hop.deallocate(_hops, _size + Traits::HOP_SIZE);
+        _alloc_val.deallocate(_vals, _max_size + Traits::HOP_SIZE);
+        _alloc_key.deallocate(_keys, _max_size + Traits::HOP_SIZE);
+        _alloc_hop.deallocate(_hops, _max_size + Traits::HOP_SIZE);
     }
 
     inline bool insert(const Key& key, Val&& val) {
@@ -219,7 +219,7 @@ public:
         _hops[idx] |= (Traits::HopType)1;
 
         _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx + 1));
-        ++_size;
+        ++_num_elements;
         return true;
     }
 
@@ -242,8 +242,28 @@ public:
         return nullptr;
     }
 
+    /// Returns number of erased elements, 0 or 1.
+    inline size_t erase(const Key& key) {
+        const auto original_idx = Traits::h(_hash(key), _max_size, _mask);
+        auto idx = original_idx;
+
+        Traits::HopType hops = _hops[idx] >> 1;
+        while (hops) {
+            if ((hops & 1) && (key == _keys[idx])) {
+                _hops[original_idx] ^= 1 << (idx - original_idx + 1);
+                _hops[idx] ^= 1;
+                --_num_elements;
+                return 1;
+            }
+            hops >>= 1;
+            ++idx;
+        }
+
+        return 0;
+    }
+
     inline size_t size() const {
-        return _size;
+        return _num_elements;
     }
 
     inline size_t max_size() const {
@@ -255,7 +275,7 @@ private:
     void increase_size() {
         if (Debug) {
             // calculate memory requirements
-            std::cout << "resize: " << _max_size << "\t" << 1.0*_size / (_max_size + Traits::HOP_SIZE) << std::endl;
+            std::cout << "resize: " << _max_size << "\t" << 1.0*_num_elements / (_max_size + Traits::HOP_SIZE) << std::endl;
         }
         Key* old_keys = _keys;
         Val* old_vals = _vals;
@@ -291,7 +311,7 @@ private:
 
 
     void init_data(size_t new_size) {
-        _size = 0;
+        _num_elements = 0;
         _max_size = new_size;
         _mask = _max_size - 1;
 
@@ -320,7 +340,7 @@ private:
     typename Traits::HopType* _hops;
 
     const H _hash;
-    size_t _size;
+    size_t _num_elements;
     size_t _mask;
     size_t _max_size;
     size_t _max_fullness;

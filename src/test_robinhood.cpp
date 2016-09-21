@@ -450,15 +450,14 @@ void test_map1(size_t times) {
     std::cout << "test_map done!\n" << std::endl;
 }
 
-template<class T>
 void test_compare(size_t times) {
     Timer t;
     MarsagliaMWC99 rand;
     size_t seed = 142323;
     rand.seed(seed);
 
-    HopScotch::Map<size_t, int, T> r;
-    typedef std::unordered_map<size_t, int, T> StdMap;
+    HopScotch::Map<size_t, int> r;
+    typedef std::unordered_map<size_t, int> StdMap;
     StdMap m;
 
     StdMap m2;
@@ -478,6 +477,14 @@ void test_compare(size_t times) {
         bool found_stdmap = m.find(v) != m.end();
         if (found_stdmap != is_there) {
             std::cout << i << ": " << v << " " << found_stdmap << " " << is_there << std::endl;
+        }
+
+        v = rand(i + 100);
+        if (m.erase(v) != r.erase(v)) {
+            std::cout << "erase not equal!";
+        }
+        if (m.size() != r.size()) {
+            std::cout << "sizes not equal after erase!" << std::endl;
         }
     }
     std::cout << "ok!" << std::endl;
@@ -804,6 +811,7 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
 
 int main(int argc, char** argv) {
     try {
+        test_compare(1000000);
         test1<RobinHoodInfobitsHashbits::Map<int, int>>(100000);
         test1<RobinHoodInfobyteFastforward::Map<int, int>>(100000);
         test1<RobinHoodInfobyte::Map<int, int>>(100000);
