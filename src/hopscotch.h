@@ -329,10 +329,6 @@ private:
             size_t values = sizeof(Val) * (_max_size + Traits::HOP_SIZE);
             std::cout << (keys + hops + values) << " bytes (" << keys << " keys, " << hops << " hops, " << values << " values)" << std::endl;
         }
-
-
-        //_max_fullness = (_max_size + HOP_SIZE) * 80/100;
-        _max_fullness = _max_size + Traits::HOP_SIZE - 1;
     }
 
     Val* _vals;
@@ -343,7 +339,6 @@ private:
     size_t _num_elements;
     size_t _mask;
     size_t _max_size;
-    size_t _max_fullness;
 
     AVal _alloc_val;
     AKey _alloc_key;
