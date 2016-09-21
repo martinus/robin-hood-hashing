@@ -39,7 +39,8 @@
 
 #include <cstdint>
 
-namespace RobinHood {
+// info bytes and a few hash bytes. Overflow check.
+namespace RobinHoodInfobitsHashbits {
 
 namespace Style {
 
@@ -272,19 +273,16 @@ public:
         // find info field
         while (info < _info[idx]) {
             ++idx;
-            //idx &= _mask;
             info += Traits::OFFSET_INC;
         }
 
         // check while it seems we have the correct element
-        while (info == _info[idx] && key != _keys[idx]) {
+        while (info == _info[idx]) {
+            if (key == _keys[idx]) {
+                return _vals + idx;
+            }
             ++idx;
-            //idx &= _mask;
             info += Traits::OFFSET_INC;
-        }
-
-        if (info == _info[idx]) {
-            return _vals + idx;
         }
 
         return nullptr;

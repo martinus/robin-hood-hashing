@@ -148,6 +148,7 @@
     <ClInclude Include="..\src\robinhood.h" />
     <ClInclude Include="..\src\RobinHood2.h" />
     <ClInclude Include="..\src\RobinHood3.h" />
+    <ClInclude Include="..\src\RobinHood4.h" />
     <ClInclude Include="..\src\timer.h" />
   </ItemGroup>
   <ItemGroup>
