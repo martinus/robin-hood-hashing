@@ -810,7 +810,7 @@ int main(int argc, char** argv) {
         test1<HopScotch::Map<int, int>>(100000);
         std::cout << "test1 ok!" << std::endl;
 
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 10);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 20);
         print(stats);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
