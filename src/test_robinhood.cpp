@@ -1,18 +1,16 @@
 #include <hopscotch.h>
+#include <RobinHoodInfobitsHashbits.h>
+#include <RobinHoodInfobyte.h>
+#include <RobinHoodInfobyteFastforward.h>
 
 #include <timer.h>
 #include <robinhood.h>
 #include <marsagliamwc99.h>
-#include <rh_hash_table.hpp>
 
 #include <string>
 #include <iostream>
 #include <unordered_set>
 #include <unordered_map>
-
-#include <RobinHood2.h>
-#include <RobinHood3.h>
-#include <RobinHood4.h>
 
 #include <Windows.h>
 #include <psapi.h>
@@ -450,25 +448,6 @@ void test_map1(size_t times) {
         std::cout << t.elapsed() << " std::unordered_map<size_t, int> " << u.size() << std::endl;
     }
     std::cout << "test_map done!\n" << std::endl;
-}
-
-void test_rh() {
-    hash_table<size_t, size_t> m;
-}
-
-
-struct D {
-    D() {
-        std::cout << "ctor" << std::endl;
-    }
-    ~D() {
-        std::cout << "dtor" << std::endl;
-    }
-};
-
-void test_del(int count) {
-    D* d = new D[count];
-    delete[] d;
 }
 
 template<class T>

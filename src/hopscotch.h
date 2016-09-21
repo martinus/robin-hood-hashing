@@ -5,7 +5,6 @@
 #pragma once
 
 #include <cstdint>
-#include <iostream>
 
 namespace HopScotch {
 
