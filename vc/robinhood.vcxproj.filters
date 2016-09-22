@@ -14,6 +14,7 @@
     <ClInclude Include="..\src\3rdparty\rigtorp\HashMap.h">
       <Filter>3rdparty</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\HopScotchAdaptive.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">

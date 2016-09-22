@@ -137,6 +137,7 @@
     <ClInclude Include="..\src\3rdparty\rigtorp\HashMap.h" />
     <ClInclude Include="..\src\3rdparty\sparsepp\sparsepp.h" />
     <ClInclude Include="..\src\hopscotch.h" />
+    <ClInclude Include="..\src\HopScotchAdaptive.h" />
     <ClInclude Include="..\src\marsagliamwc99.h" />
     <ClInclude Include="..\src\robinhood.h" />
     <ClInclude Include="..\src\RobinHoodInfobitsHashbits.h" />
