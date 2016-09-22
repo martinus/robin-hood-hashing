@@ -2,6 +2,8 @@
 #include <RobinHoodInfobitsHashbits.h>
 #include <RobinHoodInfobyte.h>
 #include <RobinHoodInfobyteFastforward.h>
+#include <3rdparty/rigtorp/HashMap.h>
+#include <3rdparty/sparsepp/sparsepp.h>
 
 #include <timer.h>
 #include <robinhood.h>
@@ -14,6 +16,11 @@
 
 #include <Windows.h>
 #include <psapi.h>
+
+#include <random>
+#include <chrono>
+
+#include <google/dense_hash_map>
 
 // test some hashing stuff
 template<class T>
@@ -145,7 +152,7 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
         std::cout << " HopScotch::Map<std::string, std::string, H, HopScotch::Style::Fast> with move " << r.size() << " " << f << std::endl;
     }
     {
-        HopScotch::Map<std::string, std::string, H, HopScotch::Style::Default> r;
+        HopScotch::Map<std::string, std::string, H, HopScotch::Style::Hop16> r;
         rand.seed(seed);
         size_t f = 0;
         Timer t;
@@ -161,10 +168,10 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
             }
         }
         std::cout << t.elapsed();
-        std::cout << " HopScotch::Map<std::string, std::string, H, HopScotch::Style::Default> with move " << r.size() << " " << f << std::endl;
+        std::cout << " HopScotch::Map<std::string, std::string, H, HopScotch::Style::Hop16> with move " << r.size() << " " << f << std::endl;
     }
     {
-        HopScotch::Map<std::string, std::string, H, HopScotch::Style::Compact> r;
+        HopScotch::Map<std::string, std::string, H, HopScotch::Style::Hop16> r;
         rand.seed(seed);
         size_t f = 0;
         Timer t;
@@ -180,7 +187,7 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
             }
         }
         std::cout << t.elapsed();
-        std::cout << " HopScotch::Map<std::string, std::string, H, HopScotch::Style::Compact> with move " << r.size() << " " << f << std::endl;
+        std::cout << " HopScotch::Map<std::string, std::string, H, HopScotch::Style::Hop16> with move " << r.size() << " " << f << std::endl;
     }
 
     {
@@ -212,7 +219,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
     const int seed = 23154;
 
     {
-        HopScotch::Map<size_t, T, H, HopScotch::Style::Fast> r;
+        HopScotch::Map<size_t, T, H, HopScotch::Style::Hop16> r;
         rand.seed(seed);
         size_t f = 0;
         Timer t;
@@ -229,11 +236,11 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
             }
         }
         std::cout << t.elapsed();
-        std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Fast> with move " << r.size() << " " << f << std::endl;
+        std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Hop16> with move " << r.size() << " " << f << std::endl;
     }
 
     {
-        HopScotch::Map<size_t, T, H, HopScotch::Style::Fast> r;
+        HopScotch::Map<size_t, T, H, HopScotch::Style::Hop16> r;
         rand.seed(seed);
         size_t f = 0;
         Timer t;
@@ -249,11 +256,11 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
             }
         }
         std::cout << t.elapsed();
-        std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Fast> no move " << r.size() << " " << f << std::endl;
+        std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Hop16> no move " << r.size() << " " << f << std::endl;
     }
 
     {
-        HopScotch::Map<size_t, T, H, HopScotch::Style::Default> r;
+        HopScotch::Map<size_t, T, H, HopScotch::Style::Hop16> r;
         rand.seed(seed);
         size_t f = 0;
         Timer t;
@@ -269,10 +276,10 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
             }
         }
         std::cout << t.elapsed();
-        std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Default> " << r.size() << " " << f << std::endl;
+        std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Hop16> " << r.size() << " " << f << std::endl;
     }
     {
-        HopScotch::Map<size_t, T, H, HopScotch::Style::Compact> r;
+        HopScotch::Map<size_t, T, H, HopScotch::Style::Hop16> r;
         rand.seed(seed);
         size_t f = 0;
         Timer t;
@@ -288,7 +295,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
             }
         }
         std::cout << t.elapsed();
-        std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Compact> " << r.size() << " " << f << std::endl;
+        std::cout << " HopScotch::Map<size_t, T, H, HopScotch::Style::Hop16> " << r.size() << " " << f << std::endl;
     }
 
     {
@@ -598,7 +605,7 @@ void test_count(size_t times) {
     reset_x();
     {
         rand.seed(123);
-        HopScotch::Map<X, X, HashX, HopScotch::Style::Default> hs;
+        HopScotch::Map<X, X, HashX, HopScotch::Style::Hop16> hs;
         for (size_t i = 0; i < times; ++i) {
             hs.insert(static_cast<int>(rand()), static_cast<int>(i));
         }
@@ -714,7 +721,10 @@ void print(const std::vector<std::vector<Stats>>& s) {
     for (size_t e = 0; e < elems; ++e) {
         for (size_t i = 0; i < s.size(); ++i) {
             const auto& st = s[i][e];
-            std::cout << st.elapsed_insert << ";";
+            if (i > 0) {
+                std::cout << ";";
+            }
+            std::cout << st.elapsed_insert;
         }
         std::cout << std::endl;
     }
@@ -723,7 +733,10 @@ void print(const std::vector<std::vector<Stats>>& s) {
     for (size_t e = 0; e < elems; ++e) {
         for (size_t i = 0; i < s.size(); ++i) {
             const auto& st = s[i][e];
-            std::cout << st.elapsed_find << ";";
+            if (i > 0) {
+                std::cout << ";";
+            }
+            std::cout << st.elapsed_find;
         }
         std::cout << std::endl;
     }
@@ -732,7 +745,10 @@ void print(const std::vector<std::vector<Stats>>& s) {
     for (size_t e = 0; e < elems; ++e) {
         for (size_t i = 0; i < s.size(); ++i) {
             const auto& st = s[i][e];
-            std::cout << st.mem << ";";
+            if (i > 0) {
+                std::cout << ";";
+            }
+            std::cout << st.mem;
         }
         std::cout << std::endl;
     }
@@ -741,7 +757,10 @@ void print(const std::vector<std::vector<Stats>>& s) {
     for (size_t e = 0; e < elems; ++e) {
         for (size_t i = 0; i < s.size(); ++i) {
             const auto& st = s[i][e];
-            std::cout << st.num << ";";
+            if (i > 0) {
+                std::cout << ";";
+            }
+            std::cout << st.num;
         }
         std::cout << std::endl;
     }
@@ -751,23 +770,34 @@ void print(const std::vector<std::vector<Stats>>& s) {
 template<class H>
 std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t times) {
     std::vector<std::vector<Stats>> all_stats;
-    bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, RobinHoodInfobyte::Style::Default>>("infobyte", upTo, times, all_stats);
-    bench_sequential_insert<RobinHoodInfobitsHashbits::Map<int, int, H, RobinHoodInfobitsHashbits::Style::Default>>("info & hash & overflow check", upTo, times, all_stats);
-    bench_sequential_insert<RobinHoodInfobyteFastforward::Map<int, int, H, RobinHoodInfobyteFastforward::Style::Default>>("info & fastforward", upTo, times, all_stats);
-    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Default>>("hopscotch", upTo, times, all_stats);
+    //bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, RobinHoodInfobyte::Style::Default>>("infobyte", upTo, times, all_stats);
+    //bench_sequential_insert<RobinHoodInfobitsHashbits::Map<int, int, H, RobinHoodInfobitsHashbits::Style::Default>>("info & hash & overflow check", upTo, times, all_stats);
+    //bench_sequential_insert<RobinHoodInfobyteFastforward::Map<int, int, H, RobinHoodInfobyteFastforward::Style::Default>>("info & fastforward", upTo, times, all_stats);
+    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop8>>("Hopscotch Hop8", upTo, times, all_stats);
+    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop16>>("Hopscotch Hop16", upTo, times, all_stats);
+    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop32>>("Hopscotch Hop32", upTo, times, all_stats);
+    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop64>>("Hopscotch Hop64", upTo, times, all_stats);
     {
         std::vector<Stats> stats;
         Stats s;
         Timer t;
         size_t mem_before = get_mem();
-        std::unordered_map<int, int, H> r;
+        
+        //spp::sparse_hash_map<int, int, H> r;
+        //std::unordered_map<int, int, H> r;
+
+        google::dense_hash_map<int, int, H> r;
+        r.set_empty_key(-1);
+        r.set_deleted_key(-2);
+
         int i = 0;
         size_t found = 0;
         for (size_t ti = 0; ti < times; ++ti) {
             // insert
             t.restart();
             for (size_t up = 0; up < upTo; ++up) {
-                r.emplace(i, i);
+                r[i] = i;
+                //r.insert(i, i);
                 ++i;
             }
             s.elapsed_insert = t.elapsed();
@@ -809,16 +839,79 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     return all_stats;
 }
 
+template<class H>
+void random_bench(const std::string& title) {
+    constexpr size_t count = 1000000;
+    constexpr size_t iters = 1000000000;
+
+    H hm;
+    std::mt19937 mt;
+    std::uniform_int_distribution<int> ud(2, count);
+
+    int val;
+    for (size_t i = 0; i < count; ++i) {
+        val = ud(mt);
+        hm.insert(val, val);
+    }
+
+    auto start = std::chrono::high_resolution_clock::now();
+    for (size_t i = 0; i < iters; ++i) {
+        hm.erase(val);
+        val = ud(mt);
+        hm.insert(val, val);
+    }
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = stop - start;
+
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() / iters
+        << " ns/iter for " << title << "(size=" << hm.size() << ")" << std::endl;
+}
+
+template<class H>
+void random_bench_std(const std::string& title) {
+    constexpr size_t count = 1000000;
+    constexpr size_t iters = 1000000000;
+
+    H hm;
+    std::mt19937 mt;
+    std::uniform_int_distribution<int> ud(2, count);
+
+    int val;
+    for (size_t i = 0; i < count; ++i) {
+        val = ud(mt);
+        hm.emplace(val, val);
+    }
+
+    auto start = std::chrono::high_resolution_clock::now();
+    for (size_t i = 0; i < iters; ++i) {
+        hm.erase(val);
+        val = ud(mt);
+        hm.emplace(val, val);
+    }
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = stop - start;
+
+    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() / iters
+        << " ns/iter for " << title << "(size=" << hm.size() << ")" << std::endl;
+}
+
 int main(int argc, char** argv) {
     try {
         test_compare(1000000);
+        //random_bench<RobinHoodInfobitsHashbits::Map<int, int>>("RobinHoodInfobitsHashbits");
+        //random_bench<RobinHoodInfobyteFastforward::Map<int, int>>("RobinHoodInfobyteFastforward");
+        //random_bench<RobinHoodInfobyte::Map<int, int>>("RobinHoodInfobyte");
+        //random_bench_std<rigtorp::HashMap<int, int>>("HashMap");
+        //random_bench<HopScotch::Map<int, int>>("HopScotch");
+        //random_bench_std<std::unordered_map<int, int>>("std::unordered_map");
+
         test1<RobinHoodInfobitsHashbits::Map<int, int>>(100000);
         test1<RobinHoodInfobyteFastforward::Map<int, int>>(100000);
         test1<RobinHoodInfobyte::Map<int, int>>(100000);
         test1<HopScotch::Map<int, int>>(100000);
         std::cout << "test1 ok!" << std::endl;
 
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 20);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 100);
         print(stats);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

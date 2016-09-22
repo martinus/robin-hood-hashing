@@ -13,19 +13,21 @@ namespace Style {
 // Very aggressive data structure. Use only for small number of elements,
 // e.g. 10.000 or so. Use with a good hash. Enable debugging to see
 // the fullness of the hashmap.
-struct Fast {
-    typedef std::uint16_t HopType;
-    enum resize_percentage { RESIZE_PERCENTAGE = 400 };
-    enum hop_size { HOP_SIZE = 16 - 1 };
+
+struct Hop8 {
+    typedef std::uint8_t HopType;
+    enum resize_percentage { RESIZE_PERCENTAGE = 200 };
+    enum hop_size { HOP_SIZE = 8 - 1 };
     enum add_range { ADD_RANGE = 496 };
     inline static size_t h(size_t v, size_t s, size_t mask) {
         return v & mask;
     }
 };
 
+
 // Default setting, with 32 bit hop. This is usually a good choice
 // that scales very well and is quite fast.
-struct Default {
+struct Hop16 {
     typedef std::uint16_t HopType;
     enum resize_percentage { RESIZE_PERCENTAGE = 200 };
     enum hop_size { HOP_SIZE = 16 - 1 };
@@ -38,10 +40,23 @@ struct Default {
 
 // Very compact hash map. Can have fullness of 90% or more.
 // Has a 64 bit hop.
-struct Compact {
+struct Hop32 {
     typedef std::uint32_t HopType;
     enum resize_percentage { RESIZE_PERCENTAGE = 200 };
     enum hop_size { HOP_SIZE = 32 - 1 };
+    enum add_range { ADD_RANGE = 496 };
+    inline static size_t h(size_t v, size_t s, size_t mask) {
+        return v & mask;
+    }
+};
+
+
+// Very compact hash map. Can have fullness of 90% or more.
+// Has a 64 bit hop.
+struct Hop64 {
+    typedef std::uint64_t HopType;
+    enum resize_percentage { RESIZE_PERCENTAGE = 200 };
+    enum hop_size { HOP_SIZE = 64 - 1 };
     enum add_range { ADD_RANGE = 496 };
     inline static size_t h(size_t v, size_t s, size_t mask) {
         return v & mask;
@@ -61,7 +76,7 @@ template<
     class Key,
     class Val,
     class H = std::hash<Key>,
-    class Traits = Style::Default,
+    class Traits = Style::Hop16,
     bool Debug = false,
     class AVal = std::allocator<Val>,
     class AKey = std::allocator<Key>,
@@ -231,6 +246,7 @@ public:
         auto idx = Traits::h(_hash(key), _max_size, _mask);
 
         Traits::HopType hops = _hops[idx] >> 1;
+
         while (hops) {
             if ((hops & 1) && (key == _keys[idx])) {
                 return _vals + idx;

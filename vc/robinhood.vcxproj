@@ -84,7 +84,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\src\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src\;..\src\3rdparty\google;..\src\3rdparty\google\windows</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -97,7 +97,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\src\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src\;..\src\3rdparty\google;..\src\3rdparty\google\windows</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -110,7 +110,7 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\src\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src\;..\src\3rdparty\google;..\src\3rdparty\google\windows</AdditionalIncludeDirectories>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
     </ClCompile>
     <Link>
@@ -125,7 +125,7 @@
       <PrecompiledHeader>
       </PrecompiledHeader>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\src\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src\;..\src\3rdparty\google;..\src\3rdparty\google\windows</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -134,6 +134,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\3rdparty\rigtorp\HashMap.h" />
+    <ClInclude Include="..\src\3rdparty\sparsepp\sparsepp.h" />
     <ClInclude Include="..\src\hopscotch.h" />
     <ClInclude Include="..\src\marsagliamwc99.h" />
     <ClInclude Include="..\src\robinhood.h" />
