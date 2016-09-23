@@ -1,4 +1,5 @@
 #include <hopscotch.h>
+#include <HopScotchAdaptive.h>
 #include <RobinHoodInfobitsHashbits.h>
 #include <RobinHoodInfobyte.h>
 #include <RobinHoodInfobyteFastforward.h>
@@ -56,9 +57,8 @@ void test1(int times) {
         CHECK(found != nullptr);
         CHECK(*found == i);
         if (rhhs.size() != 2 + i) {
-            std::cout << "asdf" << std::endl;
+            CHECK(rhhs.size() == 2 + i);
         }
-        CHECK(rhhs.size() == 2 + i);
     }
 
     // check if everything can be found
@@ -773,6 +773,7 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     //bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, RobinHoodInfobyte::Style::Default>>("infobyte", upTo, times, all_stats);
     //bench_sequential_insert<RobinHoodInfobitsHashbits::Map<int, int, H, RobinHoodInfobitsHashbits::Style::Default>>("info & hash & overflow check", upTo, times, all_stats);
     //bench_sequential_insert<RobinHoodInfobyteFastforward::Map<int, int, H, RobinHoodInfobyteFastforward::Style::Default>>("info & fastforward", upTo, times, all_stats);
+    bench_sequential_insert<HopScotchAdaptive::Map<int, int, H>>("HopScotchAdaptive", upTo, times, all_stats);
     bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop8>>("Hopscotch Hop8", upTo, times, all_stats);
     bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop16>>("Hopscotch Hop16", upTo, times, all_stats);
     bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop32>>("Hopscotch Hop32", upTo, times, all_stats);
@@ -897,7 +898,7 @@ void random_bench_std(const std::string& title) {
 
 int main(int argc, char** argv) {
     try {
-        test_compare(1000000);
+        //test_compare(1000000);
         //random_bench<RobinHoodInfobitsHashbits::Map<int, int>>("RobinHoodInfobitsHashbits");
         //random_bench<RobinHoodInfobyteFastforward::Map<int, int>>("RobinHoodInfobyteFastforward");
         //random_bench<RobinHoodInfobyte::Map<int, int>>("RobinHoodInfobyte");
@@ -905,6 +906,7 @@ int main(int argc, char** argv) {
         //random_bench<HopScotch::Map<int, int>>("HopScotch");
         //random_bench_std<std::unordered_map<int, int>>("std::unordered_map");
 
+        test1<HopScotchAdaptive::Map<int, int>>(100000);
         test1<RobinHoodInfobitsHashbits::Map<int, int>>(100000);
         test1<RobinHoodInfobyteFastforward::Map<int, int>>(100000);
         test1<RobinHoodInfobyte::Map<int, int>>(100000);

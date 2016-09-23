@@ -6,8 +6,6 @@
 
 #include <cstdint>
 
-namespace HopScotchAdaptive {
-
 // This is an adaptive hopscotch hash map. It automatically adapts the hop size based on the map's fullness.
 // Here is the idea:
 // Initially, it always starts with 1 byte hopinfo. Insertion and search will be very fast.
@@ -60,11 +58,37 @@ namespace HopScotchAdaptive {
 // * _hopsize += 8;
 //
 // Maybe double hopwidth (1, 2, 4)?
+namespace HopScotchAdaptive {
+
+namespace Style {
+
+// Very aggressive data structure. Use only for small number of elements,
+// e.g. 10.000 or so. Use with a good hash. Enable debugging to see
+// the fullness of the hashmap.
+
+struct Default {
+    typedef std::uint8_t HopType;
+    static constexpr size_t RESIZE_PERCENTAGE = 200;
+    static constexpr size_t MIN_HOPSIZE = 8 - 1;
+    static constexpr size_t MAX_HOPSIZE = 32 - 1;
+    static constexpr size_t ADD_RANGE = 496;
+};
+
+}
+
+/// This is a hash map implementation, based on the hopscotch algorithm. For details see
+/// http://mcg.cs.tau.ac.il/papers/disc2008-hopscotch.pdf
+/// https://github.com/harieshsathya/Hopscotch-Hashing/blob/master/hopscotch.cpp
+///
+/// In many cases, the hashmap should be faster than std::unordered_map.
+/// It is flexible with the use of different styles (fast, to compact).
+///
+/// When insertion fails, the hashmap resizes automatically.
 template<
     class Key,
     class Val,
     class H = std::hash<Key>,
-    class Traits = Style::Hop16,
+    class Traits = Style::Default,
     bool Debug = false,
     class AVal = std::allocator<Val>,
     class AKey = std::allocator<Key>,
@@ -82,22 +106,22 @@ public:
 
     /// Clears all data, without resizing.
     void clear() {
-        for (size_t i = 0; i < _max_size + Traits::HOP_SIZE; ++i) {
+        for (size_t i = 0; i < _max_size + _hopsize; ++i) {
             if (_hops[i] & 1) {
                 _alloc_val.destroy(_vals + i);
                 _alloc_key.destroy(_keys + i);
             }
             _hops[i] = (Traits::HopType)0;
         }
-        _size = 0;
+        _num_elements = 0;
     }
 
     /// Destroys the map and all it's contents.
     ~Map() {
         if (Debug) {
-            std::cout << "dtor: " << _num_elements << " entries\t" << 1.0*_num_elements / (_max_size + Traits::HOP_SIZE) << std::endl;
+            std::cout << "dtor: " << _num_elements << " entries\t" << 1.0*_num_elements / (_max_size + Traits::MAX_HOPSIZE) << std::endl;
         }
-        for (size_t i = 0; i < _max_size + Traits::HOP_SIZE; ++i) {
+        for (size_t i = 0; i < _max_size + _hopsize; ++i) {
             if (_hops[i] & 1) {
                 _alloc_val.destroy(_vals + i);
                 _alloc_key.destroy(_keys + i);
@@ -105,9 +129,9 @@ public:
             }
         }
 
-        _alloc_val.deallocate(_vals, _max_size + Traits::HOP_SIZE);
-        _alloc_key.deallocate(_keys, _max_size + Traits::HOP_SIZE);
-        _alloc_hop.deallocate(_hops, _max_size + Traits::HOP_SIZE);
+        _alloc_val.deallocate(_vals, _max_size + Traits::MAX_HOPSIZE);
+        _alloc_key.deallocate(_keys, _max_size + Traits::MAX_HOPSIZE);
+        _alloc_hop.deallocate(_hops, _max_size + Traits::MAX_HOPSIZE);
     }
 
     inline bool insert(const Key& key, Val&& val) {
@@ -127,7 +151,7 @@ public:
     }
 
     inline bool insert(Key&& key, Val&& val) {
-        size_t initial_idx = Traits::h(_hash(key), _max_size, _mask);
+        const size_t initial_idx = _hash(key) & _mask;
 
         // now, idx is the preferred position for this element. Search forward to find an empty place.
         // we use overflow area, so no modulo is required.
@@ -149,8 +173,8 @@ public:
         // key is not there, find an empty spot
         idx = initial_idx;
         size_t e = initial_idx + Traits::ADD_RANGE;
-        if (e > _max_size + Traits::HOP_SIZE) {
-            e = _max_size + Traits::HOP_SIZE;
+        if (e > _max_size + _hopsize) {
+            e = _max_size + _hopsize;
         }
         while ((idx < e) && (_hops[idx] & 1)) {
             ++idx;
@@ -174,11 +198,11 @@ public:
 
         // This tries to find a swappable element that is as far away as possible. To do that, it tries to
         // find out if the element furthest away can be moved, by finding the hop for this element.
-        while (idx > initial_idx + Traits::HOP_SIZE - 1) {
+        while (idx > initial_idx + _hopsize - 1) {
             // h: where the hash wants to be
             // i: where it actually is
             // idx: where it can be moved
-            size_t start_h = idx < Traits::HOP_SIZE ? 0 : idx - Traits::HOP_SIZE + 1;
+            size_t start_h = idx < _hopsize ? 0 : idx - _hopsize + 1;
             size_t h;
             size_t i = start_h - 1;
             do {
@@ -196,6 +220,15 @@ public:
             if (i >= idx) {
                 // insertion failed, undo _hop[idx]
                 _hops[idx] ^= (Traits::HopType)1;
+
+                // retry with larger hopsize
+                /*
+                if (_hopsize < Traits::MAX_HOPSIZE) {
+                    _hopsize += 8;
+                } else {
+                    increase_size();
+                }
+                */
                 increase_size();
                 return insert(std::forward<Key>(key), std::forward<Val>(val));
             }
@@ -231,7 +264,7 @@ public:
     }
 
     inline const Val* find(const Key& key) const {
-        auto idx = Traits::h(_hash(key), _max_size, _mask);
+        auto idx = _hash(key) & _mask;
 
         Traits::HopType hops = _hops[idx] >> 1;
 
@@ -279,7 +312,7 @@ private:
     void increase_size() {
         if (Debug) {
             // calculate memory requirements
-            std::cout << "resize: " << _max_size << "\t" << 1.0*_num_elements / (_max_size + Traits::HOP_SIZE) << std::endl;
+            std::cout << "resize: " << _max_size << "\t" << 1.0*_num_elements / (_max_size + Traits::MAX_HOPSIZE) << std::endl;
         }
         Key* old_keys = _keys;
         Val* old_vals = _vals;
@@ -297,9 +330,10 @@ private:
                 throw std::exception("can't resize");
             }
         }
+        auto old_hopsize = _hopsize;
         init_data(new_size);
 
-        for (size_t i = 0; i < old_size + Traits::HOP_SIZE; ++i) {
+        for (size_t i = 0; i < old_size + old_hopsize; ++i) {
             if (old_hops[i] & 1) {
                 insert(std::move(old_keys[i]), std::move(old_vals[i]));
                 _alloc_val.destroy(old_vals + i);
@@ -308,9 +342,9 @@ private:
             }
         }
 
-        _alloc_val.deallocate(old_vals, old_size + Traits::HOP_SIZE);
-        _alloc_key.deallocate(old_keys, old_size + Traits::HOP_SIZE);
-        _alloc_hop.deallocate(old_hops, old_size + Traits::HOP_SIZE);
+        _alloc_val.deallocate(old_vals, old_size + Traits::MAX_HOPSIZE);
+        _alloc_key.deallocate(old_keys, old_size + Traits::MAX_HOPSIZE);
+        _alloc_hop.deallocate(old_hops, old_size + Traits::MAX_HOPSIZE);
     }
 
 
@@ -318,19 +352,20 @@ private:
         _num_elements = 0;
         _max_size = new_size;
         _mask = _max_size - 1;
+        _hopsize = Traits::MIN_HOPSIZE;
 
-        _hops = _alloc_hop.allocate(_max_size + Traits::HOP_SIZE);
-        _keys = _alloc_key.allocate(_max_size + Traits::HOP_SIZE, _hops);
-        _vals = _alloc_val.allocate(_max_size + Traits::HOP_SIZE, _keys);
+        _hops = _alloc_hop.allocate(_max_size + Traits::MAX_HOPSIZE);
+        _keys = _alloc_key.allocate(_max_size + Traits::MAX_HOPSIZE, _hops);
+        _vals = _alloc_val.allocate(_max_size + Traits::MAX_HOPSIZE, _keys);
 
-        for (size_t i = 0; i < _max_size + Traits::HOP_SIZE; ++i) {
+        for (size_t i = 0; i < _max_size + Traits::MAX_HOPSIZE; ++i) {
             _alloc_hop.construct(_hops + i, 0);
         }
 
         if (Debug) {
-            size_t keys = sizeof(size_t) * (_max_size + Traits::HOP_SIZE);
-            size_t hops = sizeof(Traits::HopType) * (_max_size + Traits::HOP_SIZE);
-            size_t values = sizeof(Val) * (_max_size + Traits::HOP_SIZE);
+            size_t keys = sizeof(size_t) * (_max_size + Traits::MAX_HOPSIZE);
+            size_t hops = sizeof(Traits::HopType) * (_max_size + Traits::MAX_HOPSIZE);
+            size_t values = sizeof(Val) * (_max_size + Traits::MAX_HOPSIZE);
             std::cout << (keys + hops + values) << " bytes (" << keys << " keys, " << hops << " hops, " << values << " values)" << std::endl;
         }
     }
@@ -343,6 +378,7 @@ private:
     size_t _num_elements;
     size_t _mask;
     size_t _max_size;
+    size_t _hopsize;
 
     AVal _alloc_val;
     AKey _alloc_key;
