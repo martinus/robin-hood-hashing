@@ -101,7 +101,7 @@ public:
             }
             _hops[i] = (Traits::HopType)0;
         }
-        _size = 0;
+        _num_elements = 0;
     }
 
     /// Destroys the map and all it's contents.
