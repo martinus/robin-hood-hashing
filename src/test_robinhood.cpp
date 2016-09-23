@@ -773,11 +773,14 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     //bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, RobinHoodInfobyte::Style::Default>>("infobyte", upTo, times, all_stats);
     //bench_sequential_insert<RobinHoodInfobitsHashbits::Map<int, int, H, RobinHoodInfobitsHashbits::Style::Default>>("info & hash & overflow check", upTo, times, all_stats);
     //bench_sequential_insert<RobinHoodInfobyteFastforward::Map<int, int, H, RobinHoodInfobyteFastforward::Style::Default>>("info & fastforward", upTo, times, all_stats);
-    bench_sequential_insert<HopScotchAdaptive::Map<int, int, H>>("HopScotchAdaptive", upTo, times, all_stats);
-    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop8>>("Hopscotch Hop8", upTo, times, all_stats);
-    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop16>>("Hopscotch Hop16", upTo, times, all_stats);
-    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop32>>("Hopscotch Hop32", upTo, times, all_stats);
-    bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop64>>("Hopscotch Hop64", upTo, times, all_stats);
+    //bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, all_stats);
+    //bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, HopScotchAdaptive::Style::DefaultFar>>("HopScotchAdaptive Default", upTo, times, all_stats);
+    bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, HopScotchAdaptive::Style::Big>>("HopScotchAdaptive Big", upTo, times, all_stats);
+    //bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, HopScotchAdaptive::Style::BigFar>>("HopScotchAdaptive BigFar", upTo, times, all_stats);
+    //bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop8>>("Hopscotch Hop8", upTo, times, all_stats);
+    //bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop16>>("Hopscotch Hop16", upTo, times, all_stats);
+    //bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop32>>("Hopscotch Hop32", upTo, times, all_stats);
+    //bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop64>>("Hopscotch Hop64", upTo, times, all_stats);
     {
         std::vector<Stats> stats;
         Stats s;
@@ -913,7 +916,7 @@ int main(int argc, char** argv) {
         test1<HopScotch::Map<int, int>>(100000);
         std::cout << "test1 ok!" << std::endl;
 
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 100);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 500);
         print(stats);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

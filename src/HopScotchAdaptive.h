@@ -29,7 +29,7 @@
 // was hashed to idx 0, and 1 element that was hashed to idx 7:
 // (81hex is 1000.0001 binary):
 //   
-//  |00 00 00 81 00 00 00 81 00 00 00 00 00 00 00 00|
+//  |81 00 00 00 00 00 00 81 00 00 00 00 00 00 00 00|
 //  | 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15|
 //
 // hop info is extracted like this:
@@ -67,11 +67,37 @@ namespace Style {
 // the fullness of the hashmap.
 
 struct Default {
-    typedef std::uint8_t HopType;
+    typedef std::uint32_t HopType;
     static constexpr size_t RESIZE_PERCENTAGE = 200;
     static constexpr size_t MIN_HOPSIZE = 8 - 1;
     static constexpr size_t MAX_HOPSIZE = 32 - 1;
     static constexpr size_t ADD_RANGE = 496;
+};
+
+struct DefaultFar {
+    typedef std::uint32_t HopType;
+    static constexpr size_t RESIZE_PERCENTAGE = 200;
+    static constexpr size_t MIN_HOPSIZE = 8 - 1;
+    static constexpr size_t MAX_HOPSIZE = 32 - 1;
+    static constexpr size_t ADD_RANGE = 5496;
+};
+
+
+struct Big {
+    typedef std::uint64_t HopType;
+    static constexpr size_t RESIZE_PERCENTAGE = 200;
+    static constexpr size_t MIN_HOPSIZE = 8 - 1;
+    static constexpr size_t MAX_HOPSIZE = 64 - 1;
+    static constexpr size_t ADD_RANGE = 1024;
+};
+
+
+struct BigFar {
+    typedef std::uint64_t HopType;
+    static constexpr size_t RESIZE_PERCENTAGE = 200;
+    static constexpr size_t MIN_HOPSIZE = 8 - 1;
+    static constexpr size_t MAX_HOPSIZE = 64 - 1;
+    static constexpr size_t ADD_RANGE = 5496;
 };
 
 }
@@ -92,7 +118,7 @@ template<
     bool Debug = false,
     class AVal = std::allocator<Val>,
     class AKey = std::allocator<Key>,
-    class AHop = std::allocator<Traits::HopType>
+    class AHop = std::allocator<std::uint8_t>
 >
 class Map {
 public:
@@ -104,15 +130,23 @@ public:
         init_data(32);
     }
 
+    inline typename Traits::HopType& hop(size_t idx) {
+        return *reinterpret_cast<Traits::HopType*>(_hopbytes + idx * _hopwidth);
+    }
+
+    inline const typename Traits::HopType& hop(size_t idx) const {
+        return *reinterpret_cast<Traits::HopType*>(_hopbytes + idx * _hopwidth);
+    }
+
     /// Clears all data, without resizing.
     void clear() {
         for (size_t i = 0; i < _max_size + _hopsize; ++i) {
-            if (_hops[i] & 1) {
+            if (hop(i) & _is_bucket_taken_mask) {
                 _alloc_val.destroy(_vals + i);
                 _alloc_key.destroy(_keys + i);
             }
-            _hops[i] = (Traits::HopType)0;
         }
+        std::memset(_hopbytes, 0, _hopwidth * (_max_elements + Traits::MAX_HOPSIZE - 1) + sizeof(Traits::HopType));
         _num_elements = 0;
     }
 
@@ -122,16 +156,15 @@ public:
             std::cout << "dtor: " << _num_elements << " entries\t" << 1.0*_num_elements / (_max_size + Traits::MAX_HOPSIZE) << std::endl;
         }
         for (size_t i = 0; i < _max_size + _hopsize; ++i) {
-            if (_hops[i] & 1) {
+            if (hop(i) & _is_bucket_taken_mask) {
                 _alloc_val.destroy(_vals + i);
                 _alloc_key.destroy(_keys + i);
-                _alloc_hop.destroy(_hops + i);
             }
         }
 
         _alloc_val.deallocate(_vals, _max_size + Traits::MAX_HOPSIZE);
         _alloc_key.deallocate(_keys, _max_size + Traits::MAX_HOPSIZE);
-        _alloc_hop.deallocate(_hops, _max_size + Traits::MAX_HOPSIZE);
+        _alloc_hop.deallocate(_hopbytes, _hopwidth * (_max_size + Traits::MAX_HOPSIZE - 1) + sizeof(Traits::HopType));
     }
 
     inline bool insert(const Key& key, Val&& val) {
@@ -158,7 +191,7 @@ public:
         size_t idx = initial_idx;
 
         // find key & replace if found
-        Traits::HopType hops = _hops[idx] >> 1;
+        Traits::HopType hops = hop(idx) & _hopmask;
         while (hops) {
             if ((hops & 1) && (_keys[idx] == key)) {
                 // found the key! replace value
@@ -176,7 +209,8 @@ public:
         if (e > _max_size + _hopsize) {
             e = _max_size + _hopsize;
         }
-        while ((idx < e) && (_hops[idx] & 1)) {
+        while ((idx < e) && (hop(idx) & _is_bucket_taken_mask)) {
+            // TODO insert swapping code here!
             ++idx;
         }
 
@@ -189,8 +223,8 @@ public:
 
         //++_counts[idx - initial_idx];
 
-        // set the empty spot's hop bit
-        _hops[idx] |= (Traits::HopType)1;
+        // set the empty spot's hop bit. Now all taken bits are set like when insert would be successful.
+        hop(idx) |= _is_bucket_taken_mask;
 
         // TODO can this be made faster?
         // we have found an empty spot, but it might be far away. We have to move the hole to the front
@@ -209,8 +243,8 @@ public:
                 ++i;
                 // find the hash place h for element i by looking through the hops
                 h = start_h;
-                Traits::HopType hop_mask = (Traits::HopType)1 << (i - h + 1);
-                while (h <= i && !(_hops[h] & hop_mask)) {
+                Traits::HopType hop_mask = (Traits::HopType)1 << (i - h);
+                while (hop_mask && !(hop(h) & hop_mask)) {
                     ++h;
                     hop_mask >>= 1;
                 }
@@ -219,17 +253,12 @@ public:
             // insertion failed? resize and try again.
             if (i >= idx) {
                 // insertion failed, undo _hop[idx]
-                _hops[idx] ^= (Traits::HopType)1;
+                hop(idx) ^= _is_bucket_taken_mask;
 
-                // retry with larger hopsize
-                /*
-                if (_hopsize < Traits::MAX_HOPSIZE) {
-                    _hopsize += 8;
-                } else {
+                // first try to increase hopsize, if that fails increase size.
+                if (!increase_hopsize()) {
                     increase_size();
                 }
-                */
-                increase_size();
                 return insert(std::forward<Key>(key), std::forward<Val>(val));
             }
 
@@ -240,10 +269,10 @@ public:
 
             _alloc_val.construct(_vals + idx, std::move(_vals[i]));
             _alloc_val.destroy(_vals + i);
-            _hops[h] |= ((Traits::HopType)1 << (idx - h + 1));
+            hop(h) |= ((Traits::HopType)1 << (idx - h));
 
             // clear hop bit
-            _hops[h] ^= ((Traits::HopType)1 << (i - h + 1));
+            hop(h) ^= ((Traits::HopType)1 << (i - h));
 
             idx = i;
         }
@@ -252,9 +281,9 @@ public:
         // it's rightful place.
         _alloc_val.construct(_vals + idx, std::forward<Val>(val));
         _alloc_key.construct(_keys + idx, std::forward<Key>(key));
-        _hops[idx] |= (Traits::HopType)1;
 
-        _hops[initial_idx] |= ((Traits::HopType)1 << (idx - initial_idx + 1));
+        hop(idx) |= _is_bucket_taken_mask;
+        hop(initial_idx) |= ((Traits::HopType)1 << (idx - initial_idx));
         ++_num_elements;
         return true;
     }
@@ -266,7 +295,7 @@ public:
     inline const Val* find(const Key& key) const {
         auto idx = _hash(key) & _mask;
 
-        Traits::HopType hops = _hops[idx] >> 1;
+        Traits::HopType hops = hop(idx) & _hopmask;
 
         while (hops) {
             if ((hops & 1) && (key == _keys[idx])) {
@@ -281,14 +310,14 @@ public:
 
     /// Returns number of erased elements, 0 or 1.
     inline size_t erase(const Key& key) {
-        const auto original_idx = Traits::h(_hash(key), _max_size, _mask);
+        const auto original_idx = _hash(key) & _mask;
         auto idx = original_idx;
 
-        Traits::HopType hops = _hops[idx] >> 1;
+        Traits::HopType hops = hop(idx) & _hopmask;
         while (hops) {
             if ((hops & 1) && (key == _keys[idx])) {
-                _hops[original_idx] ^= 1 << (idx - original_idx + 1);
-                _hops[idx] ^= 1;
+                hop(original_idx) ^= 1 << (idx - original_idx);
+                hop(idx) ^= 1;
                 --_num_elements;
                 return 1;
             }
@@ -308,6 +337,50 @@ public:
     }
 
 private:
+    bool increase_hopsize() {
+        if (_hopsize == Traits::MAX_HOPSIZE) {
+            // can't increase hopsize
+            return false;
+        }
+
+        const auto old_hopsize = _hopsize;
+        const auto old_hopmask = _hopmask;
+        const auto old_is_bucket_taken_mask = _is_bucket_taken_mask;
+        const auto old_hopwidth = _hopwidth;
+        const auto old_hopbytes = _hopbytes;
+
+        // +1
+        //_hopwidth *= 2;
+        ++_hopwidth;
+
+        if (Debug) {
+            // calculate memory requirements
+            std::cout << "hop resize to " << _hopwidth << ": " << _max_size << "\t" << 1.0*_num_elements / (_max_size + Traits::MAX_HOPSIZE) << std::endl;
+        }
+
+        _hopsize = _hopwidth * 8 - 1;
+        _is_bucket_taken_mask = (Traits::HopType)1 << _hopsize;
+        _hopmask = _is_bucket_taken_mask - 1;
+
+
+        _hopbytes = _alloc_hop.allocate(_hopwidth * (_max_size + Traits::MAX_HOPSIZE - 1) + sizeof(Traits::HopType));
+        std::memset(_hopbytes, 0, _hopwidth * (_max_size + Traits::MAX_HOPSIZE - 1) + sizeof(Traits::HopType));
+
+        for (size_t i = 0; i < _max_size + old_hopsize; ++i) {
+            const auto old_hop = *reinterpret_cast<Traits::HopType*>(old_hopbytes + i * old_hopwidth);
+            auto& new_hop = *reinterpret_cast<Traits::HopType*>(_hopbytes + i * _hopwidth);
+            if (old_hop & old_is_bucket_taken_mask) {
+                new_hop |= _is_bucket_taken_mask;
+            }
+            new_hop |= (old_hop & old_hopmask);
+        }
+
+        _alloc_hop.deallocate(old_hopbytes, old_hopwidth * (_max_size + Traits::MAX_HOPSIZE - 1) + sizeof(Traits::HopType));
+
+        // copy over old hopbytes
+        return true;
+    }
+
     // doubles size
     void increase_size() {
         if (Debug) {
@@ -316,7 +389,8 @@ private:
         }
         Key* old_keys = _keys;
         Val* old_vals = _vals;
-        Traits::HopType* old_hops = _hops;
+        auto* old_hopbytes = _hopbytes;
+        auto old_hopwidth = _hopwidth;
 
         size_t old_size = _max_size;
 
@@ -330,21 +404,22 @@ private:
                 throw std::exception("can't resize");
             }
         }
-        auto old_hopsize = _hopsize;
+        const auto old_hopsize = _hopsize;
+        const auto old_is_bucket_taken_mask = _is_bucket_taken_mask;
         init_data(new_size);
 
         for (size_t i = 0; i < old_size + old_hopsize; ++i) {
-            if (old_hops[i] & 1) {
+            // can't use hop(i) because _hopbytes is overwritten!            
+            if (*reinterpret_cast<Traits::HopType*>(old_hopbytes + i * old_hopwidth) & old_is_bucket_taken_mask) {
                 insert(std::move(old_keys[i]), std::move(old_vals[i]));
                 _alloc_val.destroy(old_vals + i);
                 _alloc_key.destroy(old_keys + i);
-                _alloc_hop.destroy(old_hops + i);
             }
         }
 
         _alloc_val.deallocate(old_vals, old_size + Traits::MAX_HOPSIZE);
         _alloc_key.deallocate(old_keys, old_size + Traits::MAX_HOPSIZE);
-        _alloc_hop.deallocate(old_hops, old_size + Traits::MAX_HOPSIZE);
+        _alloc_hop.deallocate(old_hopbytes, old_hopwidth * (old_size + Traits::MAX_HOPSIZE - 1) + sizeof(Traits::HopType));
     }
 
 
@@ -352,15 +427,17 @@ private:
         _num_elements = 0;
         _max_size = new_size;
         _mask = _max_size - 1;
-        _hopsize = Traits::MIN_HOPSIZE;
 
-        _hops = _alloc_hop.allocate(_max_size + Traits::MAX_HOPSIZE);
-        _keys = _alloc_key.allocate(_max_size + Traits::MAX_HOPSIZE, _hops);
+        _hopsize = Traits::MIN_HOPSIZE;
+        _hopmask = 0x7F;
+        _is_bucket_taken_mask = 0x80;
+        _hopwidth = 1;
+
+        _hopbytes = _alloc_hop.allocate(_hopwidth * (_max_size + Traits::MAX_HOPSIZE - 1) + sizeof(Traits::HopType));
+        _keys = _alloc_key.allocate(_max_size + Traits::MAX_HOPSIZE, _hopbytes);
         _vals = _alloc_val.allocate(_max_size + Traits::MAX_HOPSIZE, _keys);
 
-        for (size_t i = 0; i < _max_size + Traits::MAX_HOPSIZE; ++i) {
-            _alloc_hop.construct(_hops + i, 0);
-        }
+        std::memset(_hopbytes, 0, _hopwidth * (_max_size + Traits::MAX_HOPSIZE - 1) + sizeof(Traits::HopType));
 
         if (Debug) {
             size_t keys = sizeof(size_t) * (_max_size + Traits::MAX_HOPSIZE);
@@ -372,7 +449,11 @@ private:
 
     Val* _vals;
     Key* _keys;
-    typename Traits::HopType* _hops;
+    std::uint8_t* _hopbytes;
+
+    typename Traits::HopType _is_bucket_taken_mask;
+    typename Traits::HopType _hopmask;
+    size_t _hopwidth;
 
     const H _hash;
     size_t _num_elements;
