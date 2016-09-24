@@ -62,42 +62,29 @@ namespace HopScotchAdaptive {
 
 namespace Style {
 
-// Very aggressive data structure. Use only for small number of elements,
-// e.g. 10.000 or so. Use with a good hash. Enable debugging to see
-// the fullness of the hashmap.
+struct Fast {
+    typedef std::uint32_t HopType;
+    static constexpr size_t RESIZE_PERCENTAGE = 200;
+    static constexpr size_t MIN_HOPSIZE = 8 - 1;
+    static constexpr size_t MAX_HOPSIZE = 32 - 1;
+    static constexpr size_t ADD_RANGE = 256;
+};
 
 struct Default {
-    typedef std::uint32_t HopType;
-    static constexpr size_t RESIZE_PERCENTAGE = 200;
-    static constexpr size_t MIN_HOPSIZE = 8 - 1;
-    static constexpr size_t MAX_HOPSIZE = 32 - 1;
-    static constexpr size_t ADD_RANGE = 496;
-};
-
-struct DefaultFar {
-    typedef std::uint32_t HopType;
-    static constexpr size_t RESIZE_PERCENTAGE = 200;
-    static constexpr size_t MIN_HOPSIZE = 8 - 1;
-    static constexpr size_t MAX_HOPSIZE = 32 - 1;
-    static constexpr size_t ADD_RANGE = 5496;
-};
-
-
-struct Big {
     typedef std::uint64_t HopType;
     static constexpr size_t RESIZE_PERCENTAGE = 200;
     static constexpr size_t MIN_HOPSIZE = 8 - 1;
     static constexpr size_t MAX_HOPSIZE = 64 - 1;
-    static constexpr size_t ADD_RANGE = 1024;
+    static constexpr size_t ADD_RANGE = 512;
 };
 
 
-struct BigFar {
+struct Compact {
     typedef std::uint64_t HopType;
     static constexpr size_t RESIZE_PERCENTAGE = 200;
     static constexpr size_t MIN_HOPSIZE = 8 - 1;
     static constexpr size_t MAX_HOPSIZE = 64 - 1;
-    static constexpr size_t ADD_RANGE = 5496;
+    static constexpr size_t ADD_RANGE = 2048;
 };
 
 }
@@ -114,6 +101,7 @@ template<
     class Key,
     class Val,
     class H = std::hash<Key>,
+    class E = std::equal_to<Key>,
     class Traits = Style::Default,
     bool Debug = false,
     class AVal = std::allocator<Val>,
@@ -123,7 +111,7 @@ template<
 class Map {
 public:
     typedef Val value_type;
-    typedef Map<Key, Val, H, Traits, Debug, AVal, AKey, AHop> Self;
+    typedef Map<Key, Val, H, E, Traits, Debug, AVal, AKey, AHop> Self;
 
     /// Creates an empty hash map.
     Map() {
@@ -193,7 +181,118 @@ public:
         // find key & replace if found
         Traits::HopType hops = hop(idx) & _hopmask;
         while (hops) {
-            if ((hops & 1) && (_keys[idx] == key)) {
+            if ((hops & 1) && _key_equal(key, _keys[idx])) {
+                // found the key! replace value
+                _alloc_val.destroy(_vals + idx);
+                _alloc_val.construct(_vals + idx, std::forward<Val>(val));
+                return false;
+            }
+            ++idx;
+            hops >>= 1;
+        }
+
+        // key is not there, find an empty spot
+        idx = initial_idx;
+        size_t end_idx = initial_idx + Traits::ADD_RANGE;
+        if (end_idx > _max_size + _hopsize) {
+            end_idx = _max_size + _hopsize;
+        }
+        while ((idx < end_idx) && (hop(idx) & _is_bucket_taken_mask)) {
+            // TODO insert swapping code here!
+            ++idx;
+        }
+
+        // no insert possible? resize and retry.
+        if (idx == end_idx) {
+            // we've looked far but couldn't find an empty spot => we have to resize.
+            increase_size();
+            return insert(std::forward<Key>(key), std::forward<Val>(val));
+        }
+
+        // we've found an empty spot at idx! set it as taken, then swap elements back (hopscotch).
+        hop(idx) |= _is_bucket_taken_mask;
+
+        // We have found an empty spot, but it might be far away. We have to move the hole to the front
+        // until we are at the right step. idx is the empty spot.
+
+        // This tries to find a swappable element that is as far away as possible. To do that, it tries to
+        // find out if the element furthest away can be moved, by finding the hop for this element.
+
+        // loop until empty idx is close enough to place the element thats currently in key and val.
+        while (idx > initial_idx + _hopsize - 1) {
+            // position of hop info that's farthest away to potentially contain an element that can
+            // be swapped to idx
+            const size_t earliest_possible_hop_idx = idx < _hopsize ? 0 : idx - _hopsize + 1;
+
+            // actual index for hop information that it is checked if it contains the element positioned
+            // at swappable_candidate_idx
+            size_t swappable_candidate_hopidx;
+
+            // position of the bucket that might be swappable to idx
+            size_t swappable_candidate_idx = earliest_possible_hop_idx - 1;
+            do {
+                ++swappable_candidate_idx;
+
+                // find the hash place h for element i by looking through the hops
+                swappable_candidate_hopidx = earliest_possible_hop_idx;
+                Traits::HopType hop_mask = (Traits::HopType)1 << (swappable_candidate_idx - earliest_possible_hop_idx);
+
+                // check all the hopfields starting from earliest_possible_hop_idx, up to the swappable_candidate_idx if
+                // one of them is the owner of swappable_candidate_idx
+                while (swappable_candidate_hopidx <= swappable_candidate_idx && !(hop(swappable_candidate_hopidx) & hop_mask)) {
+                    ++swappable_candidate_hopidx;
+                    hop_mask >>= 1;
+                }
+            } while (swappable_candidate_idx < idx && swappable_candidate_hopidx > swappable_candidate_idx);
+
+            // have we found an element with corresponding hopidx that's within the reach of idx?
+            if (swappable_candidate_idx == idx) {
+                // try to increase hopsize, maybe we can continue hopping with this.
+                if (!increase_hopsize()) {
+                    // could not increase hopsize :( Our only option left is to enlarge the hashmap.
+                    // To do this, clean up current hashmap state by unsetting current idx' taken information,
+                    // then increase size and try to insert again.
+                    hop(idx) ^= _is_bucket_taken_mask;
+                    increase_size();
+                    return insert(std::forward<Key>(key), std::forward<Val>(val));
+                }
+            } else {
+                // found a place! move hole to the front
+                _alloc_key.construct(_keys + idx, std::move(_keys[swappable_candidate_idx]));
+                _alloc_key.destroy(_keys + swappable_candidate_idx);
+                _alloc_val.construct(_vals + idx, std::move(_vals[swappable_candidate_idx]));
+                _alloc_val.destroy(_vals + swappable_candidate_idx);
+
+                hop(swappable_candidate_hopidx) |= ((Traits::HopType)1 << (idx - swappable_candidate_hopidx));
+                hop(swappable_candidate_hopidx) ^= ((Traits::HopType)1 << (swappable_candidate_idx - swappable_candidate_hopidx));
+
+                idx = swappable_candidate_idx;
+            }
+        }
+
+        // now that we've moved everything, we can finally construct the element at
+        // it's rightful place.
+        _alloc_val.construct(_vals + idx, std::forward<Val>(val));
+        _alloc_key.construct(_keys + idx, std::forward<Key>(key));
+
+        hop(idx) |= _is_bucket_taken_mask;
+        hop(initial_idx) |= ((Traits::HopType)1 << (idx - initial_idx));
+        ++_num_elements;
+        return true;
+    }
+
+
+    inline bool insert_v2(Key&& key, Val&& val) {
+        const size_t initial_idx = _hash(key) & _mask;
+
+        // now, idx is the preferred position for this element. Search forward to find an empty place.
+        // we use overflow area, so no modulo is required.
+        size_t idx = initial_idx;
+
+        // find key & replace if found
+        Traits::HopType hops = hop(idx) & _hopmask;
+        while (hops) {
+            if ((hops & 1) && _key_equal(key, _keys[idx])) {
                 // found the key! replace value
                 _alloc_val.destroy(_vals + idx);
                 _alloc_val.construct(_vals + idx, std::forward<Val>(val));
@@ -210,10 +309,8 @@ public:
             e = _max_size + _hopsize;
         }
         while ((idx < e) && (hop(idx) & _is_bucket_taken_mask)) {
-            // TODO insert swapping code here!
             ++idx;
         }
-
         // no insert possible? resize and retry.
         if (idx == e) {
             // retry insert
@@ -232,49 +329,39 @@ public:
 
         // This tries to find a swappable element that is as far away as possible. To do that, it tries to
         // find out if the element furthest away can be moved, by finding the hop for this element.
+        size_t h = idx < _hopsize ? 0 : idx - _hopsize + 1;
         while (idx > initial_idx + _hopsize - 1) {
-            // h: where the hash wants to be
-            // i: where it actually is
-            // idx: where it can be moved
-            size_t start_h = idx < _hopsize ? 0 : idx - _hopsize + 1;
-            size_t h;
-            size_t i = start_h - 1;
-            do {
-                ++i;
-                // find the hash place h for element i by looking through the hops
-                h = start_h;
-                Traits::HopType hop_mask = (Traits::HopType)1 << (i - h);
-                while (hop_mask && !(hop(h) & hop_mask)) {
+            size_t initial_h = h;
+            auto hops = hop(initial_h) & _hopmask;
+            while (hops && h < idx) {
+                if (hops & 1) {
+                    // found something to move forward!
+                    _alloc_key.construct(_keys + idx, std::move(_keys[h]));
+                    _alloc_val.construct(_vals + idx, std::move(_vals[h]));
+                    _alloc_key.destroy(_keys + h);
+                    _alloc_val.destroy(_vals + h);
+
+                    // update hop bit
+                    hop(h) |= ((Traits::HopType)1 << (idx - h));
+                    // clear old hop bit
+                    hop(h) ^= ((Traits::HopType)1 << (h - initial_h));
+
+                    hops = 0;
+                    idx = h;
+                    h = idx < _hopsize ? 0 : idx - _hopsize + 1;
+                } else {
+                    hops >>= 1;
                     ++h;
-                    hop_mask >>= 1;
                 }
-            } while (i < idx && h > i);
-
-            // insertion failed? resize and try again.
-            if (i >= idx) {
-                // insertion failed, undo _hop[idx]
-                hop(idx) ^= _is_bucket_taken_mask;
-
-                // first try to increase hopsize, if that fails increase size.
+            }
+            if (h == idx) {
+                // damn! insertion has failed.
                 if (!increase_hopsize()) {
                     increase_size();
                 }
                 return insert(std::forward<Key>(key), std::forward<Val>(val));
             }
-
-            // found a place! move hole to the front
-            _alloc_key.construct(_keys + idx, std::move(_keys[i]));
-            _alloc_key.destroy(_keys + i);
-            // no need to set _hops[idx] & 1
-
-            _alloc_val.construct(_vals + idx, std::move(_vals[i]));
-            _alloc_val.destroy(_vals + i);
-            hop(h) |= ((Traits::HopType)1 << (idx - h));
-
-            // clear hop bit
-            hop(h) ^= ((Traits::HopType)1 << (i - h));
-
-            idx = i;
+            ++h;
         }
 
         // now that we've moved everything, we can finally construct the element at
@@ -288,6 +375,7 @@ public:
         return true;
     }
 
+
     inline Val* find(const Key& key) {
         return const_cast<Val*>(static_cast<const Self*>(this)->find(key));
     }
@@ -298,7 +386,7 @@ public:
         Traits::HopType hops = hop(idx) & _hopmask;
 
         while (hops) {
-            if ((hops & 1) && (key == _keys[idx])) {
+            if ((hops & 1) && _key_equal(key, _keys[idx])) {
                 return _vals + idx;
             }
             hops >>= 1;
@@ -315,7 +403,7 @@ public:
 
         Traits::HopType hops = hop(idx) & _hopmask;
         while (hops) {
-            if ((hops & 1) && (key == _keys[idx])) {
+            if ((hops & 1) && _key_equal(key, _keys[idx])) {
                 hop(original_idx) ^= 1 << (idx - original_idx);
                 hop(idx) ^= 1;
                 --_num_elements;
@@ -339,7 +427,7 @@ public:
 private:
     bool increase_hopsize() {
         if (_hopsize == Traits::MAX_HOPSIZE) {
-            // can't increase hopsize
+            // can't increase hopsize any more
             return false;
         }
 
@@ -456,6 +544,7 @@ private:
     size_t _hopwidth;
 
     const H _hash;
+    const E _key_equal;
     size_t _num_elements;
     size_t _mask;
     size_t _max_size;

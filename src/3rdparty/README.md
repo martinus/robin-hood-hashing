@@ -1,6 +1,7 @@
 Sources for these 3rd party hashmap implementations:
 
-* rigtorp: https://github.com/rigtorp/HashMap
 * google: https://github.com/sparsehash/sparsehash
+* rigtorp: https://github.com/rigtorp/HashMap
 * sparsepp: https://github.com/greg7mdp/sparsepp
+* tessil: https://github.com/Tessil/hopscotch-map
 
