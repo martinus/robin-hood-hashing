@@ -45,17 +45,14 @@ namespace RobinHoodInfobyte {
 namespace Style {
 
 struct Default {
-    typedef std::uint8_t InfoType;
-    // bits: | 7 | 6   5   4 | 3   2   1   0|
-    //       | ^ |  ???????  |    offset    |
+    // bits: | 7 | 6   5   4   3   2   1   0|
+    //       | ^ |         offset           |
     //         |
     //       full? 
-
-    // bits: | 7   6   5   4 | 3   2   1   0|
-    //       | ????????????  | fastforward  |
+    typedef std::uint8_t InfoType;
     static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 7;
     static constexpr size_t OVERFLOW_SIZE = 32;
-    static constexpr size_t INITIAL_LEVEL = 5; // 32 elements
+    static constexpr size_t INITIAL_ELEMENTS = 32;
 };
 
 }
@@ -72,6 +69,7 @@ template<
     class Key,
     class Val,
     class H = std::hash<Key>,
+    class E = std::equal_to<Key>,
     class Traits = Style::Default,
     bool Debug = false,
     class AVals = std::allocator<Val>,
@@ -81,13 +79,12 @@ template<
 class Map {
 public:
     typedef Val value_type;
-    typedef Map<Key, Val, H, Traits, Debug, AVals, AKeys, AInfo> Self;
+    typedef Map<Key, Val, H, E, Traits, Debug, AVals, AKeys, AInfo> Self;
 
     /// Creates an empty hash map.
     Map()
-        : _level(Traits::INITIAL_LEVEL)
     {
-        init_data();
+        init_data(Traits::INITIAL_ELEMENTS);
     }
 
     /// Clears all data, without resizing.
@@ -141,7 +138,7 @@ public:
 
         // while we potentially have a match
         while (info == _info[idx]) {
-            if (key == _keys[idx]) {
+            if (_key_equal(key, _keys[idx])) {
                 _alloc_vals.destroy(_vals + idx);
                 _alloc_vals.construct(_vals + idx, std::forward<Val>(val));
                 // no new insert
@@ -151,7 +148,8 @@ public:
             ++info;
         }
 
-        while (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK) {
+        // loop while we have not found an empty spot, and while no info overflow
+        while (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK && info) {
             if (info > _info[idx]) {
                 // place element
                 std::swap(key, _keys[idx]);
@@ -162,10 +160,8 @@ public:
             ++info;
         }
 
-        if (idx == _max_elements + Traits::OVERFLOW_SIZE) {
+        if (idx == _max_elements + Traits::OVERFLOW_SIZE || 0 == info) {
             // Overflow! resize and try again.
-            // the last fastforward is now in an incorrect state,
-            // but we don't care since we don't use it.
             increase_size();
             return insert(std::forward<Key>(key), std::forward<Val>(val));
         }
@@ -186,7 +182,7 @@ public:
     const Val* find(const Key& key) const {
         size_t idx = _hash(key) & _mask;
 
-        std::uint8_t info = Traits::IS_BUCKET_TAKEN_MASK;
+        auto info = Traits::IS_BUCKET_TAKEN_MASK;
         while (info < _info[idx]) {
             ++idx;
             ++info;
@@ -194,7 +190,7 @@ public:
 
         // check while info matches with the source idx
         while (info == _info[idx]) {
-            if (key == _keys[idx]) {
+            if (_key_equal(key, _keys[idx])) {
                 return _vals + idx;
             }
             ++idx;
@@ -214,13 +210,12 @@ public:
     }
 
 private:
-    void init_data() {
+    void init_data(size_t max_elements) {
+        _max_elements = max_elements;
         _num_elements = 0;
-        _max_elements = (size_t)1 << _level;
         _mask = _max_elements - 1;
 
-        // max * (1 - 1/50) = max * 0.98
-        // we allow a maximum fullness of 98%.
+        // max * (1 - 1/20) = max * 0.95
         _max_num_num_elements_allowed = _max_elements - std::max((size_t)1, _max_elements / 20);
 
         _info = _alloc_info.allocate(_max_elements + Traits::OVERFLOW_SIZE);
@@ -232,20 +227,18 @@ private:
 
     void increase_size() {
         //std::cout << (100.0*_num_elements / _max_elements) << "% full, resizing" << std::endl;
-        Key* old_keys = _keys;
-        Val* old_vals = _vals;
-        typename Traits::InfoType* old_info = _info;
+        auto* old_keys = _keys;
+        auto* old_vals = _vals;
+        auto* old_info = _info;
 
-        size_t old_max_elements = _max_elements;
+        auto old_max_elements = _max_elements;
 
-        ++_level;
-        init_data();
+        init_data(old_max_elements * 2);
 
         int num_ins = 0;
         for (size_t i = 0; i < old_max_elements + Traits::OVERFLOW_SIZE; ++i) {
             if (old_info[i] & Traits::IS_BUCKET_TAKEN_MASK) {
                 ++num_ins;
-                // TODO reuse hash value?
                 insert(std::move(old_keys[i]), std::move(old_vals[i]));
                 _alloc_vals.destroy(old_vals + i);
                 _alloc_keys.destroy(old_keys + i);
@@ -262,12 +255,11 @@ private:
     typename Traits::InfoType* _info;
 
     const H _hash;
+    const E _key_equal;
 
-    size_t _level;
     size_t _num_elements;
     size_t _max_elements;
     size_t _mask;
-    size_t _find_count;
     size_t _max_num_num_elements_allowed;
 
     AVals _alloc_vals;
