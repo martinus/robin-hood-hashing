@@ -466,7 +466,7 @@ void test_compare(size_t times) {
     size_t seed = 142323;
     rand.seed(seed);
 
-    HopScotch::Map<size_t, int> r;
+    RobinHoodInfobyte::Map<size_t, int> r;
     typedef std::unordered_map<size_t, int> StdMap;
     StdMap m;
 
@@ -803,7 +803,7 @@ void bench_sequential_insert(const std::string& title, size_t upTo, size_t times
 
         // query nonexisting
         t.restart();
-        for (int j = 0; j < 10; ++j) {
+        for (int j = 0; j < searchtimes; ++j) {
             for (int up = static_cast<int>(times*upTo), e = static_cast<int>(times*upTo + upTo); up < e; ++up) {
                 if (r.find(up)) {
                     ++found;
@@ -929,7 +929,6 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     googlemap.set_empty_key(-1);
     googlemap.set_deleted_key(-2);
     bench_sequential_insert(googlemap, "google::dense_hash_map", upTo, times, searchtimes, all_stats);
-
     return all_stats;
 }
 
@@ -991,7 +990,7 @@ void random_bench_std(const std::string& title) {
 
 int main(int argc, char** argv) {
     try {
-        //test_compare(1000000);
+        test_compare(1000000);
         //random_bench<RobinHoodInfobitsHashbits::Map<int, int>>("RobinHoodInfobitsHashbits");
         //random_bench<RobinHoodInfobyteFastforward::Map<int, int>>("RobinHoodInfobyteFastforward");
         //random_bench<RobinHoodInfobyte::Map<int, int>>("RobinHoodInfobyte");
@@ -1007,7 +1006,7 @@ int main(int argc, char** argv) {
         //test1<hopscotch_map<int, int>>(100000);
         std::cout << "test1 ok!" << std::endl;
 
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1000, 20);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 100, 100);
         print(stats);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

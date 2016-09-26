@@ -201,6 +201,45 @@ public:
         return nullptr;
     }
 
+    size_t erase(const Key& key) {
+        size_t idx = _hash(key) & _mask;
+
+        auto info = Traits::IS_BUCKET_TAKEN_MASK;
+        while (info < _info[idx]) {
+            ++idx;
+            ++info;
+        }
+
+        // check while info matches with the source idx
+        while (info == _info[idx]) {
+            if (_key_equal(key, _keys[idx])) {
+                // found it! perform backward shift deletion: shift elements to the left
+                // until we find one that is either empty or has zero offset.
+                //
+                // Note: no need to check for last element, this acts as a sentinel
+                while (_info[idx + 1] > Traits::IS_BUCKET_TAKEN_MASK) {
+                    _info[idx] = _info[idx + 1] - 1;
+                    _keys[idx] = std::move(_keys[idx + 1]);
+                    _vals[idx] = std::move(_vals[idx + 1]);
+                    ++idx;
+                }
+                if (_info[idx]) {
+                    _info[idx] = 0;
+                    _alloc_vals.destroy(_vals + idx);
+                    _alloc_keys.destroy(_keys + idx);
+                }
+
+                --_num_elements;
+                return 1;
+            }
+            ++idx;
+            ++info;
+        }
+
+        // nothing found to delete
+        return 0;
+    }
+
     inline size_t size() const {
         return _num_elements;
     }
