@@ -2,10 +2,12 @@
 #include <HopScotchAdaptive.h>
 #include <RobinHoodInfobitsHashbits.h>
 #include <RobinHoodInfobyte.h>
+#include <RobinHoodInfobyteJumpheuristic.h>
 #include <RobinHoodInfobyteFastforward.h>
 #include <3rdparty/rigtorp/HashMap.h>
 #include <3rdparty/sparsepp/sparsepp.h>
 #include <3rdparty/tessil/hopscotch_map.h>
+#include <3rdparty/sherwood_map/sherwood_map.hpp>
 
 #include <timer.h>
 #include <robinhood.h>
@@ -21,6 +23,7 @@
 
 #include <random>
 #include <chrono>
+#include <fstream>
 
 #include <google/dense_hash_map>
 
@@ -828,70 +831,75 @@ void bench_sequential_insert(const std::string& title, size_t upTo, size_t times
         << sum.mem / (1024.0 * 1024) << "; "
         << sum.found << std::endl;
     all_stats.push_back(stats);
+
+    std::ofstream fout("out.txt");
+    print(fout, all_stats);
 }
 
-void print_header(const std::vector<std::vector<Stats>>& s, const std::string& title) {
-    std::cout << std::endl << title << std::endl;
+template<class O>
+void print_header(O& out, const std::vector<std::vector<Stats>>& s, const std::string& title) {
+    out << std::endl << title << std::endl;
     for (size_t i = 0; i < s.size(); ++i) {
-        std::cout << ";" << s[i][0].title;
+        out << ";" << s[i][0].title;
     }
-    std::cout << std::endl;
+    out << std::endl;
 }
 
-void print(const std::vector<std::vector<Stats>>& s) {
+template<class O>
+void print(O& out, const std::vector<std::vector<Stats>>& s) {
     auto elems = s[0].size();
     std::vector<double> sums(s.size(), 0);
-    print_header(s, "Cummulative insertion time");
+    print_header(out, s, "Cummulative insertion time");
     for (size_t e = 0; e < elems; ++e) {
-        std::cout << s[0][e].num << ";";
+        out << s[0][e].num << ";";
         for (size_t i = 0; i < s.size(); ++i) {
             const auto& st = s[i][e];
             if (i > 0) {
-                std::cout << ";";
+                out << ";";
             }
             sums[i] += st.elapsed_insert * s[0][0].num;
-            std::cout << sums[i];
+            out << sums[i];
         }
-        std::cout << std::endl;
+        out << std::endl;
     }
 
-    print_header(s, "Time to find 1M existing elements");
+    print_header(out, s, "Time to find 1M existing elements");
     for (size_t e = 0; e < elems; ++e) {
-        std::cout << s[0][e].num << ";";
+        out << s[0][e].num << ";";
         for (size_t i = 0; i < s.size(); ++i) {
             const auto& st = s[i][e];
             if (i > 0) {
-                std::cout << ";";
+                out << ";";
             }
-            std::cout << st.elapsed_find_existing * 1000 * 1000;
+            out << st.elapsed_find_existing * 1000 * 1000;
         }
-        std::cout << std::endl;
+        out << std::endl;
     }
 
-    print_header(s, "Time to find 1M nonexisting elements");
+    print_header(out, s, "Time to find 1M nonexisting elements");
     for (size_t e = 0; e < elems; ++e) {
-        std::cout << s[0][e].num << ";";
+        out << s[0][e].num << ";";
         for (size_t i = 0; i < s.size(); ++i) {
             const auto& st = s[i][e];
             if (i > 0) {
-                std::cout << ";";
+                out << ";";
             }
-            std::cout << st.elapsed_find_nonexisting * 1000 * 1000;
+            out << st.elapsed_find_nonexisting * 1000 * 1000;
         }
-        std::cout << std::endl;
+        out << std::endl;
     }
 
-    print_header(s, "Memory usage in MB");
+    print_header(out, s, "Memory usage in MB");
     for (size_t e = 0; e < elems; ++e) {
-        std::cout << s[0][e].num << ";";
+        out << s[0][e].num << ";";
         for (size_t i = 0; i < s.size(); ++i) {
             const auto& st = s[i][e];
             if (i > 0) {
-                std::cout << ";";
+                out << ";";
             }
-            std::cout << st.mem / (1024.0*1024);
+            out << st.mem / (1024.0*1024);
         }
-        std::cout << std::endl;
+        out << std::endl;
     }
 
     for (size_t e = 0; e < elems; ++e) {
@@ -901,7 +909,7 @@ void print(const std::vector<std::vector<Stats>>& s) {
             }
         }
     }
-    std::cout << "num checked." << std::endl;
+    out << "num checked." << std::endl;
 }
 
 
@@ -910,7 +918,21 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     std::cout << "Title;1M inserts [sec];find 1M existing [sec];find 1M nonexisting [sec];memory usage [MB];foundcount" << std::endl;
     std::vector<std::vector<Stats>> all_stats;
     //bench_sequential_insert(hopscotch_map<int, int, H>(), "tessil/hopscotch_map", upTo, times, searchtimes, all_stats);
+
+    bench_sequential_insert(sherwood_map<int, int>(), "sherwood_map", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert<RobinHoodInfobyteJumpheuristic::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyteJumpheuristic::Style::Default>>("infobyte Jumpheuristic", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyte::Style::Default>>("infobyte", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, searchtimes, all_stats);
+
+    bench_sequential_insert(spp::sparse_hash_map<int, int, H>(), "spp::spare_hash_map", upTo, times, searchtimes, all_stats);
+    {
+        google::dense_hash_map<int, int, H> googlemap;
+        googlemap.set_empty_key(-1);
+        googlemap.set_deleted_key(-2);
+        bench_sequential_insert(googlemap, "google::dense_hash_map", upTo, times, searchtimes, all_stats);
+    }
+    bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
+
     bench_sequential_insert<RobinHoodInfobitsHashbits::Map<int, int, H, RobinHoodInfobitsHashbits::Style::Default>>("info & hash & overflow check", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<RobinHoodInfobyteFastforward::Map<int, int, H, RobinHoodInfobyteFastforward::Style::Default>>("info & fastforward", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop8>>("Hopscotch Hop8", upTo, times, searchtimes, all_stats);
@@ -919,16 +941,8 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop64>>("Hopscotch Hop64", upTo, times, searchtimes, all_stats);
 
     bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Fast>>("HopScotchAdaptive Fast", upTo, times, searchtimes, all_stats);
-    bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Compact>>("HopScotchAdaptive Compact", upTo, times, searchtimes, all_stats);
 
-    bench_sequential_insert(spp::sparse_hash_map<int, int, H>(), "spp::spare_hash_map", upTo, times, searchtimes, all_stats);
-    bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
-
-    google::dense_hash_map<int, int, H> googlemap;
-    googlemap.set_empty_key(-1);
-    googlemap.set_deleted_key(-2);
-    bench_sequential_insert(googlemap, "google::dense_hash_map", upTo, times, searchtimes, all_stats);
     return all_stats;
 }
 
@@ -990,7 +1004,7 @@ void random_bench_std(const std::string& title) {
 
 int main(int argc, char** argv) {
     try {
-        test_compare(1000000);
+        //test_compare(1000000);
         //random_bench<RobinHoodInfobitsHashbits::Map<int, int>>("RobinHoodInfobitsHashbits");
         //random_bench<RobinHoodInfobyteFastforward::Map<int, int>>("RobinHoodInfobyteFastforward");
         //random_bench<RobinHoodInfobyte::Map<int, int>>("RobinHoodInfobyte");
@@ -998,6 +1012,7 @@ int main(int argc, char** argv) {
         //random_bench<HopScotch::Map<int, int>>("HopScotch");
         //random_bench_std<std::unordered_map<int, int>>("std::unordered_map");
 
+        test1<RobinHoodInfobyteJumpheuristic::Map<int, int>>(100000);
         test1<HopScotchAdaptive::Map<int, int>>(100000);
         test1<RobinHoodInfobitsHashbits::Map<int, int>>(100000);
         test1<RobinHoodInfobyteFastforward::Map<int, int>>(100000);
@@ -1006,8 +1021,10 @@ int main(int argc, char** argv) {
         //test1<hopscotch_map<int, int>>(100000);
         std::cout << "test1 ok!" << std::endl;
 
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 100, 100);
-        print(stats);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(1000, 200, 1000);
+        print(std::cout, stats);
+        std::ofstream fout("out.txt");
+        print(fout, stats);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return 1;
