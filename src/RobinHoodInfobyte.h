@@ -84,25 +84,31 @@ public:
     typedef Map<Key, Val, H, E, Traits, Debug, AVals, AKeys, AInfo> Self;
 
     /// Creates an empty hash map.
-    Map()
-    {
+    Map() {
         init_data(Traits::INITIAL_ELEMENTS);
     }
 
     /// Clears all data, without resizing.
     void clear() {
-        // TODO
-    }
-
-    /// Destroys the map and all it's contents.
-    ~Map() {
         for (size_t i = 0; i < _max_elements + Traits::OVERFLOW_SIZE; ++i) {
             if (_info[i] & Traits::IS_BUCKET_TAKEN_MASK) {
                 _alloc_vals.destroy(_vals + i);
                 _alloc_keys.destroy(_keys + i);
             }
         }
+        std::memset(_info, 0, sizeof(Traits::InfoType) * (_max_elements + Traits::OVERFLOW_SIZE));
+        _num_elements = 0;
+    }
 
+    /// Destroys the map and all it's contents.
+    ~Map() {
+        // clear also resets _info to 0, that's not really necessary.
+        for (size_t i = 0; i < _max_elements + Traits::OVERFLOW_SIZE; ++i) {
+            if (_info[i] & Traits::IS_BUCKET_TAKEN_MASK) {
+                _alloc_vals.destroy(_vals + i);
+                _alloc_keys.destroy(_keys + i);
+            }
+        }
         _alloc_vals.deallocate(_vals, _max_elements + Traits::OVERFLOW_SIZE);
         _alloc_keys.deallocate(_keys, _max_elements + Traits::OVERFLOW_SIZE);
         _alloc_info.deallocate(_info, _max_elements + Traits::OVERFLOW_SIZE);
@@ -141,9 +147,7 @@ public:
         // while we potentially have a match
         while (info == _info[idx]) {
             if (_key_equal(key, _keys[idx])) {
-                _alloc_vals.destroy(_vals + idx);
-                _alloc_vals.construct(_vals + idx, std::forward<Val>(val));
-                // no new insert
+                // key already exists, do not insert.
                 return false;
             }
             ++idx;
