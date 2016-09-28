@@ -6,7 +6,6 @@
 // Here are some tricks that I want to use:
 //
 // - todo - 
-// * hopscotch: try to move as little as possible (not as much as possible, like its now. Search from right to left).
 // http://bannalia.blogspot.co.at/2014/01/a-better-hash-table-clang.html
 // https://probablydance.com/2014/05/03/i-wrote-a-fast-hash-table/
 // * keep key, val, info interleaved?
@@ -38,6 +37,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 // just with info byte
 namespace RobinHoodInfobyte {
@@ -78,6 +78,8 @@ template<
 >
 class Map {
 public:
+    typedef Key key_type;
+    typedef Val mapped_type;
     typedef Val value_type;
     typedef Map<Key, Val, H, E, Traits, Debug, AVals, AKeys, AInfo> Self;
 

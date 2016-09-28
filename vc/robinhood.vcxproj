@@ -137,6 +137,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\src\3rdparty\rigtorp\HashMap.h" />
+    <ClInclude Include="..\src\3rdparty\sherwood_map\sherwood_map.hpp" />
     <ClInclude Include="..\src\3rdparty\sparsepp\sparsepp.h" />
     <ClInclude Include="..\src\hopscotch.h" />
     <ClInclude Include="..\src\HopScotchAdaptive.h" />
@@ -145,9 +146,12 @@
     <ClInclude Include="..\src\RobinHoodInfobitsHashbits.h" />
     <ClInclude Include="..\src\RobinHoodInfobyte.h" />
     <ClInclude Include="..\src\RobinHoodInfobyteFastforward.h" />
+    <ClInclude Include="..\src\RobinHoodInfobyteJumpheuristic.h" />
+    <ClInclude Include="..\src\RobinHoodInfobyteQuadraticprobing.h" />
     <ClInclude Include="..\src\timer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\3rdparty\sherwood_map\sherwood_map.cpp" />
     <ClCompile Include="..\src\test_robinhood.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

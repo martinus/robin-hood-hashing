@@ -2,6 +2,9 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\src\test_robinhood.cpp" />
+    <ClCompile Include="..\src\3rdparty\sherwood_map\sherwood_map.cpp">
+      <Filter>3rdparty</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\hopscotch.h" />
@@ -15,6 +18,11 @@
       <Filter>3rdparty</Filter>
     </ClInclude>
     <ClInclude Include="..\src\HopScotchAdaptive.h" />
+    <ClInclude Include="..\src\RobinHoodInfobyteJumpheuristic.h" />
+    <ClInclude Include="..\src\RobinHoodInfobyteQuadraticprobing.h" />
+    <ClInclude Include="..\src\3rdparty\sherwood_map\sherwood_map.hpp">
+      <Filter>3rdparty</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">
