@@ -23,6 +23,7 @@
     <ClInclude Include="..\src\3rdparty\sherwood_map\sherwood_map.hpp">
       <Filter>3rdparty</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\RobinHoodInfobyte.hpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">

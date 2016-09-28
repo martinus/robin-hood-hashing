@@ -648,9 +648,10 @@ void test_count(size_t times) {
 
 
 size_t get_mem() {
-    PROCESS_MEMORY_COUNTERS objProcessMemoryInfo;
-    if (GetProcessMemoryInfo(GetCurrentProcess(), &objProcessMemoryInfo, sizeof(objProcessMemoryInfo))) {
-        return objProcessMemoryInfo.PagefileUsage;
+    PROCESS_MEMORY_COUNTERS_EX info;
+    info.cb = sizeof(info);
+    if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&info, info.cb)) {
+        return info.PrivateUsage;
     }
     return 0;
 }
@@ -762,6 +763,9 @@ void bench_sequential_insert(HS& r, const std::string& title, size_t upTo, size_
         << sum.found << std::endl;
 
     all_stats.push_back(stats);
+
+    std::ofstream fout("out.txt");
+    print(fout, all_stats);
 }
 
 
@@ -919,22 +923,22 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     std::vector<std::vector<Stats>> all_stats;
     //bench_sequential_insert(hopscotch_map<int, int, H>(), "tessil/hopscotch_map", upTo, times, searchtimes, all_stats);
 
-    bench_sequential_insert(sherwood_map<int, int>(), "sherwood_map", upTo, times, searchtimes, all_stats);
-    bench_sequential_insert<RobinHoodInfobyteJumpheuristic::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyteJumpheuristic::Style::Default>>("infobyte Jumpheuristic", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyte::Style::Default>>("infobyte", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, searchtimes, all_stats);
 
-    bench_sequential_insert(spp::sparse_hash_map<int, int, H>(), "spp::spare_hash_map", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
     {
         google::dense_hash_map<int, int, H> googlemap;
         googlemap.set_empty_key(-1);
         googlemap.set_deleted_key(-2);
         bench_sequential_insert(googlemap, "google::dense_hash_map", upTo, times, searchtimes, all_stats);
     }
-    bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert(spp::sparse_hash_map<int, int, H>(), "spp::spare_hash_map", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert(sherwood_map<int, int>(), "sherwood_map", upTo, times, searchtimes, all_stats);
 
     bench_sequential_insert<RobinHoodInfobitsHashbits::Map<int, int, H, RobinHoodInfobitsHashbits::Style::Default>>("info & hash & overflow check", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<RobinHoodInfobyteFastforward::Map<int, int, H, RobinHoodInfobyteFastforward::Style::Default>>("info & fastforward", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert<RobinHoodInfobyteJumpheuristic::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyteJumpheuristic::Style::Default>>("infobyte Jumpheuristic", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop8>>("Hopscotch Hop8", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop16>>("Hopscotch Hop16", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<HopScotch::Map<int, int, H, HopScotch::Style::Hop32>>("Hopscotch Hop32", upTo, times, searchtimes, all_stats);
@@ -1021,7 +1025,7 @@ int main(int argc, char** argv) {
         //test1<hopscotch_map<int, int>>(100000);
         std::cout << "test1 ok!" << std::endl;
 
-        auto stats = bench_sequential_insert<std::hash<size_t>>(1000, 200, 1000);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(100*1000, 1000, 0);
         print(std::cout, stats);
         std::ofstream fout("out.txt");
         print(fout, stats);

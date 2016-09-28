@@ -145,6 +145,7 @@
     <ClInclude Include="..\src\robinhood.h" />
     <ClInclude Include="..\src\RobinHoodInfobitsHashbits.h" />
     <ClInclude Include="..\src\RobinHoodInfobyte.h" />
+    <ClInclude Include="..\src\RobinHoodInfobyte.hpp" />
     <ClInclude Include="..\src\RobinHoodInfobyteFastforward.h" />
     <ClInclude Include="..\src\RobinHoodInfobyteJumpheuristic.h" />
     <ClInclude Include="..\src\RobinHoodInfobyteQuadraticprobing.h" />
