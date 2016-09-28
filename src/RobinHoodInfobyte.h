@@ -37,7 +37,8 @@
 #pragma once
 
 #include <cstdint>
-#include <utility>
+#include <cstring>
+#include <functional>
 
 // just with info byte
 namespace RobinHoodInfobyte {
@@ -49,10 +50,10 @@ struct Default {
     //       | ^ |         offset           |
     //         |
     //       full? 
-    typedef std::uint8_t InfoType;
+    typedef uint8_t InfoType;
     static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 7;
-    static constexpr size_t OVERFLOW_SIZE = 32;
-    static constexpr size_t INITIAL_ELEMENTS = 32;
+    static constexpr std::size_t OVERFLOW_SIZE = 32;
+    static constexpr std::size_t INITIAL_ELEMENTS = 32;
 };
 
 }
@@ -74,7 +75,7 @@ template<
     bool Debug = false,
     class AVals = std::allocator<Val>,
     class AKeys = std::allocator<Key>,
-    class AInfo = std::allocator<Traits::InfoType>
+    class AInfo = std::allocator<typename Traits::InfoType>
 >
 class Map {
 public:
@@ -84,7 +85,9 @@ public:
     typedef Map<Key, Val, H, E, Traits, Debug, AVals, AKeys, AInfo> Self;
 
     /// Creates an empty hash map.
-    Map() {
+    Map()
+    : _hash()
+    , _key_equal() {
         init_data(Traits::INITIAL_ELEMENTS);
     }
 
@@ -138,7 +141,7 @@ public:
         auto h = _hash(key);
         size_t idx = h & _mask;
 
-        Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK;
+        typename Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK;
         while (info < _info[idx]) {
             ++idx;
             ++info;
@@ -267,7 +270,7 @@ private:
         _keys = _alloc_keys.allocate(_max_elements + Traits::OVERFLOW_SIZE, _info);
         _vals = _alloc_vals.allocate(_max_elements + Traits::OVERFLOW_SIZE, _keys);
 
-        std::memset(_info, 0, sizeof(Traits::InfoType) * (_max_elements + Traits::OVERFLOW_SIZE));
+        std::memset(_info, 0, sizeof(typename Traits::InfoType) * (_max_elements + Traits::OVERFLOW_SIZE));
     }
 
     void increase_size() {
