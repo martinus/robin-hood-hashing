@@ -38,6 +38,8 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
+#include <functional>
 
 // info and fastforward
 namespace RobinHoodInfobyteFastforward {
@@ -45,8 +47,8 @@ namespace RobinHoodInfobyteFastforward {
 namespace Style {
 
 struct InfoType {
-    std::uint8_t info;
-    std::uint8_t fastforward;
+    uint8_t info;
+    uint8_t fastforward;
 };
 
 struct Default {
@@ -89,7 +91,8 @@ public:
 
     /// Creates an empty hash map.
     Map()
-        : _level(Traits::INITIAL_LEVEL)
+        : _hash()
+        , _level(Traits::INITIAL_LEVEL)
     {
         init_data();
     }

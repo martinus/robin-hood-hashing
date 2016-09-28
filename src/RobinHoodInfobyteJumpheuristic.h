@@ -38,6 +38,8 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
+#include <functional>
 
 // just with info byte
 namespace RobinHoodInfobyteJumpheuristic {
@@ -75,7 +77,7 @@ template<
     bool Debug = false,
     class AVals = std::allocator<Val>,
     class AKeys = std::allocator<Key>,
-    class AInfo = std::allocator<Traits::InfoType>
+    class AInfo = std::allocator<typename Traits::InfoType>
 >
 class Map {
 public:
@@ -83,7 +85,9 @@ public:
     typedef Map<Key, Val, H, E, Traits, Debug, AVals, AKeys, AInfo> Self;
 
     /// Creates an empty hash map.
-    Map() {
+    Map()
+    : _hash()
+    , _key_equal() {
         init_data(Traits::INITIAL_LEVEL);
     }
 
@@ -148,7 +152,7 @@ public:
             sum += _info[0x8ff34785 & _mask] & Traits::OFFSET_MASK;
             sum += _info[0x2e2ac13e & _mask] & Traits::OFFSET_MASK;
 
-            _jump_heuristic_offset = static_cast<Traits::InfoType>(sum / 10);
+            _jump_heuristic_offset = static_cast<typename Traits::InfoType>(sum / 10);
         }
 
         /*
@@ -328,7 +332,7 @@ private:
         _keys = _alloc_keys.allocate(_max_elements + Traits::OVERFLOW_SIZE, _info);
         _vals = _alloc_vals.allocate(_max_elements + Traits::OVERFLOW_SIZE, _keys);
 
-        std::memset(_info, 0, sizeof(Traits::InfoType) * (_max_elements + Traits::OVERFLOW_SIZE));
+        std::memset(_info, 0, sizeof(typename Traits::InfoType) * (_max_elements + Traits::OVERFLOW_SIZE));
     }
 
     void increase_size() {
