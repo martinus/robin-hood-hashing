@@ -54,6 +54,39 @@ double bench_hashing(int& data) {
 #define TOSTRING(x) STRINGIFY(x)
 #define CHECK(x) if (!(x)) throw std::exception(__FILE__ "(" TOSTRING(__LINE__) "): " #x);
 
+template<class H>
+void test1_std(int times) {
+    H rhhs;
+    CHECK(rhhs.size() == 0);
+    CHECK(rhhs.insert(std::make_pair(32145, 123)).second);
+    CHECK(rhhs.size() == 1);
+
+    for (int i = 0; i < times; ++i) {
+        CHECK(rhhs.insert(std::make_pair(i * 4, i)).second);
+        auto found = rhhs.find(i * 4);
+        if (found == rhhs.end()) {
+            CHECK(found != rhhs.end());
+        }
+        CHECK(found->second == i);
+        if (rhhs.size() != 2 + i) {
+            CHECK(rhhs.size() == 2 + i);
+        }
+    }
+
+    // check if everything can be found
+    for (int i = 0; i < times; ++i) {
+        auto found = rhhs.find(i * 4);
+        CHECK(found != rhhs.end());
+        CHECK(found->second == i);
+    }
+
+    // check non-elements
+    for (int i = 0; i < times; ++i) {
+        auto found = rhhs.find((i + times) * 4);
+        CHECK(found == rhhs.end());
+    }
+
+}
 
 template<class H>
 void test1(int times) {
@@ -931,7 +964,7 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     //bench_sequential_insert(hopscotch_map<int, int, H>(), "tessil/hopscotch_map", upTo, times, searchtimes, all_stats);
 
     bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyte::Style::Default>>("Robin Hood Infobyte", upTo, times, searchtimes, all_stats);
-    bench_sequential_insert<RobinHoodInfobytePair::Map<int, int, H>>("Robin Hood Infobyte Pair", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert(RobinHoodInfobytePair::Map<int, int, H>(), "Robin Hood Infobyte Pair", upTo, times, searchtimes, all_stats);
     //bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, searchtimes, all_stats);
 
     //bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
@@ -1016,7 +1049,12 @@ void random_bench_std(const std::string& title) {
 }
 
 int main(int argc, char** argv) {
+    std::unordered_map<int, int> um;
+    um.insert(std::make_pair(123, 321));
+    um.insert(std::make_pair(1, 321));
+    um.insert(std::make_pair(123, 321));
     try {
+
         set_high_priority();
         //test_compare(1000000);
         //random_bench<RobinHoodInfobitsHashbits::Map<int, int>>("RobinHoodInfobitsHashbits");
@@ -1026,7 +1064,7 @@ int main(int argc, char** argv) {
         //random_bench<HopScotch::Map<int, int>>("HopScotch");
         //random_bench_std<std::unordered_map<int, int>>("std::unordered_map");
 
-        test1<RobinHoodInfobytePair::Map<int, int>>(100000);
+        test1_std<RobinHoodInfobytePair::Map<int, int>>(100000);
         test1<RobinHoodInfobyteJumpheuristic::Map<int, int>>(100000);
         test1<HopScotchAdaptive::Map<int, int>>(100000);
         test1<RobinHoodInfobitsHashbits::Map<int, int>>(100000);
@@ -1036,7 +1074,7 @@ int main(int argc, char** argv) {
         //test1<hopscotch_map<int, int>>(100000);
         std::cout << "test1 ok!" << std::endl;
 
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100*1000, 200, 50);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(100*1000, 1000, 50);
         print(std::cout, stats);
         std::ofstream fout("out.txt");
         print(fout, stats);

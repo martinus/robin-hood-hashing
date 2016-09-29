@@ -50,11 +50,13 @@ class Map {
 public:
     typedef Key key_type;
     typedef T mapped_type;
-    typedef std::pair<const Key, T> value_type;
+    typedef std::pair<Key, T> value_type;
     typedef std::size_t size_type;
     typedef Hash hasher;
     typedef KeyEqual key_equal;
     typedef Allocator allocator_type;
+    typedef value_type* iterator;
+    typedef const value_type* const_iterator;
     typedef Map<key_type, mapped_type, hasher, key_equal, allocator_type, Traits> Self;
 
     /// Creates an empty hash map.
@@ -77,7 +79,7 @@ public:
     }
 
     /// Destroys the map and all it's contents.
-    ~Map() {
+    inline ~Map() {
         // clear also resets _info to 0, that's not really necessary.
         for (size_t i = 0; i < _max_elements + Traits::OVERFLOW_SIZE; ++i) {
             if (_info[i] & Traits::IS_BUCKET_TAKEN_MASK) {
@@ -88,28 +90,20 @@ public:
         _alloc_info.deallocate(_info, _max_elements + Traits::OVERFLOW_SIZE);
     }
 
-    inline bool insert(const key_type& key, mapped_type&& val) {
-        key_type k(key);
-        return insert(std::move(k), std::forward<Val>(val));
+    inline mapped_type& operator[](const key_type& key) {
+        return insert(std::make_pair(key, mapped_type())).first->second;
     }
 
-    inline bool insert(key_type&& key, const mapped_type& val) {
-        mapped_type v(val);
-        return insert(std::forward<Key>(key), std::move(v));
+    inline const mapped_type& operator[](const key_type& key) const {
+        return insert(std::make_pair(key, mapped_type())).first->second;
     }
 
-    inline bool insert(const key_type& key, const mapped_type& val) {
-        key_type k(key);
-        mapped_type v(val);
-        return insert(std::move(k), std::move(v));
-    }
-
-    inline bool insert(key_type&& key, mapped_type&& val) {
+    inline std::pair<iterator, bool> insert(value_type&& keyval) {
         if (_num_elements == _max_num_num_elements_allowed) {
             increase_size();
         }
 
-        auto h = _hash(key);
+        auto h = _hash(keyval.first);
         size_t idx = h & _mask;
 
         typename Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK;
@@ -120,16 +114,15 @@ public:
 
         // while we potentially have a match
         while (info == _info[idx]) {
-            if (_key_equal(key, _keyvals[idx].first)) {
+            if (_key_equal(keyval.first, _keyvals[idx].first)) {
                 // key already exists, do not insert.
-                return false;
+                return std::make_pair<iterator, bool>(_keyvals + idx, false);
             }
             ++idx;
             ++info;
         }
 
         // loop while we have not found an empty spot, and while no info overflow
-        auto keyval = std::make_pair(key, val);
         while (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK && info) {
             if (info > _info[idx]) {
                 // place element
@@ -143,8 +136,7 @@ public:
         if (idx == _max_elements + Traits::OVERFLOW_SIZE || 0 == info) {
             // Overflow! resize and try again.
             increase_size();
-            return insert(std::move(keyval.first), std::move(keyval.second));
-            //return insert(std::forward<Key>(key), std::forward<Val>(val));
+            return insert(std::move(keyval));
         }
 
         // bucket is empty! put it there.
@@ -152,14 +144,23 @@ public:
         _info[idx] = info;
 
         ++_num_elements;
-        return true;
+        return std::make_pair(_keyvals + idx, true);
     }
 
-    mapped_type* find(const key_type& key) {
-        return const_cast<mapped_type*>(static_cast<const Self*>(this)->find(key));
+    inline std::pair<iterator, bool> insert(const value_type& value) {
+        value_type v(value);
+        return insert(std::move(v));
     }
 
-    const mapped_type* find(const key_type& key) const {
+    inline iterator find(const key_type& key) {
+        return const_cast<iterator>(static_cast<const Self*>(this)->find(key));
+    }
+
+    inline const_iterator end() const {
+        return nullptr;
+    }
+
+    inline const_iterator find(const key_type& key) const {
         size_t idx = _hash(key) & _mask;
 
         auto info = Traits::IS_BUCKET_TAKEN_MASK;
@@ -171,7 +172,7 @@ public:
         // check while info matches with the source idx
         while (info == _info[idx]) {
             if (_key_equal(key, _keyvals[idx].first)) {
-                return &_keyvals[idx].second;
+                return _keyvals + idx;
             }
             ++idx;
             ++info;
@@ -181,7 +182,7 @@ public:
         return nullptr;
     }
 
-    size_t erase(const key_type& key) {
+    inline size_t erase(const key_type& key) {
         size_t idx = _hash(key) & _mask;
 
         auto info = Traits::IS_BUCKET_TAKEN_MASK;
@@ -218,16 +219,20 @@ public:
         return 0;
     }
 
-    inline size_t size() const {
+    inline size_type size() const {
         return _num_elements;
     }
 
-    inline size_t max_size() const {
-        return _max_elements;
+    inline size_type max_size() const {
+        return (size_type)-1;
+    }
+
+    inline bool empty() const {
+        return 0 == _num_elements;
     }
 
 private:
-    void init_data(size_t max_elements) {
+    inline void init_data(size_t max_elements) {
         _max_elements = max_elements;
         _num_elements = 0;
         _mask = _max_elements - 1;
@@ -241,7 +246,7 @@ private:
         std::memset(_info, 0, sizeof(typename Traits::InfoType) * (_max_elements + Traits::OVERFLOW_SIZE));
     }
 
-    void increase_size() {
+    inline void increase_size() {
         //std::cout << (100.0*_num_elements / _max_elements) << "% full, resizing" << std::endl;
         auto* old_keyvals = _keyvals;
         auto* old_info = _info;
@@ -254,7 +259,7 @@ private:
         for (size_t i = 0; i < old_max_elements + Traits::OVERFLOW_SIZE; ++i) {
             if (old_info[i] & Traits::IS_BUCKET_TAKEN_MASK) {
                 ++num_ins;
-                insert(std::move(old_keyvals[i].first), std::move(old_keyvals[i].second));
+                insert(std::move(old_keyvals[i]));
                 _alloc_keyvals.destroy(old_keyvals + i);
             }
         }
