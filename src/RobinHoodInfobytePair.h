@@ -40,18 +40,22 @@ struct Default {
 /// * faster for insert, find, delete.
 template<
     class Key,
-    class Val,
-    class H = std::hash<Key>,
-    class E = std::equal_to<Key>,
-    class AKeyVals = std::allocator<std::pair<Key, Val>>,
+    class T,
+    class Hash = std::hash<Key>,
+    class KeyEqual = std::equal_to<Key>,
+    class Allocator = std::allocator<std::pair<Key, T>>,
     class Traits = Style::Default
 >
 class Map {
 public:
     typedef Key key_type;
-    typedef Val mapped_type;
-    typedef Val value_type;
-    typedef Map<Key, Val, H, E, AKeyVals, Traits> Self;
+    typedef T mapped_type;
+    typedef std::pair<const Key, T> value_type;
+    typedef std::size_t size_type;
+    typedef Hash hasher;
+    typedef KeyEqual key_equal;
+    typedef Allocator allocator_type;
+    typedef Map<key_type, mapped_type, hasher, key_equal, allocator_type, Traits> Self;
 
     /// Creates an empty hash map.
     Map()
@@ -84,23 +88,23 @@ public:
         _alloc_info.deallocate(_info, _max_elements + Traits::OVERFLOW_SIZE);
     }
 
-    inline bool insert(const Key& key, Val&& val) {
-        Key k(key);
+    inline bool insert(const key_type& key, mapped_type&& val) {
+        key_type k(key);
         return insert(std::move(k), std::forward<Val>(val));
     }
 
-    inline bool insert(Key&& key, const Val& val) {
-        Val v(val);
+    inline bool insert(key_type&& key, const mapped_type& val) {
+        mapped_type v(val);
         return insert(std::forward<Key>(key), std::move(v));
     }
 
-    inline bool insert(const Key& key, const Val& val) {
-        Key k(key);
-        Val v(val);
+    inline bool insert(const key_type& key, const mapped_type& val) {
+        key_type k(key);
+        mapped_type v(val);
         return insert(std::move(k), std::move(v));
     }
 
-    inline bool insert(Key&& key, Val&& val) {
+    inline bool insert(key_type&& key, mapped_type&& val) {
         if (_num_elements == _max_num_num_elements_allowed) {
             increase_size();
         }
@@ -151,11 +155,11 @@ public:
         return true;
     }
 
-    Val* find(const Key& key) {
-        return const_cast<Val*>(static_cast<const Self*>(this)->find(key));
+    mapped_type* find(const key_type& key) {
+        return const_cast<mapped_type*>(static_cast<const Self*>(this)->find(key));
     }
 
-    const Val* find(const Key& key) const {
+    const mapped_type* find(const key_type& key) const {
         size_t idx = _hash(key) & _mask;
 
         auto info = Traits::IS_BUCKET_TAKEN_MASK;
@@ -177,7 +181,7 @@ public:
         return nullptr;
     }
 
-    size_t erase(const Key& key) {
+    size_t erase(const key_type& key) {
         size_t idx = _hash(key) & _mask;
 
         auto info = Traits::IS_BUCKET_TAKEN_MASK;
@@ -259,18 +263,18 @@ private:
         _alloc_info.deallocate(old_info, old_max_elements + Traits::OVERFLOW_SIZE);
     }
 
-    std::pair<Key, Val>* _keyvals;
+    std::pair<key_type, mapped_type>* _keyvals;
     typename Traits::InfoType* _info;
 
-    const H _hash;
-    const E _key_equal;
+    const hasher _hash;
+    const key_equal _key_equal;
 
     size_t _num_elements;
     size_t _max_elements;
     size_t _mask;
     size_t _max_num_num_elements_allowed;
 
-    typename AKeyVals _alloc_keyvals;
+    typename Allocator _alloc_keyvals;
     typename Traits::AInfo _alloc_info;
 };
 
