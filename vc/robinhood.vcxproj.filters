@@ -5,6 +5,7 @@
     <ClCompile Include="..\src\3rdparty\sherwood_map\sherwood_map.cpp">
       <Filter>3rdparty</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\test.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\hopscotch.h" />
@@ -24,6 +25,10 @@
       <Filter>3rdparty</Filter>
     </ClInclude>
     <ClInclude Include="..\src\RobinHoodInfobyte.hpp" />
+    <ClInclude Include="..\src\RobinHoodInfobitsHashbits.h" />
+    <ClInclude Include="..\src\RobinHoodInfobyte.h" />
+    <ClInclude Include="..\src\RobinHoodInfobyteFastforward.h" />
+    <ClInclude Include="..\src\RobinHoodInfobytePair.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">

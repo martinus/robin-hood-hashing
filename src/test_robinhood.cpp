@@ -26,6 +26,13 @@
 #include <fstream>
 
 #include <google/dense_hash_map>
+#include <RobinHoodInfobytePair.h>
+
+void set_high_priority() {
+    // see https://msdn.microsoft.com/en-us/library/windows/desktop/ms685100%28v=vs.85%29.aspx?f=255&MSPPError=-2147217396
+    SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+}
 
 // test some hashing stuff
 template<class T>
@@ -923,16 +930,18 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     std::vector<std::vector<Stats>> all_stats;
     //bench_sequential_insert(hopscotch_map<int, int, H>(), "tessil/hopscotch_map", upTo, times, searchtimes, all_stats);
 
-    bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyte::Style::Default>>("infobyte", upTo, times, searchtimes, all_stats);
-    bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyte::Style::Default>>("Robin Hood Infobyte", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert<RobinHoodInfobytePair::Map<int, int, H>>("Robin Hood Infobyte Pair", upTo, times, searchtimes, all_stats);
+    //bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, searchtimes, all_stats);
 
-    bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
+    //bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
     {
         google::dense_hash_map<int, int, H> googlemap;
         googlemap.set_empty_key(-1);
         googlemap.set_deleted_key(-2);
         bench_sequential_insert(googlemap, "google::dense_hash_map", upTo, times, searchtimes, all_stats);
     }
+    /*
     bench_sequential_insert(spp::sparse_hash_map<int, int, H>(), "spp::spare_hash_map", upTo, times, searchtimes, all_stats);
     bench_sequential_insert(sherwood_map<int, int>(), "sherwood_map", upTo, times, searchtimes, all_stats);
 
@@ -946,7 +955,7 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
 
     bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Fast>>("HopScotchAdaptive Fast", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Compact>>("HopScotchAdaptive Compact", upTo, times, searchtimes, all_stats);
-
+    */
     return all_stats;
 }
 
@@ -1008,6 +1017,7 @@ void random_bench_std(const std::string& title) {
 
 int main(int argc, char** argv) {
     try {
+        set_high_priority();
         //test_compare(1000000);
         //random_bench<RobinHoodInfobitsHashbits::Map<int, int>>("RobinHoodInfobitsHashbits");
         //random_bench<RobinHoodInfobyteFastforward::Map<int, int>>("RobinHoodInfobyteFastforward");
@@ -1016,6 +1026,7 @@ int main(int argc, char** argv) {
         //random_bench<HopScotch::Map<int, int>>("HopScotch");
         //random_bench_std<std::unordered_map<int, int>>("std::unordered_map");
 
+        test1<RobinHoodInfobytePair::Map<int, int>>(100000);
         test1<RobinHoodInfobyteJumpheuristic::Map<int, int>>(100000);
         test1<HopScotchAdaptive::Map<int, int>>(100000);
         test1<RobinHoodInfobitsHashbits::Map<int, int>>(100000);
@@ -1025,7 +1036,7 @@ int main(int argc, char** argv) {
         //test1<hopscotch_map<int, int>>(100000);
         std::cout << "test1 ok!" << std::endl;
 
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100*1000, 1000, 0);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(100*1000, 200, 50);
         print(std::cout, stats);
         std::ofstream fout("out.txt");
         print(fout, stats);

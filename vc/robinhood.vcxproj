@@ -148,11 +148,13 @@
     <ClInclude Include="..\src\RobinHoodInfobyte.hpp" />
     <ClInclude Include="..\src\RobinHoodInfobyteFastforward.h" />
     <ClInclude Include="..\src\RobinHoodInfobyteJumpheuristic.h" />
+    <ClInclude Include="..\src\RobinHoodInfobytePair.h" />
     <ClInclude Include="..\src\RobinHoodInfobyteQuadraticprobing.h" />
     <ClInclude Include="..\src\timer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\3rdparty\sherwood_map\sherwood_map.cpp" />
+    <ClCompile Include="..\src\test.cpp" />
     <ClCompile Include="..\src\test_robinhood.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
