@@ -24,7 +24,6 @@ struct Default {
     static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 7;
     static constexpr std::size_t OVERFLOW_SIZE = 32;
     static constexpr std::size_t INITIAL_ELEMENTS = 32;
-
     typedef std::allocator<typename InfoType> AInfo;
 };
 
@@ -94,10 +93,6 @@ public:
         return insert(std::make_pair(key, mapped_type())).first->second;
     }
 
-    inline const mapped_type& operator[](const key_type& key) const {
-        return insert(std::make_pair(key, mapped_type())).first->second;
-    }
-
     inline std::pair<iterator, bool> insert(value_type&& keyval) {
         if (_num_elements == _max_num_num_elements_allowed) {
             increase_size();
@@ -123,11 +118,17 @@ public:
         }
 
         // loop while we have not found an empty spot, and while no info overflow
+        size_t insertion_idx;
+        bool is_inserted = false;
         while (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK && info) {
             if (info > _info[idx]) {
                 // place element
                 std::swap(keyval, _keyvals[idx]);
                 std::swap(info, _info[idx]);
+                if (!is_inserted) {
+                    is_inserted = true;
+                    insertion_idx = idx;
+                }
             }
             ++idx;
             ++info;
@@ -144,7 +145,7 @@ public:
         _info[idx] = info;
 
         ++_num_elements;
-        return std::make_pair(_keyvals + idx, true);
+        return std::make_pair(_keyvals + insertion_idx, true);
     }
 
     inline std::pair<iterator, bool> insert(const value_type& value) {
@@ -179,7 +180,7 @@ public:
         }
 
         // nothing found!
-        return nullptr;
+        return end();
     }
 
     inline size_t erase(const key_type& key) {
@@ -240,8 +241,8 @@ private:
         // max * (1 - 1/20) = max * 0.95
         _max_num_num_elements_allowed = _max_elements - std::max((size_t)1, _max_elements / 20);
 
-        _info = _alloc_info.allocate(_max_elements + Traits::OVERFLOW_SIZE);
-        _keyvals = _alloc_keyvals.allocate(_max_elements + Traits::OVERFLOW_SIZE, _info);
+        _keyvals = _alloc_keyvals.allocate(_max_elements + Traits::OVERFLOW_SIZE);
+        _info = _alloc_info.allocate(_max_elements + Traits::OVERFLOW_SIZE, _keyvals);
 
         std::memset(_info, 0, sizeof(typename Traits::InfoType) * (_max_elements + Traits::OVERFLOW_SIZE));
     }

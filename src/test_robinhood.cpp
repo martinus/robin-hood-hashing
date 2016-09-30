@@ -963,8 +963,8 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     std::vector<std::vector<Stats>> all_stats;
     //bench_sequential_insert(hopscotch_map<int, int, H>(), "tessil/hopscotch_map", upTo, times, searchtimes, all_stats);
 
-    bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyte::Style::Default>>("Robin Hood Infobyte", upTo, times, searchtimes, all_stats);
     bench_sequential_insert(RobinHoodInfobytePair::Map<int, int, H>(), "Robin Hood Infobyte Pair", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyte::Style::Default>>("Robin Hood Infobyte", upTo, times, searchtimes, all_stats);
     //bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, searchtimes, all_stats);
 
     //bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
@@ -1074,7 +1074,7 @@ int main(int argc, char** argv) {
         //test1<hopscotch_map<int, int>>(100000);
         std::cout << "test1 ok!" << std::endl;
 
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100*1000, 1000, 50);
+        auto stats = bench_sequential_insert<std::hash<size_t>>(100*1000, 100, 10);
         print(std::cout, stats);
         std::ofstream fout("out.txt");
         print(fout, stats);
