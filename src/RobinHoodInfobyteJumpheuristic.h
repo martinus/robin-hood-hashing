@@ -138,33 +138,22 @@ public:
     */
     inline void update_jump_heuristic_offset() {
         // take a few samples, using golden ratio 0.618033988749895
-        if (_num_elements & 0xfff) {
-            size_t sum = 0;
-            sum += _info[0x9e3779b9 & _mask] & Traits::OFFSET_MASK;
-            sum += _info[0x3c6ef372 & _mask] & Traits::OFFSET_MASK;
-            sum += _info[0xdaa66d2c & _mask] & Traits::OFFSET_MASK;
-            sum += _info[0x78dde6e5 & _mask] & Traits::OFFSET_MASK;
-            sum += _info[0x1715609f & _mask] & Traits::OFFSET_MASK;
+        size_t sum = 0;
+        sum += _info[0x9e3779b9 & _mask] & Traits::OFFSET_MASK;
+        sum += _info[0x3c6ef372 & _mask] & Traits::OFFSET_MASK;
+        sum += _info[0xdaa66d2c & _mask] & Traits::OFFSET_MASK;
+        sum += _info[0x78dde6e5 & _mask] & Traits::OFFSET_MASK;
+        sum += _info[0x1715609f & _mask] & Traits::OFFSET_MASK;
 
-            sum += _info[0xb54cda58 & _mask] & Traits::OFFSET_MASK;
-            sum += _info[0x53845412 & _mask] & Traits::OFFSET_MASK;
-            sum += _info[0xf1bbcdcb & _mask] & Traits::OFFSET_MASK;
-            sum += _info[0x8ff34785 & _mask] & Traits::OFFSET_MASK;
-            sum += _info[0x2e2ac13e & _mask] & Traits::OFFSET_MASK;
+        sum += _info[0xb54cda58 & _mask] & Traits::OFFSET_MASK;
+        sum += _info[0x53845412 & _mask] & Traits::OFFSET_MASK;
+        sum += _info[0xf1bbcdcb & _mask] & Traits::OFFSET_MASK;
+        sum += _info[0x8ff34785 & _mask] & Traits::OFFSET_MASK;
+        sum += _info[0x2e2ac13e & _mask] & Traits::OFFSET_MASK;
 
-            _jump_heuristic_offset = static_cast<typename Traits::InfoType>(sum / 10);
-        }
+        _jump_heuristic_offset = static_cast<typename Traits::InfoType>(sum / 10);
 
         /*
-
-
-
-
-
-
-
-
-
         sum += _info[]
         if (_num_elements & 0xfff) {
             if (_level > 23) {
@@ -232,7 +221,9 @@ public:
         _info[idx] = info;
 
         ++_num_elements;
-        update_jump_heuristic_offset();
+        if (!(_num_elements & 0xfff)) {
+            update_jump_heuristic_offset();
+        }
         return true;
     }
 
@@ -298,7 +289,9 @@ public:
                 }
 
                 --_num_elements;
-                update_jump_heuristic_offset();
+                if (!(_num_elements & 0xfff)) {
+                    update_jump_heuristic_offset();
+                }
                 return 1;
             }
             ++idx;
