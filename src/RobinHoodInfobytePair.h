@@ -15,6 +15,19 @@ namespace RobinHoodInfobytePair {
 
 namespace Style {
 
+struct Fast {
+    // bits: | 7 | 6   5   4   3   2   1   0|
+    //       | ^ |         offset           |
+    //         |
+    //       full? 
+    typedef uint8_t InfoType;
+    static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 7;
+    static constexpr std::size_t OVERFLOW_SIZE = 32;
+    static constexpr std::size_t INITIAL_ELEMENTS = 32;
+    typedef std::allocator<typename InfoType> AInfo;
+    static constexpr float MAX_LOAD_FACTOR = 0.50f;
+};
+
 struct Default {
     // bits: | 7 | 6   5   4   3   2   1   0|
     //       | ^ |         offset           |
@@ -25,6 +38,7 @@ struct Default {
     static constexpr std::size_t OVERFLOW_SIZE = 32;
     static constexpr std::size_t INITIAL_ELEMENTS = 32;
     typedef std::allocator<typename InfoType> AInfo;
+    static constexpr float MAX_LOAD_FACTOR = 0.95f;
 };
 
 }
@@ -61,7 +75,8 @@ public:
     /// Creates an empty hash map.
     Map()
     : _hash()
-    , _key_equal() {
+    , _key_equal()
+    , _max_load_factor(Traits::MAX_LOAD_FACTOR) {
         init_data(Traits::INITIAL_ELEMENTS);
     }
 
@@ -69,8 +84,7 @@ public:
     void clear() {
         for (size_t i = 0; i < _max_elements + Traits::OVERFLOW_SIZE; ++i) {
             if (_info[i] & Traits::IS_BUCKET_TAKEN_MASK) {
-                _alloc_vals.destroy(_vals + i);
-                _alloc_keys.destroy(_keys + i);
+                _alloc_keyvals.destroy(_keyvals + i);
             }
         }
         std::memset(_info, 0, sizeof(typename Traits::InfoType) * (_max_elements + Traits::OVERFLOW_SIZE));
@@ -89,8 +103,63 @@ public:
         _alloc_info.deallocate(_info, _max_elements + Traits::OVERFLOW_SIZE);
     }
 
+    inline mapped_type& operator[](value_type&& keyval) {
+        if (_num_elements == _max_num_num_elements_allowed) {
+            increase_size();
+        }
+
+        auto h = _hash(keyval.first);
+        size_t idx = h & _mask;
+
+        typename Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK;
+        while (info < _info[idx]) {
+            ++idx;
+            ++info;
+        }
+
+        // while we potentially have a match
+        while (info == _info[idx]) {
+            if (_key_equal(keyval.first, _keyvals[idx].first)) {
+                // key already exists, do not insert.
+                return _keyvals[idx].second;
+            }
+            ++idx;
+            ++info;
+        }
+
+        // loop while we have not found an empty spot, and while no info overflow
+        size_t insertion_idx;
+        bool is_inserted = false;
+        while (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK && info) {
+            if (info > _info[idx]) {
+                // place element
+                std::swap(keyval, _keyvals[idx]);
+                std::swap(info, _info[idx]);
+                if (!is_inserted) {
+                    is_inserted = true;
+                    insertion_idx = idx;
+                }
+            }
+            ++idx;
+            ++info;
+        }
+
+        if (idx == _max_elements + Traits::OVERFLOW_SIZE || 0 == info) {
+            // Overflow! resize and try again.
+            increase_size();
+            return operator[](std::forward<value_type>(keyval));
+        }
+
+        // bucket is empty! put it there.
+        _alloc_keyvals.construct(_keyvals + idx, std::move(keyval));
+        _info[idx] = info;
+
+        ++_num_elements;
+        return _keyvals[is_inserted ? insertion_idx : idx].second;
+    }
+
     inline mapped_type& operator[](const key_type& key) {
-        return insert(std::make_pair(key, mapped_type())).first->second;
+        return operator[](std::make_pair(key, mapped_type()));
     }
 
     inline std::pair<iterator, bool> insert(value_type&& keyval) {
@@ -145,7 +214,7 @@ public:
         _info[idx] = info;
 
         ++_num_elements;
-        return std::make_pair(_keyvals + insertion_idx, true);
+        return std::make_pair(_keyvals + (is_inserted ? insertion_idx : idx), true);
     }
 
     inline std::pair<iterator, bool> insert(const value_type& value) {
@@ -232,14 +301,30 @@ public:
         return 0 == _num_elements;
     }
 
+    inline void max_load_factor() const {
+        return _max_load_factor;
+    }
+
+    inline void max_load_factor(float ml) {
+        _max_load_factor = ml;
+        update_max_num_elements_allowed();
+    }
+
 private:
+    inline void update_max_num_elements_allowed() {
+        _max_num_num_elements_allowed = std::min(
+            _max_elements - 2,
+            static_cast<size_t>(_max_load_factor * _max_elements));
+    }
+
     inline void init_data(size_t max_elements) {
         _max_elements = max_elements;
         _num_elements = 0;
         _mask = _max_elements - 1;
 
+
         // max * (1 - 1/20) = max * 0.95
-        _max_num_num_elements_allowed = _max_elements - std::max((size_t)1, _max_elements / 20);
+        update_max_num_elements_allowed();
 
         _keyvals = _alloc_keyvals.allocate(_max_elements + Traits::OVERFLOW_SIZE);
         _info = _alloc_info.allocate(_max_elements + Traits::OVERFLOW_SIZE, _keyvals);
@@ -279,6 +364,8 @@ private:
     size_t _max_elements;
     size_t _mask;
     size_t _max_num_num_elements_allowed;
+
+    float _max_load_factor;
 
     typename Allocator _alloc_keyvals;
     typename Traits::AInfo _alloc_info;

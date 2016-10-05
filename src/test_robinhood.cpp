@@ -58,11 +58,17 @@ template<class H>
 void test1_std(int times) {
     H rhhs;
     CHECK(rhhs.size() == 0);
-    CHECK(rhhs.insert(std::make_pair(32145, 123)).second);
+    auto it = rhhs.insert(std::make_pair(32145, 123));
+    CHECK(it.second);
+    CHECK(it.first->first == 32145);
+    CHECK(it.first->second == 123);
     CHECK(rhhs.size() == 1);
 
     for (int i = 0; i < times; ++i) {
-        CHECK(rhhs.insert(std::make_pair(i * 4, i)).second);
+        auto it = rhhs.insert(std::make_pair(i * 4, i));
+        CHECK(it.second);
+        CHECK(it.first->first == i * 4);
+        CHECK(it.first->second == i);
         auto found = rhhs.find(i * 4);
         if (found == rhhs.end()) {
             CHECK(found != rhhs.end());
@@ -963,18 +969,21 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     std::vector<std::vector<Stats>> all_stats;
     //bench_sequential_insert(hopscotch_map<int, int, H>(), "tessil/hopscotch_map", upTo, times, searchtimes, all_stats);
 
-    bench_sequential_insert<RobinHoodInfobyteJumpheuristic::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyteJumpheuristic::Style::Default>>("infobyte Jumpheuristic", upTo, times, searchtimes, all_stats);
     bench_sequential_insert(RobinHoodInfobytePair::Map<int, int, H>(), "Robin Hood Infobyte Pair", upTo, times, searchtimes, all_stats);
-    bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyte::Style::Default>>("Robin Hood Infobyte", upTo, times, searchtimes, all_stats);
-    bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, searchtimes, all_stats);
-
-    bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert(RobinHoodInfobytePair::Map<int, int, H, std::equal_to<int>, std::allocator<std::pair<int, int>>, RobinHoodInfobytePair::Style::Fast>(), "Robin Hood Infobyte Pair Fast", upTo, times, searchtimes, all_stats);
     {
         google::dense_hash_map<int, int, H> googlemap;
         googlemap.set_empty_key(-1);
         googlemap.set_deleted_key(-2);
+        googlemap[123] = 321;
         bench_sequential_insert(googlemap, "google::dense_hash_map", upTo, times, searchtimes, all_stats);
     }
+    bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
+
+    bench_sequential_insert<RobinHoodInfobyteJumpheuristic::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyteJumpheuristic::Style::Default>>("infobyte Jumpheuristic", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyte::Style::Default>>("Robin Hood Infobyte", upTo, times, searchtimes, all_stats);
+    bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, searchtimes, all_stats);
+
     bench_sequential_insert(spp::sparse_hash_map<int, int, H>(), "spp::spare_hash_map", upTo, times, searchtimes, all_stats);
     bench_sequential_insert(sherwood_map<int, int>(), "sherwood_map", upTo, times, searchtimes, all_stats);
 
@@ -1019,38 +1028,48 @@ void random_bench(const std::string& title) {
 }
 
 template<class H>
-void random_bench_std(const std::string& title) {
-    constexpr size_t count = 1000000;
-    constexpr size_t iters = 1000000000;
+void random_bench_std(H& hm, const std::string& title, int max_val, int iters, int times=5) {
+    //std::ranlux48 mt; // 604.31
+    //std::ranlux24 mt; // 214.19
+    //std::ranlux48_base mt; // 141.301
+    //std::knuth_b mt; // 126.224
+    //std::ranlux24_base mt; // 93.5508
+    //std::minstd_rand0 mt; // 90.1712 ns/iter
+    //std::minstd_rand mt; // 90.4192
+    //std::mt19937_64 mt; // 83.9447
+    //std::mt19937 mt; // 77.8051
+    MarsagliaMWC99 mt; // 75.1106
+    mt.seed(123);
+    std::uniform_int_distribution<int> ud(2, max_val);
 
-    H hm;
-    std::mt19937 mt;
-    std::uniform_int_distribution<int> ud(2, count);
-
-    int val;
-    for (size_t i = 0; i < count; ++i) {
-        val = ud(mt);
-        hm.emplace(val, val);
+    double min_ns = std::numeric_limits<double>::max();
+    for (int i = 0; i < times; ++i) {
+        auto start = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < iters; ++i) {
+            hm[ud(mt)] = i;
+            hm.erase(ud(mt));
+        }
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = stop - start;
+        double ns = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count());
+        min_ns = std::min(ns, min_ns);
     }
 
-    auto start = std::chrono::high_resolution_clock::now();
-    for (size_t i = 0; i < iters; ++i) {
-        hm.erase(val);
-        val = ud(mt);
-        hm.emplace(val, val);
-    }
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = stop - start;
-
-    std::cout << std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() / iters
+    std::cout <<  (min_ns / iters)
         << " ns/iter for " << title << "(size=" << hm.size() << ")" << std::endl;
 }
 
 int main(int argc, char** argv) {
-    std::unordered_map<int, int> um;
-    um.insert(std::make_pair(123, 321));
-    um.insert(std::make_pair(1, 321));
-    um.insert(std::make_pair(123, 321));
+    google::dense_hash_map<int, int> googlemap;
+    googlemap.set_empty_key(-1);
+    googlemap.set_deleted_key(-2);
+    int num_max = 10000;
+    int iters = 10000000;
+    random_bench_std(googlemap, "googlemap", num_max, iters);
+    random_bench_std(RobinHoodInfobytePair::Map<int, int>(), "RobinHoodInfobytePair", num_max, iters);
+    random_bench_std(RobinHoodInfobytePair::Map<int, int, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int, int>>, RobinHoodInfobytePair::Style::Fast>(), "RobinHoodInfobytePair Fast", num_max, iters);
+    //random_bench_std(RobinHoodInfobyteJumpheuristic::Map<int, int>(), "RobinHoodInfobyteJumpheuristic", num_max, iters);
+    //random_bench_std(HopScotchAdaptive::Map<int, int>(), "HopScotchAdaptive", num_max, iters);
     try {
 
         set_high_priority();

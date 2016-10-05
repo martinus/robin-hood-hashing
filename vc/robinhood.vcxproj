@@ -136,6 +136,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\3rdparty\google\google\sparsehash\densehashtable.h" />
+    <ClInclude Include="..\src\3rdparty\google\sparsehash\internal\densehashtable.h" />
     <ClInclude Include="..\src\3rdparty\rigtorp\HashMap.h" />
     <ClInclude Include="..\src\3rdparty\sherwood_map\sherwood_map.hpp" />
     <ClInclude Include="..\src\3rdparty\sparsepp\sparsepp.h" />

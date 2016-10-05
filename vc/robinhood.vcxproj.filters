@@ -29,6 +29,12 @@
     <ClInclude Include="..\src\RobinHoodInfobyte.h" />
     <ClInclude Include="..\src\RobinHoodInfobyteFastforward.h" />
     <ClInclude Include="..\src\RobinHoodInfobytePair.h" />
+    <ClInclude Include="..\src\3rdparty\google\sparsehash\internal\densehashtable.h">
+      <Filter>3rdparty</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\3rdparty\google\google\sparsehash\densehashtable.h">
+      <Filter>3rdparty</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">
