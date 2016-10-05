@@ -12,6 +12,7 @@
 #include <timer.h>
 #include <robinhood.h>
 #include <marsagliamwc99.h>
+#include <XorShiftRng.h>
 
 #include <string>
 #include <iostream>
@@ -1027,27 +1028,54 @@ void random_bench(const std::string& title) {
         << " ns/iter for " << title << "(size=" << hm.size() << ")" << std::endl;
 }
 
+template<class Key, class Val>
+class DummyMap {
+public:
+    DummyMap()
+        : _key(0)
+        , _val(0) {
+    }
+
+    inline Val& operator[](const Key& k) {
+        _key += k;
+        return _val;
+    }
+
+    inline void erase(const Key& k) {
+        _key += k;
+    }
+
+    inline size_t size() const {
+        return static_cast<size_t>(_key);
+    }
+
+private:
+    Key _key;
+    Val _val;
+};
+
 template<class H>
-void random_bench_std(H& hm, const std::string& title, int max_val, int iters, int times=5) {
-    //std::ranlux48 mt; // 604.31
-    //std::ranlux24 mt; // 214.19
-    //std::ranlux48_base mt; // 141.301
-    //std::knuth_b mt; // 126.224
-    //std::ranlux24_base mt; // 93.5508
-    //std::minstd_rand0 mt; // 90.1712 ns/iter
-    //std::minstd_rand mt; // 90.4192
-    //std::mt19937_64 mt; // 83.9447
-    //std::mt19937 mt; // 77.8051
-    MarsagliaMWC99 mt; // 75.1106
+void random_bench_std(H& hm, const std::string& title, uint32_t mask, int iters, int times=5) {
+    //std::ranlux48 mt; // 544.425
+    //std::ranlux24 mt; // 142.268
+    //std::ranlux48_base mt; // 14.9259
+    //std::knuth_b mt; // 14.8667
+    //std::minstd_rand0 mt; // 8.64232
+    //std::minstd_rand mt; // 8.61236
+    //std::mt19937_64 mt; // 7.42715
+    //std::ranlux24_base mt; // 15.3052
+    //std::mt19937 mt; // 6.54914
+    //XorShiftRng mt; // 3.67276
+    MarsagliaMWC99 mt; // 3.4988
     mt.seed(123);
-    std::uniform_int_distribution<int> ud(2, max_val);
+    //std::uniform_int_distribution<int> ud(2, max_val);
 
     double min_ns = std::numeric_limits<double>::max();
     for (int i = 0; i < times; ++i) {
         auto start = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < iters; ++i) {
-            hm[ud(mt)] = i;
-            hm.erase(ud(mt));
+        for (int i = 0; i < iters; ++i) {            
+            hm[mt() & mask] = i;
+            hm.erase(mt() & mask);
         }
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = stop - start;
@@ -1060,19 +1088,31 @@ void random_bench_std(H& hm, const std::string& title, int max_val, int iters, i
 }
 
 int main(int argc, char** argv) {
-    google::dense_hash_map<int, int> googlemap;
-    googlemap.set_empty_key(-1);
-    googlemap.set_deleted_key(-2);
-    int num_max = 10000;
+    set_high_priority();
+
+    uint32_t max_num = 1;
     int iters = 10000000;
-    random_bench_std(googlemap, "googlemap", num_max, iters);
-    random_bench_std(RobinHoodInfobytePair::Map<int, int>(), "RobinHoodInfobytePair", num_max, iters);
-    random_bench_std(RobinHoodInfobytePair::Map<int, int, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int, int>>, RobinHoodInfobytePair::Style::Fast>(), "RobinHoodInfobytePair Fast", num_max, iters);
+    while (max_num) {
+        uint32_t mask = max_num - 1;
+        std::cout << mask << std::endl;
+        random_bench_std(DummyMap<int, int>(), "Dummy", mask, iters);
+        {
+            google::dense_hash_map<int, int, std::hash<int>> googlemap;
+            googlemap.set_empty_key(-1);
+            googlemap.set_deleted_key(-2);
+            random_bench_std(googlemap, "googlemap", mask, iters);
+        }
+        random_bench_std(RobinHoodInfobytePair::Map<int, int, std::hash<int>>(), "RobinHoodInfobytePair", mask, iters);
+        random_bench_std(RobinHoodInfobytePair::Map<int, int, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int, int>>, RobinHoodInfobytePair::Style::Fast>(), "RobinHoodInfobytePair Fast", mask, iters);
+        random_bench_std(spp::sparse_hash_map<int, int, std::hash<int>>(), "spp::spare_hash_map", mask, iters);
+        random_bench_std(sherwood_map<int, int, std::hash<int>>(), "sherwood_map", mask, iters);
+        max_num <<= 1;
+    }
+
     //random_bench_std(RobinHoodInfobyteJumpheuristic::Map<int, int>(), "RobinHoodInfobyteJumpheuristic", num_max, iters);
     //random_bench_std(HopScotchAdaptive::Map<int, int>(), "HopScotchAdaptive", num_max, iters);
     try {
 
-        set_high_priority();
         //test_compare(1000000);
         //random_bench<RobinHoodInfobitsHashbits::Map<int, int>>("RobinHoodInfobitsHashbits");
         //random_bench<RobinHoodInfobyteFastforward::Map<int, int>>("RobinHoodInfobyteFastforward");
