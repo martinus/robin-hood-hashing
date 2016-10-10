@@ -4,7 +4,7 @@
 #include <limits>
 #include <cstdint>
 
-/// Extremely fast RNG. 
+/// Extremely fast non-cryptograpic RNG. Period is 2^128 - 1.
 ///
 /// @see https://github.com/rust-lang-nursery/rand/blob/master/src/lib.rs
 class XorShiftRng {
@@ -25,18 +25,15 @@ public:
         _w = 0x113ba7bb;
     }
 
-    // This is the heart of the generator.
-    // It uses George Marsaglia's MWC algorithm to produce an unsigned integer.
-    // @see https://groups.google.com/forum/?fromgroups=#!topic/sci.crypt/yoaCpGWKEk0
     inline uint32_t operator()() {
-        auto x = _x;
-        auto t = x ^ (x << 11);
+        // Extremely fast non-cryptograpic RNG. Period is 2^128 - 1.
+        // see Marsaglia, George (July 2003). ["Xorshift RNGs"](http://www.jstatsoft.org/v08/i14/paper).
+        // Journal of Statistical Software. Vol. 8 (Issue 14).
+        const auto t = _x ^ (_x << 11);
         _x = _y;
         _y = _z;
         _z = _w;
-        auto w = _w;
-        _w = w ^ (w >> 19) ^ (t ^ (t >> 8));
-        return _w;
+        return (_w = _w ^ (_w >> 19) ^ (t ^ (t >> 8)));
     }
 
     /// Random float value between 0 and 1.

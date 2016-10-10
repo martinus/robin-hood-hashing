@@ -28,6 +28,7 @@
 
 #include <google/dense_hash_map>
 #include <RobinHoodInfobytePair.h>
+#include <MicroBenchmark.h>
 
 void set_high_priority() {
     // see https://msdn.microsoft.com/en-us/library/windows/desktop/ms685100%28v=vs.85%29.aspx?f=255&MSPPError=-2147217396
@@ -1054,8 +1055,8 @@ private:
     Val _val;
 };
 
-template<class H>
-void random_bench_std(H& hm, const std::string& title, uint32_t mask, int iters, int times=5) {
+template<class Op>
+double random_bench_std(const std::string& title, int times, Op& o) {
     //std::ranlux48 mt; // 544.425
     //std::ranlux24 mt; // 142.268
     //std::ranlux48_base mt; // 14.9259
@@ -1067,46 +1068,72 @@ void random_bench_std(H& hm, const std::string& title, uint32_t mask, int iters,
     //std::mt19937 mt; // 6.54914
     //XorShiftRng mt; // 3.67276
     MarsagliaMWC99 mt; // 3.4988
-    mt.seed(123);
     //std::uniform_int_distribution<int> ud(2, max_val);
 
     double min_ns = std::numeric_limits<double>::max();
     for (int i = 0; i < times; ++i) {
+        mt.seed(123);
         auto start = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < iters; ++i) {            
-            hm[mt() & mask] = i;
-            hm.erase(mt() & mask);
-        }
+        o(mt);
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = stop - start;
         double ns = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count());
         min_ns = std::min(ns, min_ns);
     }
+    return min_ns;
+}
 
-    std::cout <<  (min_ns / iters)
-        << " ns/iter for " << title << "(size=" << hm.size() << ")" << std::endl;
+template<class R>
+void benchRng(const char *name) {
+    MicroBenchmark mb(5, 0.5);
+    R rng;
+    auto n = rng();
+    while (mb.keepRunning()) {
+        n += rng();
+    }
+    std::cout << (1 / (mb.min() * 1000*1000)) << " Million OPS for " << name << " (" << n << ")" << std::endl;
 }
 
 int main(int argc, char** argv) {
-    set_high_priority();
+    benchRng<XorShiftRng>("XorShiftRng");
+    benchRng<MarsagliaMWC99>("MarsagliaMWC99");
+    benchRng<std::mt19937>("std::mt19937");
+    benchRng<std::ranlux24_base>("std::ranlux24_base");
+    benchRng<std::mt19937_64>("std::mt19937_64");
+    benchRng<std::minstd_rand>("std::minstd_rand");
+    benchRng<std::ranlux48>("std::ranlux48");
+    benchRng<std::ranlux24>("std::ranlux24");
+    benchRng<std::ranlux48_base>("std::ranlux48_base");
+    benchRng<std::knuth_b>("std::knuth_b");
+    benchRng<std::minstd_rand0>("std::minstd_rand0");
 
-    uint32_t max_num = 1;
+    uint32_t max_num = 131072;
     int iters = 10000000;
     while (max_num) {
         uint32_t mask = max_num - 1;
         std::cout << mask << std::endl;
-        random_bench_std(DummyMap<int, int>(), "Dummy", mask, iters);
+        //random_bench_std(DummyMap<int, int>(), "Dummy", mask, iters);
         {
             google::dense_hash_map<int, int, std::hash<int>> googlemap;
             googlemap.set_empty_key(-1);
             googlemap.set_deleted_key(-2);
-            random_bench_std(googlemap, "googlemap", mask, iters);
+            std::cout << random_bench_std("googlemap", 5, [&](MarsagliaMWC99& mt) {
+                for (int i = 0; i < iters; ++i) {
+                    googlemap[mt() & mask] = i;
+                    googlemap.erase(mt() & mask);
+                }
+            }) << " " << googlemap.size() << std::endl;
         }
+        /*
         random_bench_std(RobinHoodInfobytePair::Map<int, int, std::hash<int>>(), "RobinHoodInfobytePair", mask, iters);
+        random_bench_std(RobinHoodInfobytePair::Map<int, int, MultiplyHash<int>>(), "RobinHoodInfobytePair MultiplyHash", mask, iters);
+        random_bench_std(RobinHoodInfobytePair::Map<int, int, DummyHash<int>>(), "RobinHoodInfobytePair DummyHash", mask, iters);
         random_bench_std(RobinHoodInfobytePair::Map<int, int, std::hash<int>, std::equal_to<int>, std::allocator<std::pair<int, int>>, RobinHoodInfobytePair::Style::Fast>(), "RobinHoodInfobytePair Fast", mask, iters);
-        random_bench_std(spp::sparse_hash_map<int, int, std::hash<int>>(), "spp::spare_hash_map", mask, iters);
-        random_bench_std(sherwood_map<int, int, std::hash<int>>(), "sherwood_map", mask, iters);
-        max_num <<= 1;
+        random_bench_std(std::unordered_map<int, int, std::hash<int>>(), "unorderd_map", mask, iters);
+        //random_bench_std(spp::sparse_hash_map<int, int, std::hash<int>>(), "spp::spare_hash_map", mask, iters);
+        //random_bench_std(sherwood_map<int, int, std::hash<int>>(), "sherwood_map", mask, iters);
+        max_num <<= 3;
+        */
     }
 
     //random_bench_std(RobinHoodInfobyteJumpheuristic::Map<int, int>(), "RobinHoodInfobyteJumpheuristic", num_max, iters);

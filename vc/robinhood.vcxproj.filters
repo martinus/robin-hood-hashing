@@ -35,6 +35,8 @@
     <ClInclude Include="..\src\3rdparty\google\google\sparsehash\densehashtable.h">
       <Filter>3rdparty</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\XorShiftRng.h" />
+    <ClInclude Include="..\src\MicroBenchmark.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">
