@@ -1091,10 +1091,109 @@ void benchRng(const char *name) {
     while (mb.keepRunning()) {
         n += rng();
     }
-    std::cout << (1 / (mb.min() * 1000*1000)) << " Million OPS for " << name << " (" << n << ")" << std::endl;
+    doNotOptmizeAway(n);
+    std::cout << (1 / (mb.min() * 1000*1000)) << " Million OPS for " << name << std::endl;
 }
 
+template<class T>
+void doNotOptmizeAway(T&& dat) {
+    volatile auto x = &dat;
+}
+
+template<class M>
+void benchRandomInsertAndDelete(const char* name, uint32_t mask, uint32_t numElements) {
+    MicroBenchmark mb(5, 0.5);
+    XorShiftRng rng;
+
+    size_t s = 0;
+    while (mb.keepRunning()) {
+        rng.seed(123);
+        M m;
+        for (uint32_t i = 0; i < numElements; ++i) {
+            m[rng() & mask] = i;
+            m.erase(rng() & mask);
+        }
+        s = m.size();
+    }
+    doNotOptmizeAway(s);
+    std::cout << mb.min() << " " << name << " " << s << std::endl;
+}
+
+template<class M>
+void benchRandomFind(const char* name, uint32_t mask, uint32_t numElements) {
+    MicroBenchmark mb(5, 0.5);
+    XorShiftRng rng;
+
+    rng.seed(321);
+    M m;
+    for (uint32_t i = 0; i < numElements; ++i) {
+        m[rng() & mask] = i;
+    }
+
+    size_t s = 0;
+    while (mb.keepRunning()) {
+        rng.seed(321);
+        for (uint32_t i = 0; i < numElements; ++i) {
+            if (m.find(rng() & mask) != m.end()) {
+                ++s;
+            }
+        }
+    }
+    doNotOptmizeAway(s);
+    std::cout << mb.min() << " " << name << " benchRandomFind " << s << std::endl;
+}
+
+
+
+template<class K, class V, class H = std::hash<int>>
+class GoogleMapWrapper {
+private:
+    typedef google::dense_hash_map<K, V, H> Map;
+    Map mGm;
+
+public:
+    inline GoogleMapWrapper() {
+        mGm.set_empty_key(-1);
+        mGm.set_deleted_key(-2);
+    }
+
+    inline typename Map::data_type& operator[](const typename Map::key_type& key) {
+        return mGm[key];
+    }
+
+    inline typename Map::size_type erase(const typename Map::key_type& key) {
+        return mGm.erase(key);
+    }
+
+    inline typename Map::size_type size() const {
+        return mGm.size();
+    }
+
+    inline typename Map::const_iterator find(const typename Map::key_type& key) const {
+        return mGm.find(key);
+    }
+
+    inline typename Map::const_iterator end() const {
+        return mGm.end();
+    }
+};
+
 int main(int argc, char** argv) {
+    for (int i = 0; i < 10; ++i) {
+        uint32_t mask = (1 << (20 + i)) - 1;
+        uint32_t numElements = 1000 * 1000;
+        //benchRandomInsertAndDelete<std::unordered_map<uint32_t, uint32_t>>("std::unordered_map", mask, numElements);
+        benchRandomInsertAndDelete<GoogleMapWrapper<uint32_t, uint32_t>>("dense_hash_map", mask, numElements);
+        benchRandomInsertAndDelete<RobinHoodInfobytePair::Map<uint32_t, uint32_t>>("RobinHoodInfobytePair::Map", mask, numElements);
+
+        //benchRandomFind<std::unordered_map<uint32_t, uint32_t>>("std::unordered_map", mask, numElements);
+        benchRandomFind<GoogleMapWrapper<uint32_t, uint32_t>>("dense_hash_map", mask, numElements);
+        benchRandomFind<RobinHoodInfobytePair::Map<uint32_t, uint32_t>>("RobinHoodInfobytePair::Map", mask, numElements);
+
+        std::cout << std::endl;
+    }
+
+
     benchRng<XorShiftRng>("XorShiftRng");
     benchRng<MarsagliaMWC99>("MarsagliaMWC99");
     benchRng<std::mt19937>("std::mt19937");
