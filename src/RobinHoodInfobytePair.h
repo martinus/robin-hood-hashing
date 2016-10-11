@@ -38,7 +38,7 @@ struct Default {
     static constexpr std::size_t OVERFLOW_SIZE = 32;
     static constexpr std::size_t INITIAL_ELEMENTS = 32;
     typedef std::allocator<typename InfoType> AInfo;
-    static constexpr float MAX_LOAD_FACTOR = 0.95f;
+    static constexpr float MAX_LOAD_FACTOR = 0.90f;
 };
 
 }
