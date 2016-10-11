@@ -50,7 +50,6 @@ private:
             const auto actualMeasurementSeconds = duration.count();
             auto actualToDesired = actualMeasurementSeconds / mDesiredSecondsPerMeasurement;
 
-            //0.00000001 / 1 = 
             if (actualToDesired < 0.1) {
                 // we are far off, need more than 10 times as many iterations.
                 actualToDesired = 0.1;
@@ -60,8 +59,7 @@ private:
             }
 
             // update number of measurements.
-            // +0.5 for rounding
-            // +1 to be save
+            // +0.5 for correct rounding
             mNumIters = static_cast<size_t>(mNumIters / actualToDesired + 0.5);
             if (0 == mNumIters) {
                 mNumIters = 1;
