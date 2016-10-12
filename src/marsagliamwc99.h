@@ -15,13 +15,8 @@ public:
     typedef uint32_t result_type;
 
     MarsagliaMWC99()
-        : _w(521288629 + static_cast<uint32_t>(ticks()))
-        , _z(362436069 + static_cast<uint32_t>(ticks())) {
-    }
-
-    MarsagliaMWC99(size_t range)
-        : _w(521288629 + static_cast<uint32_t>(ticks()))
-        , _z(362436069 + static_cast<uint32_t>(ticks())) {
+        : _w(521288629)
+        , _z(362436069) {
     }
 
     void seed(size_t val) {

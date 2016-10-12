@@ -1,54 +1,30 @@
 #pragma once
 
-#include <Windows.h>
-#ifdef max
-#undef max
-#endif
-#ifdef min 
-#undef min
-#endif
-
-inline size_t ticks() {
-  LARGE_INTEGER s;
-  QueryPerformanceCounter(&s);
-  return s.LowPart;
-}
+#include <chrono>
 
 class Timer {
 public:
-  inline Timer() {
-    restart();
-  }
+    inline Timer() {
+        restart();
+    }
 
-  inline void restart() {
-    QueryPerformanceCounter(&_start);
-  }
+    inline void restart() {
+        _start = std::chrono::high_resolution_clock::now();
+    }
 
-  inline LONGLONG elapsed_ticks() const {
-    LARGE_INTEGER stop;
-    QueryPerformanceCounter(&stop);
-    return stop.QuadPart - _start.QuadPart;
-  }
+    inline double elapsed() const {
+        auto stop = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = stop - _start;
+        return duration.count();
+    }
 
-  inline LONGLONG frequency() const {
-    LARGE_INTEGER freq;
-    QueryPerformanceFrequency(&freq);
-    return freq.QuadPart;
-  }
-
-
-  inline double elapsed() const {
-    return elapsed_ticks()/(double)frequency();
-  }
-
-  inline double elapsed_restart() {
-      LARGE_INTEGER stop;
-      QueryPerformanceCounter(&stop);
-      auto diff = stop.QuadPart - _start.QuadPart;
-      _start = stop;
-      return diff / (double)frequency();
-  }
+    inline double elapsed_restart() {
+        auto stop = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = stop - _start;
+        _start = stop;
+        return duration.count();
+    }
 
 private:
-  LARGE_INTEGER _start;
+    std::chrono::time_point<std::chrono::high_resolution_clock> _start;
 };

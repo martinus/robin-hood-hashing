@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <cstdint>
+#include <iostream>
 
 struct MurmurHash2 : public std::unary_function<size_t, std::string> {
   inline size_t operator()(const std::string& t) const {

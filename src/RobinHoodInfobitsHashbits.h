@@ -138,7 +138,7 @@ template<
     bool Debug = false,
     class AVals = std::allocator<Val>,
     class AKeys = std::allocator<Key>,
-    class AInfo = std::allocator<Traits::InfoType>
+    class AInfo = std::allocator<typename Traits::InfoType>
 >
 class Map {
 public:
@@ -195,7 +195,7 @@ public:
         auto h = _hash(key);
 
         // create info field: IS_BUCKET_TAKEN_MASK, offset is 0, with hash info.
-        Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK | ((h >> _level_shift) & Traits::HASH_MASK);
+        typename Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK | ((h >> _level_shift) & Traits::HASH_MASK);
 
         // calculate array position
         size_t idx = h & _mask;
@@ -265,7 +265,7 @@ public:
         auto h = _hash(key);
 
         // create info field: offset is bucket is taken, offset is 0, with hash info.
-        Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK | ((h >> _level_shift) & Traits::HASH_MASK);
+        typename Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK | ((h >> _level_shift) & Traits::HASH_MASK);
 
         // calculate array position
         size_t idx = h & _mask;
@@ -322,7 +322,7 @@ private:
         _keys = _alloc_keys.allocate(_max_elements + Traits::MAX_OFFSET + 1, _info);
         _vals = _alloc_vals.allocate(_max_elements + Traits::MAX_OFFSET + 1, _keys);
 
-        std::memset(_info, 0, sizeof(Traits::InfoType) * (_max_elements + Traits::MAX_OFFSET + 1));
+        std::memset(_info, 0, sizeof(typename Traits::InfoType) * (_max_elements + Traits::MAX_OFFSET + 1));
     }
 
     void increase_size() {

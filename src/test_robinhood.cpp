@@ -9,7 +9,6 @@
 #include <3rdparty/tessil/hopscotch_map.h>
 #include <3rdparty/sherwood_map/sherwood_map.hpp>
 
-#include <timer.h>
 #include <robinhood.h>
 #include <marsagliamwc99.h>
 #include <XorShiftRng.h>
@@ -19,9 +18,6 @@
 #include <unordered_set>
 #include <unordered_map>
 
-#include <Windows.h>
-#include <psapi.h>
-
 #include <random>
 #include <chrono>
 #include <fstream>
@@ -30,11 +26,18 @@
 #include <RobinHoodInfobytePair.h>
 #include <MicroBenchmark.h>
 
+#include <timer.h>
+
+#ifdef _WIN32
+#include <Windows.h>
+#include <psapi.h>
+
 void set_high_priority() {
     // see https://msdn.microsoft.com/en-us/library/windows/desktop/ms685100%28v=vs.85%29.aspx?f=255&MSPPError=-2147217396
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 }
+#endif
 
 // test some hashing stuff
 template<class T>
@@ -512,7 +515,6 @@ void test_map1(size_t times) {
 }
 
 void test_compare(size_t times) {
-    Timer t;
     MarsagliaMWC99 rand;
     size_t seed = 142323;
     rand.seed(seed);
@@ -655,7 +657,7 @@ struct HashX : public std::unary_function<size_t, X> {
 
 
 void test_count(size_t times) {
-    MarsagliaMWC99 rand(times * 5);
+    MarsagliaMWC99 rand;
     reset_x();
     {
         rand.seed(123);
@@ -1070,7 +1072,7 @@ double random_bench_std(const std::string& title, int times, Op& o) {
     MarsagliaMWC99 mt; // 3.4988
     //std::uniform_int_distribution<int> ud(2, max_val);
 
-    double min_ns = std::numeric_limits<double>::max();
+    double min_ns = (std::numeric_limits<double>::max)();
     for (int i = 0; i < times; ++i) {
         mt.seed(123);
         auto start = std::chrono::high_resolution_clock::now();
@@ -1078,7 +1080,7 @@ double random_bench_std(const std::string& title, int times, Op& o) {
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = stop - start;
         double ns = static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count());
-        min_ns = std::min(ns, min_ns);
+        min_ns = (std::min)(ns, min_ns);
     }
     return min_ns;
 }
@@ -1092,7 +1094,7 @@ void benchRng(const char *name) {
         n += rng();
     }
     doNotOptmizeAway(n);
-    std::cout << (1 / (mb.min() * 1000*1000)) << " Million OPS for " << name << std::endl;
+    std::cout << (1 / ((mb.min)() * 1000*1000)) << " Million OPS for " << name << std::endl;
 }
 
 template<class T>
@@ -1116,7 +1118,7 @@ void benchRandomInsertAndDelete(const char* name, uint32_t mask, uint32_t numEle
         s = m.size();
     }
     doNotOptmizeAway(s);
-    std::cout << mb.min() << " " << name << " " << s << std::endl;
+    std::cout << (mb.min)() << " " << name << " " << s << std::endl;
 }
 
 template<class M>
@@ -1140,7 +1142,7 @@ void benchRandomFind(const char* name, uint32_t mask, uint32_t numElements) {
         }
     }
     doNotOptmizeAway(s);
-    std::cout << mb.min() << " " << name << " benchRandomFind " << s << std::endl;
+    std::cout << (mb.min)() << " " << name << " benchRandomFind " << s << std::endl;
 }
 
 
