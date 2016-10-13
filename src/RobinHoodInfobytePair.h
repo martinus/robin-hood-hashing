@@ -144,7 +144,7 @@ public:
             ++info;
         }
 
-        if (idx == _max_elements + Traits::OVERFLOW_SIZE || 0 == info) {
+        if (idx == _max_elements + Traits::OVERFLOW_SIZE - 1 || 0 == info) {
             // Overflow! resize and try again.
             increase_size();
             return operator[](std::forward<value_type>(keyval));
@@ -203,7 +203,7 @@ public:
             ++info;
         }
 
-        if (idx == _max_elements + Traits::OVERFLOW_SIZE || 0 == info) {
+        if (idx == _max_elements + Traits::OVERFLOW_SIZE - 1 || 0 == info) {
             // Overflow! resize and try again.
             increase_size();
             return insert(std::move(keyval));
