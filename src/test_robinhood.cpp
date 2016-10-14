@@ -1123,11 +1123,12 @@ void benchRandomInsertAndDelete(const char* name, uint32_t mask, uint32_t numEle
 
 template<class M>
 void benchRandomFind(const char* name, uint32_t mask, uint32_t numElements) {
-    MicroBenchmark mb(5, 0.5);
+    MicroBenchmark mb(5, 1.0);
     XorShiftRng rng;
 
     rng.seed(321);
     M m;
+    //m.max_load_factor(0.99f);
     for (uint32_t i = 0; i < numElements; ++i) {
         m[rng() & mask] = i;
     }
@@ -1135,22 +1136,35 @@ void benchRandomFind(const char* name, uint32_t mask, uint32_t numElements) {
     size_t s = 0;
     while (mb.keepRunning()) {
         rng.seed(321);
-        for (uint32_t i = 0; i < numElements; ++i) {
+
+        for (uint32_t i = 0, e = numElements; i < e; ++i) {
             if (m.find(rng() & mask) != m.end()) {
                 ++s;
             }
         }
     }
     doNotOptmizeAway(s);
-    std::cout << (mb.min)() << " " << name << " benchRandomFind " << s << std::endl;
+    std::cout << (mb.min)() << " " << name << " benchRandomFind (existing) load=" << m.load_factor() << " size=" << m.size() << std::endl;
+
+    while (mb.keepRunning()) {
+        rng.seed(999);
+
+        for (uint32_t i = 0, e = numElements; i < e; ++i) {
+            if (m.find(rng() & mask) != m.end()) {
+                ++s;
+            }
+        }
+    }
+    doNotOptmizeAway(s);
+    std::cout << (mb.min)() << " " << name << " benchRandomFind (nonexisting) load=" << m.load_factor() << " size=" << m.size() << std::endl;
 }
 
 template<class M>
 void benchRandomInsert(const char* name, uint32_t mask, uint32_t numElements) {
-    MicroBenchmark mb(5, 0.5);
+    MicroBenchmark mb(5, 0.1);
     XorShiftRng rng;
 
-    size_t s = 0;
+    float s = 0;
     while (mb.keepRunning()) {
         rng.seed(123);
         M m;
@@ -1158,7 +1172,7 @@ void benchRandomInsert(const char* name, uint32_t mask, uint32_t numElements) {
         for (uint32_t i = 0; i < numElements; ++i) {
             m[rng() & mask] = i;
         }
-        s = m.size();
+        s = m.load_factor();
     }
     doNotOptmizeAway(s);
     std::cout << (mb.min)() << " " << name << " " << s << std::endl;
@@ -1200,27 +1214,39 @@ public:
     inline void max_load_factor(float newLoadFactor) {
         mGm.max_load_factor(newLoadFactor);
     }
+
+    inline size_t max_size() const {
+        return mGm.max_size();
+    }
+
+    inline float load_factor() const {
+        return mGm.load_factor();
+    }
 };
 
 int main(int argc, char** argv) {
     for (int i = 0; i < 10; ++i) {
         uint32_t mask = (1 << (20 + i)) - 1;
         uint32_t numElements = 1000 * 1000;
+        //uint32_t mask = -1;
+        //uint32_t numElements = 16100;
         /*
         benchRandomInsertAndDelete<std::unordered_map<uint32_t, uint32_t>>("std::unordered_map", mask, numElements);
         benchRandomInsertAndDelete<GoogleMapWrapper<uint32_t, uint32_t>>("dense_hash_map", mask, numElements);
         benchRandomInsertAndDelete<RobinHoodInfobytePair::Map<uint32_t, uint32_t>>("RobinHoodInfobytePair::Map", mask, numElements);
-
-        benchRandomFind<std::unordered_map<uint32_t, uint32_t>>("std::unordered_map", mask, numElements);
-        benchRandomFind<GoogleMapWrapper<uint32_t, uint32_t>>("dense_hash_map", mask, numElements);
-        benchRandomFind<RobinHoodInfobytePair::Map<uint32_t, uint32_t>>("RobinHoodInfobytePair::Map", mask, numElements);
         */
 
-        //uint32_t mask = -1;
-        benchRandomInsert<RobinHoodInfobytePair::Map<uint32_t, uint32_t>>("RobinHoodInfobytePair::Map", mask, numElements);
-        benchRandomInsert<GoogleMapWrapper<uint32_t, uint32_t>>("dense_hash_map", mask, numElements);
-        benchRandomInsert<std::unordered_map<uint32_t, uint32_t>>("std::unordered_map", mask, numElements);
+        benchRandomFind<GoogleMapWrapper<uint32_t, uint32_t>>("dense_hash_map", mask, numElements);
+        benchRandomFind<RobinHoodInfobytePair::Map<uint32_t, uint32_t>>("RobinHoodInfobytePair::Map", mask, numElements);
+        benchRandomFind<std::unordered_map<uint32_t, uint32_t>>("std::unordered_map", mask, numElements);
 
+        //uint32_t mask = -1;
+        /*
+        std::cout << numElements << std::endl;
+        benchRandomInsert<GoogleMapWrapper<uint32_t, uint32_t>>("dense_hash_map", mask, numElements);
+        benchRandomInsert<RobinHoodInfobytePair::Map<uint32_t, uint32_t>>("RobinHoodInfobytePair::Map", mask, numElements);
+        benchRandomInsert<std::unordered_map<uint32_t, uint32_t>>("std::unordered_map", mask, numElements);
+        */
         std::cout << std::endl;
     }
 
