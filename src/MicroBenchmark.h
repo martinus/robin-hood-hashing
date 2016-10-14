@@ -21,6 +21,8 @@ public:
         }
 
         if (!measure(std::chrono::high_resolution_clock::now())) {
+            mNumIters = 0;
+            mItersLeft = 0;
             return false;
         }
             
@@ -44,6 +46,8 @@ public:
 private:
     bool measure(std::chrono::time_point<std::chrono::high_resolution_clock> finishedTime) {
         if (0 == mNumIters) {
+            // cleanup (potential) previous stuff
+            mMeasurements.clear();
             mNumIters = 1;
         } else {
             std::chrono::duration<double> duration = finishedTime - mStartTime;
