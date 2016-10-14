@@ -231,8 +231,21 @@ public:
     }
 
     inline const_iterator find(const key_type& key) const {
-        size_t idx = _hash(key) & _mask;
+        /*
+        const size_t original_idx = _hash(key) & _mask;
 
+        auto info = _info[original_idx];
+        size_t idx = original_idx + info - Traits::IS_BUCKET_TAKEN_MASK;
+        if (idx >= _max_elements + Traits::OVERFLOW_SIZE) {
+            info = Traits::IS_BUCKET_TAKEN_MASK;
+            idx = original_idx;
+        }
+        while (idx > original_idx && info >= _info[idx]) {
+            --idx;
+            --info;
+        }
+        */
+        size_t idx = _hash(key) & _mask;
         auto info = Traits::IS_BUCKET_TAKEN_MASK;
         while (info < _info[idx]) {
             ++idx;
@@ -308,6 +321,10 @@ public:
     inline void max_load_factor(float ml) {
         _max_load_factor = ml;
         update_max_num_elements_allowed();
+    }
+
+    inline float load_factor() const {
+        return _num_elements / static_cast<float>(_max_elements + Traits::OVERFLOW_SIZE);
     }
 
 private:
