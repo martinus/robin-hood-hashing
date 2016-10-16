@@ -37,6 +37,7 @@
     </ClInclude>
     <ClInclude Include="..\src\XorShiftRng.h" />
     <ClInclude Include="..\src\MicroBenchmark.h" />
+    <ClInclude Include="..\src\RobinHoodInfobytePairNoOverflow.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">

@@ -111,9 +111,7 @@ public:
 
         typename Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK;
         while (info < _info[idx]) {
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -123,9 +121,7 @@ public:
                 // key already exists, do not insert.
                 return _keyvals[idx].second;
             }
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -142,9 +138,7 @@ public:
                     insertion_idx = idx;
                 }
             }
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -176,9 +170,7 @@ public:
 
         typename Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK;
         while (info < _info[idx]) {
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -188,9 +180,7 @@ public:
                 // key already exists, do not insert.
                 return std::make_pair<iterator, bool>(_keyvals + idx, false);
             }
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -207,9 +197,7 @@ public:
                     insertion_idx = idx;
                 }
             }
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -236,9 +224,7 @@ public:
 
         // skip forward. Use <= because we know the element is not there.
         while (info <= _info[idx]) {
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -249,9 +235,7 @@ public:
                 std::swap(keyval, _keyvals[idx]);
                 std::swap(info, _info[idx]);
             }
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -298,9 +282,7 @@ public:
         size_t idx = _hash(key) & _mask;
         auto info = Traits::IS_BUCKET_TAKEN_MASK;
         while (info < _info[idx]) {
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -309,9 +291,7 @@ public:
             if (_key_equal(key, _keyvals[idx].first)) {
                 return _keyvals + idx;
             }
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -324,9 +304,7 @@ public:
 
         auto info = Traits::IS_BUCKET_TAKEN_MASK;
         while (info < _info[idx]) {
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 
@@ -340,9 +318,7 @@ public:
                 while (_info[idx + 1] > Traits::IS_BUCKET_TAKEN_MASK) {
                     _info[idx] = _info[idx + 1] - 1;
                     _keyvals[idx] = std::move(_keyvals[idx + 1]);
-                    if (0 == idx--) {
-                        idx = _max_elements - 1;
-                    }
+                    idx = (idx + 1) & _mask;
                 }
                 if (_info[idx]) {
                     _info[idx] = 0;
@@ -352,9 +328,7 @@ public:
                 --_num_elements;
                 return 1;
             }
-            if (0 == idx--) {
-                idx = _max_elements - 1;
-            }
+            idx = (idx + 1) & _mask;
             ++info;
         }
 

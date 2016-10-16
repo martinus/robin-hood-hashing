@@ -152,6 +152,7 @@
     <ClInclude Include="..\src\RobinHoodInfobyteFastforward.h" />
     <ClInclude Include="..\src\RobinHoodInfobyteJumpheuristic.h" />
     <ClInclude Include="..\src\RobinHoodInfobytePair.h" />
+    <ClInclude Include="..\src\RobinHoodInfobytePairNoOverflow.h" />
     <ClInclude Include="..\src\RobinHoodInfobyteQuadraticprobing.h" />
     <ClInclude Include="..\src\timer.h" />
     <ClInclude Include="..\src\XorShiftRng.h" />
