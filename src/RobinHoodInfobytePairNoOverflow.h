@@ -125,18 +125,14 @@ public:
             ++info;
         }
 
+        const size_t insertion_idx = idx;
+
         // loop while we have not found an empty spot, and while no info overflow
-        size_t insertion_idx;
-        bool is_inserted = false;
-        while (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK && info) {
+        while (_info[idx] >= Traits::IS_BUCKET_TAKEN_MASK && info) {
             if (info > _info[idx]) {
                 // place element
                 std::swap(keyval, _keyvals[idx]);
                 std::swap(info, _info[idx]);
-                if (!is_inserted) {
-                    is_inserted = true;
-                    insertion_idx = idx;
-                }
             }
             idx = (idx + 1) & _mask;
             ++info;
@@ -153,7 +149,7 @@ public:
         _info[idx] = info;
 
         ++_num_elements;
-        return _keyvals[is_inserted ? insertion_idx : idx].second;
+        return _keyvals[insertion_idx].second;
     }
 
     inline mapped_type& operator[](const key_type& key) {
@@ -185,17 +181,13 @@ public:
         }
 
         // loop while we have not found an empty spot, and while no info overflow
-        size_t insertion_idx;
-        bool is_inserted = false;
+        size_t insertion_idx = idx;
+
         while (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK && info) {
             if (info > _info[idx]) {
                 // place element
                 std::swap(keyval, _keyvals[idx]);
                 std::swap(info, _info[idx]);
-                if (!is_inserted) {
-                    is_inserted = true;
-                    insertion_idx = idx;
-                }
             }
             idx = (idx + 1) & _mask;
             ++info;
@@ -212,7 +204,7 @@ public:
         _info[idx] = info;
 
         ++_num_elements;
-        return std::make_pair(_keyvals + (is_inserted ? insertion_idx : idx), true);
+        return std::make_pair(_keyvals + insertion_idx, true);
     }
 
     // inserts a keyval that is guaranteed to be new, e.g. when the hashmap is resized.

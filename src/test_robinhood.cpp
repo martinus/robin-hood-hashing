@@ -109,6 +109,34 @@ void test1_std(int times) {
         CHECK(found == rhhs.end());
     }
 
+    // random test against std::unordered_map
+    rhhs.clear();
+    std::unordered_map<int, int> uo;
+    MarsagliaMWC99 rng;
+    rng.seed(123);
+
+    const int mod = times / 4;
+    for (int i = 0; i < times; ++i) {
+        int r = rng() % mod;
+        auto rhh_it = rhhs.insert(std::make_pair(r, r * 2));
+        auto uo_it = uo.insert(std::make_pair(r, r * 2));
+        CHECK(rhh_it.second == uo_it.second);
+        CHECK(rhh_it.first->first == uo_it.first->first);
+        CHECK(rhh_it.first->second == uo_it.first->second);
+        CHECK(uo.size() == rhhs.size());
+    }
+
+    uo.clear();
+    rhhs.clear();
+    for (int i = 0; i < times; ++i) {
+        int r = rng() % mod;
+        rhhs[r] = r * 2;
+        uo[r] = r * 2;
+        CHECK(uo.find(r)->second == rhhs.find(r)->second);
+        CHECK(uo.size() == rhhs.size());
+    }
+
+    std::cout << "test1_std ok!" << std::endl;
 }
 
 template<class H>
@@ -921,13 +949,25 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     {
         RobinHoodInfobytePairNoOverflow::Map<int, int, H> m;
         m.max_load_factor(0.95f);
-        bench_sequential_insert(m, mb, "Robin Hood Infobyte Pair 0.95", upTo, times, all_stats);
+        bench_sequential_insert(m, mb, "RobinHoodInfobytePairNoOverflow 0.95", upTo, times, all_stats);
+    }
+
+    {
+        RobinHoodInfobytePair::Map<int, int, H> m;
+        m.max_load_factor(0.95f);
+        bench_sequential_insert(m, mb, "RobinHoodInfobytePair 0.95", upTo, times, all_stats);
     }
 
     {
         RobinHoodInfobytePairNoOverflow::Map<int, int, H> m;
         m.max_load_factor(0.5f);
-        bench_sequential_insert(m, mb, "Robin Hood Infobyte Pair 0.5", upTo, times, all_stats);
+        bench_sequential_insert(m, mb, "RobinHoodInfobytePairNoOverflow 0.5", upTo, times, all_stats);
+    }
+
+    {
+        RobinHoodInfobytePair::Map<int, int, H> m;
+        m.max_load_factor(0.5f);
+        bench_sequential_insert(m, mb, "RobinHoodInfobytePair 0.5", upTo, times, all_stats);
     }
 
     {
@@ -1199,12 +1239,12 @@ public:
 int main(int argc, char** argv) {
     set_high_priority();
     test1_std<RobinHoodInfobytePairNoOverflow::Map<int, int>>(100000);
-    /*
-    auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1000);
+
+    auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1);
     print(std::cout, stats);
     std::ofstream fout("out.txt");
     print(fout, stats);
-    */
+
     for (int i = 0; i < 10; ++i) {
         uint32_t mask = (1 << (20 + i)) - 1;
         uint32_t numElements = 1000 * 1000;
