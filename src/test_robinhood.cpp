@@ -24,6 +24,7 @@
 
 #include <google/dense_hash_map>
 #include <RobinHoodInfobytePair.h>
+#include <RobinHoodInfobytePairNoOverflow.h>
 #include <MicroBenchmark.h>
 
 #include <timer.h>
@@ -831,76 +832,6 @@ void bench_sequential_insert(HS& r, MicroBenchmark& mb, const std::string& title
 }
 
 
-template<class HS>
-void bench_sequential_insert(const std::string& title, size_t upTo, size_t times, std::vector<std::vector<Stats>>& all_stats) {
-    std::cout << title << "; ";
-    std::cout.flush();
-    std::vector<Stats> stats;
-    Stats s;
-    s.title = title;
-    Timer t;
-    size_t mem_before = get_mem();
-    HS r;
-    int i = 0;
-    size_t found = 0;
-    for (size_t ti = 0; ti < times; ++ti) {
-        // insert
-        t.restart();
-        for (size_t up = 0; up < upTo; ++up) {
-            r.insert(i, i);
-            ++i;
-        }
-        s.elapsed_insert = t.elapsed() / upTo;
-        auto gm = get_mem();
-        s.mem = gm - mem_before;
-        if (gm < mem_before) {
-            // overflow check
-            s.mem = 0;
-        }
-        s.num = r.size();
-
-        // query existing
-        MicroBenchmark mb;
-        while (mb.keepRunning()) {
-            for (int up = 0, e = static_cast<int>(upTo); up < e; ++up) {
-                if (r.find(up)) {
-                    ++found;
-                }
-            }
-        }
-        s.elapsed_find_existing = mb.min() / upTo;
-
-        // query nonexisting
-        while (mb.keepRunning()) {
-            for (int up = static_cast<int>(times*upTo), e = static_cast<int>(times*upTo + upTo); up < e; ++up) {
-                if (r.find(up)) {
-                    ++found;
-                }
-            }
-        }
-        s.elapsed_find_nonexisting = mb.min() / upTo;
-        s.found = found;
-        stats.push_back(s);
-    }
-
-    Stats sum;
-    std::for_each(stats.begin(), stats.end(), [&sum](const Stats& s) {
-        sum += s;
-    });
-    sum /= stats.size();
-
-    std::cout
-        << 1000000 * sum.elapsed_insert << "; "
-        << 1000000 * sum.elapsed_find_existing << "; "
-        << 1000000 * sum.elapsed_find_nonexisting << "; "
-        << sum.mem / (1024.0 * 1024) << "; "
-        << sum.found << std::endl;
-    all_stats.push_back(stats);
-
-    std::ofstream fout("out.txt");
-    print(fout, all_stats);
-}
-
 template<class O>
 void print_header(O& out, const std::vector<std::vector<Stats>>& s, const std::string& title) {
     out << std::endl << title << std::endl;
@@ -988,13 +919,13 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
 
 
     {
-        RobinHoodInfobytePair::Map<int, int, H> m;
+        RobinHoodInfobytePairNoOverflow::Map<int, int, H> m;
         m.max_load_factor(0.95f);
         bench_sequential_insert(m, mb, "Robin Hood Infobyte Pair 0.95", upTo, times, all_stats);
     }
 
     {
-        RobinHoodInfobytePair::Map<int, int, H> m;
+        RobinHoodInfobytePairNoOverflow::Map<int, int, H> m;
         m.max_load_factor(0.5f);
         bench_sequential_insert(m, mb, "Robin Hood Infobyte Pair 0.5", upTo, times, all_stats);
     }
@@ -1166,7 +1097,7 @@ void benchRandomInsertAndDelete(const char* name, uint32_t mask, uint32_t numEle
 
 template<class M>
 void benchRandomFind(const char* name, uint32_t mask, uint32_t numElements) {
-    MicroBenchmark mb(5, 1.0);
+    MicroBenchmark mb(5, 2.0);
     XorShiftRng rng;
 
     rng.seed(321);
@@ -1179,7 +1110,6 @@ void benchRandomFind(const char* name, uint32_t mask, uint32_t numElements) {
     size_t s = 0;
     while (mb.keepRunning()) {
         rng.seed(321);
-
         for (uint32_t i = 0, e = numElements; i < e; ++i) {
             if (m.find(rng() & mask) != m.end()) {
                 ++s;
@@ -1191,7 +1121,6 @@ void benchRandomFind(const char* name, uint32_t mask, uint32_t numElements) {
 
     while (mb.keepRunning()) {
         rng.seed(999);
-
         for (uint32_t i = 0, e = numElements; i < e; ++i) {
             if (m.find(rng() & mask) != m.end()) {
                 ++s;
@@ -1269,13 +1198,13 @@ public:
 
 int main(int argc, char** argv) {
     set_high_priority();
-    test1_std<RobinHoodInfobytePair::Map<int, int>>(100000);
+    test1_std<RobinHoodInfobytePairNoOverflow::Map<int, int>>(100000);
+    /*
     auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1000);
     print(std::cout, stats);
     std::ofstream fout("out.txt");
     print(fout, stats);
-
-
+    */
     for (int i = 0; i < 10; ++i) {
         uint32_t mask = (1 << (20 + i)) - 1;
         uint32_t numElements = 1000 * 1000;
@@ -1287,9 +1216,10 @@ int main(int argc, char** argv) {
         benchRandomInsertAndDelete<RobinHoodInfobytePair::Map<uint32_t, uint32_t>>("RobinHoodInfobytePair::Map", mask, numElements);
         */
 
-        benchRandomFind<GoogleMapWrapper<uint32_t, uint32_t>>("dense_hash_map", mask, numElements);
+        benchRandomFind<RobinHoodInfobytePairNoOverflow::Map<uint32_t, uint32_t>>("RobinHoodInfobytePairNoOverflow::Map", mask, numElements);
         benchRandomFind<RobinHoodInfobytePair::Map<uint32_t, uint32_t>>("RobinHoodInfobytePair::Map", mask, numElements);
-        benchRandomFind<std::unordered_map<uint32_t, uint32_t>>("std::unordered_map", mask, numElements);
+        //benchRandomFind<GoogleMapWrapper<uint32_t, uint32_t>>("dense_hash_map", mask, numElements);
+        //benchRandomFind<std::unordered_map<uint32_t, uint32_t>>("std::unordered_map", mask, numElements);
 
         //uint32_t mask = -1;
         /*
