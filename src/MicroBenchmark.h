@@ -4,7 +4,7 @@
 
 class MicroBenchmark {
 public:
-    MicroBenchmark(size_t numMeasurements = 5, double secondsPerMeasurement = 1.0)
+    MicroBenchmark(size_t numMeasurements = 4, double secondsPerMeasurement = 1.0)
         : mItersLeft(0)
         , mNumIters(0)
         , mNumMeasurements(numMeasurements)
