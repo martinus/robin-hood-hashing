@@ -37,6 +37,17 @@ void set_high_priority() {
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 }
+#else
+void set_high_priority() {
+}
+#endif
+
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
 #endif
 
 // test some hashing stuff
@@ -746,7 +757,7 @@ struct Stats {
 };
 
 template<class HS>
-void bench_sequential_insert(HS& r, const std::string& title, size_t upTo, size_t times, size_t searchtimes, std::vector<std::vector<Stats>>& all_stats) {
+void bench_sequential_insert(HS& r, MicroBenchmark& mb, const std::string& title, size_t increase, size_t totalTimes, std::vector<std::vector<Stats>>& all_stats) {
     std::cout << title << "; ";
     std::cout.flush();
     std::vector<Stats> stats;
@@ -754,9 +765,11 @@ void bench_sequential_insert(HS& r, const std::string& title, size_t upTo, size_
     s.title = title;
     Timer t;
     size_t mem_before = get_mem();
+    const int upTo = static_cast<int>(increase);
+    const int times = static_cast<int>(totalTimes);
     int i = 0;
     size_t found = 0;
-    for (size_t ti = 0; ti < times; ++ti) {
+    for (int ti = 0; ti < static_cast<int>(times); ++ti) {
         // insert
         t.restart();
         for (size_t up = 0; up < upTo; ++up) {
@@ -775,26 +788,25 @@ void bench_sequential_insert(HS& r, const std::string& title, size_t upTo, size_
 
         // query existing
         const auto endIt = r.end();
-        t.restart();
-        for (int j = 0; j < searchtimes; ++j) {
-            for (int up = 0, e = static_cast<int>(upTo); up < e; ++up) {
-                if (endIt != r.find(up)) {
+        const int inc = ti + 1;
+        while (mb.keepRunning()) {
+            for (int v = 0, e = upTo * inc; v < e; v += inc) {
+                if (endIt != r.find(v)) {
                     ++found;
                 }
             }
         }
-        s.elapsed_find_existing = t.elapsed() / (searchtimes * upTo);
+        s.elapsed_find_existing = mb.min() / upTo;
 
         // query nonexisting
-        t.restart();
-        for (int j = 0; j < searchtimes; ++j) {
-            for (int up = static_cast<int>(times*upTo), e = static_cast<int>(times*upTo + upTo); up < e; ++up) {
-                if (endIt != r.find(up)) {
+        while (mb.keepRunning()) {
+            for (int v = times*upTo, e = times*upTo + upTo; v < e; ++v) {
+                if (endIt != r.find(v)) {
                     ++found;
                 }
             }
         }
-        s.elapsed_find_nonexisting = t.elapsed() / (searchtimes * upTo);
+        s.elapsed_find_nonexisting = mb.min() / upTo;
         s.found = found;
         stats.push_back(s);
     }
@@ -820,7 +832,7 @@ void bench_sequential_insert(HS& r, const std::string& title, size_t upTo, size_
 
 
 template<class HS>
-void bench_sequential_insert(const std::string& title, size_t upTo, size_t times, size_t searchtimes, std::vector<std::vector<Stats>>& all_stats) {
+void bench_sequential_insert(const std::string& title, size_t upTo, size_t times, std::vector<std::vector<Stats>>& all_stats) {
     std::cout << title << "; ";
     std::cout.flush();
     std::vector<Stats> stats;
@@ -848,26 +860,25 @@ void bench_sequential_insert(const std::string& title, size_t upTo, size_t times
         s.num = r.size();
 
         // query existing
-        t.restart();
-        for (int j = 0; j < searchtimes; ++j) {
+        MicroBenchmark mb;
+        while (mb.keepRunning()) {
             for (int up = 0, e = static_cast<int>(upTo); up < e; ++up) {
                 if (r.find(up)) {
                     ++found;
                 }
             }
         }
-        s.elapsed_find_existing = t.elapsed() / (searchtimes * upTo);
+        s.elapsed_find_existing = mb.min() / upTo;
 
         // query nonexisting
-        t.restart();
-        for (int j = 0; j < searchtimes; ++j) {
+        while (mb.keepRunning()) {
             for (int up = static_cast<int>(times*upTo), e = static_cast<int>(times*upTo + upTo); up < e; ++up) {
                 if (r.find(up)) {
                     ++found;
                 }
             }
         }
-        s.elapsed_find_nonexisting = t.elapsed() / (searchtimes * upTo);
+        s.elapsed_find_nonexisting = mb.min() / upTo;
         s.found = found;
         stats.push_back(s);
     }
@@ -968,22 +979,53 @@ void print(O& out, const std::vector<std::vector<Stats>>& s) {
 
 
 template<class H>
-std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t times, size_t searchtimes) {
+std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t times) {
     std::cout << "Title;1M inserts [sec];find 1M existing [sec];find 1M nonexisting [sec];memory usage [MB];foundcount" << std::endl;
     std::vector<std::vector<Stats>> all_stats;
-    //bench_sequential_insert(hopscotch_map<int, int, H>(), "tessil/hopscotch_map", upTo, times, searchtimes, all_stats);
 
-    bench_sequential_insert(RobinHoodInfobytePair::Map<int, int, H>(), "Robin Hood Infobyte Pair", upTo, times, searchtimes, all_stats);
-    bench_sequential_insert(RobinHoodInfobytePair::Map<int, int, H, std::equal_to<int>, std::allocator<std::pair<int, int>>, RobinHoodInfobytePair::Style::Fast>(), "Robin Hood Infobyte Pair Fast", upTo, times, searchtimes, all_stats);
+    MicroBenchmark mb(4, 0.5);
+    //bench_sequential_insert(hopscotch_map<int, int, H>(), "tessil/hopscotch_map", upTo, times, all_stats);
+
+
+    {
+        RobinHoodInfobytePair::Map<int, int, H> m;
+        m.max_load_factor(0.95f);
+        bench_sequential_insert(m, mb, "Robin Hood Infobyte Pair 0.95", upTo, times, all_stats);
+    }
+
+    {
+        RobinHoodInfobytePair::Map<int, int, H> m;
+        m.max_load_factor(0.5f);
+        bench_sequential_insert(m, mb, "Robin Hood Infobyte Pair 0.5", upTo, times, all_stats);
+    }
+
     {
         google::dense_hash_map<int, int, H> googlemap;
         googlemap.set_empty_key(-1);
         googlemap.set_deleted_key(-2);
-        googlemap[123] = 321;
-        bench_sequential_insert(googlemap, "google::dense_hash_map", upTo, times, searchtimes, all_stats);
+        googlemap.max_load_factor(0.95f);
+        bench_sequential_insert(googlemap, mb, "google::dense_hash_map 0.95", upTo, times, all_stats);
     }
-    bench_sequential_insert(std::unordered_map<int, int, H>(), "std::unordered_map", upTo, times, searchtimes, all_stats);
 
+    {
+        google::dense_hash_map<int, int, H> googlemap;
+        googlemap.set_empty_key(-1);
+        googlemap.set_deleted_key(-2);
+        bench_sequential_insert(googlemap, mb, "google::dense_hash_map 0.5", upTo, times, all_stats);
+    }
+
+    {
+        std::unordered_map<int, int, H> m;
+        m.max_load_factor(0.95f);
+        bench_sequential_insert(m, mb, "std::unordered_map 0.95", upTo, times, all_stats);
+    }
+
+    {
+        std::unordered_map<int, int, H> m;
+        m.max_load_factor(0.5f);
+        bench_sequential_insert(m, mb, "std::unordered_map 0.5", upTo, times, all_stats);
+    }
+    /*
     bench_sequential_insert<RobinHoodInfobyteJumpheuristic::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyteJumpheuristic::Style::Default>>("infobyte Jumpheuristic", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<RobinHoodInfobyte::Map<int, int, H, std::equal_to<int>, RobinHoodInfobyte::Style::Default>>("Robin Hood Infobyte", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Default>>("HopScotchAdaptive Default", upTo, times, searchtimes, all_stats);
@@ -1000,6 +1042,7 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
 
     bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Fast>>("HopScotchAdaptive Fast", upTo, times, searchtimes, all_stats);
     bench_sequential_insert<HopScotchAdaptive::Map<int, int, H, std::equal_to<int>, HopScotchAdaptive::Style::Compact>>("HopScotchAdaptive Compact", upTo, times, searchtimes, all_stats);
+    */
     return all_stats;
 }
 
@@ -1225,6 +1268,14 @@ public:
 };
 
 int main(int argc, char** argv) {
+    set_high_priority();
+    test1_std<RobinHoodInfobytePair::Map<int, int>>(100000);
+    auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1000);
+    print(std::cout, stats);
+    std::ofstream fout("out.txt");
+    print(fout, stats);
+
+
     for (int i = 0; i < 10; ++i) {
         uint32_t mask = (1 << (20 + i)) - 1;
         uint32_t numElements = 1000 * 1000;
@@ -1249,19 +1300,6 @@ int main(int argc, char** argv) {
         */
         std::cout << std::endl;
     }
-
-
-    benchRng<XorShiftRng>("XorShiftRng");
-    benchRng<MarsagliaMWC99>("MarsagliaMWC99");
-    benchRng<std::mt19937>("std::mt19937");
-    benchRng<std::ranlux24_base>("std::ranlux24_base");
-    benchRng<std::mt19937_64>("std::mt19937_64");
-    benchRng<std::minstd_rand>("std::minstd_rand");
-    benchRng<std::ranlux48>("std::ranlux48");
-    benchRng<std::ranlux24>("std::ranlux24");
-    benchRng<std::ranlux48_base>("std::ranlux48_base");
-    benchRng<std::knuth_b>("std::knuth_b");
-    benchRng<std::minstd_rand0>("std::minstd_rand0");
 
     uint32_t max_num = 131072;
     int iters = 10000000;
@@ -1305,7 +1343,7 @@ int main(int argc, char** argv) {
         //random_bench<HopScotch::Map<int, int>>("HopScotch");
         //random_bench_std<std::unordered_map<int, int>>("std::unordered_map");
 
-        test1_std<RobinHoodInfobytePair::Map<int, int>>(100000);
+
         test1<RobinHoodInfobyteJumpheuristic::Map<int, int>>(100000);
         test1<HopScotchAdaptive::Map<int, int>>(100000);
         test1<RobinHoodInfobitsHashbits::Map<int, int>>(100000);
@@ -1314,11 +1352,6 @@ int main(int argc, char** argv) {
         test1<HopScotch::Map<int, int>>(100000);
         //test1<hopscotch_map<int, int>>(100000);
         std::cout << "test1 ok!" << std::endl;
-
-        auto stats = bench_sequential_insert<std::hash<size_t>>(100*1000, 1000, 500);
-        print(std::cout, stats);
-        std::ofstream fout("out.txt");
-        print(fout, stats);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return 1;
