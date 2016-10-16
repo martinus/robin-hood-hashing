@@ -217,6 +217,42 @@ public:
         return std::make_pair(_keyvals + (is_inserted ? insertion_idx : idx), true);
     }
 
+    // inserts a keyval that is guaranteed to be new, e.g. when the hashmap is resized.
+    inline void insert_unchecked(value_type&& keyval) {
+        auto h = _hash(keyval.first);
+        size_t idx = h & _mask;
+
+        typename Traits::InfoType info = Traits::IS_BUCKET_TAKEN_MASK;
+        while (info <= _info[idx]) {
+            ++idx;
+            ++info;
+        }
+
+        // loop while we have not found an empty spot, and while no info overflow
+        while (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK && info) {
+            if (info > _info[idx]) {
+                // place element
+                std::swap(keyval, _keyvals[idx]);
+                std::swap(info, _info[idx]);
+            }
+            ++idx;
+            ++info;
+        }
+
+        if (idx == _max_elements + Traits::OVERFLOW_SIZE - 1 || 0 == info) {
+            // Overflow! resize and try again.
+            increase_size();
+            insert(std::forward<value_type>(keyval));
+            return;
+        }
+
+        // bucket is empty! put it there.
+        _alloc_keyvals.construct(_keyvals + idx, std::move(keyval));
+        _info[idx] = info;
+
+        ++_num_elements;
+    }
+
     inline std::pair<iterator, bool> insert(const value_type& value) {
         value_type v(value);
         return insert(std::move(v));
@@ -362,7 +398,7 @@ private:
         for (size_t i = 0; i < old_max_elements + Traits::OVERFLOW_SIZE; ++i) {
             if (old_info[i] & Traits::IS_BUCKET_TAKEN_MASK) {
                 ++num_ins;
-                insert(std::move(old_keyvals[i]));
+                insert_unchecked(std::move(old_keyvals[i]));
                 _alloc_keyvals.destroy(old_keyvals + i);
             }
         }
