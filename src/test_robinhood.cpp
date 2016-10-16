@@ -953,17 +953,16 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     }
 
     {
-        RobinHoodInfobytePair::Map<int, int, H> m;
-        m.max_load_factor(0.95f);
-        bench_sequential_insert(m, mb, "RobinHoodInfobytePair 0.95", upTo, times, all_stats);
-    }
-
-    {
         RobinHoodInfobytePairNoOverflow::Map<int, int, H> m;
         m.max_load_factor(0.5f);
         bench_sequential_insert(m, mb, "RobinHoodInfobytePairNoOverflow 0.5", upTo, times, all_stats);
     }
 
+    {
+        RobinHoodInfobytePair::Map<int, int, H> m;
+        m.max_load_factor(0.95f);
+        bench_sequential_insert(m, mb, "RobinHoodInfobytePair 0.95", upTo, times, all_stats);
+    }
     {
         RobinHoodInfobytePair::Map<int, int, H> m;
         m.max_load_factor(0.5f);
@@ -1240,7 +1239,7 @@ int main(int argc, char** argv) {
     set_high_priority();
     test1_std<RobinHoodInfobytePairNoOverflow::Map<int, int>>(100000);
 
-    auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1);
+    auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1000);
     print(std::cout, stats);
     std::ofstream fout("out.txt");
     print(fout, stats);

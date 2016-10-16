@@ -101,6 +101,7 @@ public:
         _alloc_info.deallocate(_info, _max_elements);
     }
 
+    // This is exactly the same code as insert(), except for the return values.
     inline mapped_type& operator[](value_type&& keyval) {
         if (_num_elements == _max_num_num_elements_allowed) {
             increase_size();
@@ -125,6 +126,7 @@ public:
             ++info;
         }
 
+        // key not found, so we are now exactly where we want to insert it.
         const size_t insertion_idx = idx;
 
         // loop while we have not found an empty spot, and while no info overflow
@@ -141,7 +143,7 @@ public:
         if (0 == info) {
             // Overflow! resize and try again.
             increase_size();
-            return operator[](std::forward<value_type>(keyval));
+            return operator[](std::move(keyval));
         }
 
         // bucket is empty! put it there.
@@ -156,6 +158,7 @@ public:
         return operator[](std::make_pair(key, mapped_type()));
     }
 
+    // This is exactly the same code as operator[], except for the return values.
     inline std::pair<iterator, bool> insert(value_type&& keyval) {
         if (_num_elements == _max_num_num_elements_allowed) {
             increase_size();
@@ -180,10 +183,11 @@ public:
             ++info;
         }
 
-        // loop while we have not found an empty spot, and while no info overflow
-        size_t insertion_idx = idx;
+        // key not found, so we are now exactly where we want to insert it.
+        const size_t insertion_idx = idx;
 
-        while (_info[idx] & Traits::IS_BUCKET_TAKEN_MASK && info) {
+        // loop while we have not found an empty spot, and while no info overflow
+        while (_info[idx] >= Traits::IS_BUCKET_TAKEN_MASK && info) {
             if (info > _info[idx]) {
                 // place element
                 std::swap(keyval, _keyvals[idx]);
@@ -234,7 +238,7 @@ public:
         if (0 == info) {
             // Overflow! This is bad, shouldn't happen. 
             increase_size();
-            insert(std::forward<value_type>(keyval));
+            insert(std::move(keyval));
             return;
         }
 
