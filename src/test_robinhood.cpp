@@ -942,7 +942,7 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     std::cout << "Title;1M inserts [sec];find 1M existing [sec];find 1M nonexisting [sec];memory usage [MB];foundcount" << std::endl;
     std::vector<std::vector<Stats>> all_stats;
 
-    MicroBenchmark mb(4, 0.5);
+    MicroBenchmark mb(5, 0.3);
     //bench_sequential_insert(hopscotch_map<int, int, H>(), "tessil/hopscotch_map", upTo, times, all_stats);
 
 
