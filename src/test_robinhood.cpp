@@ -1242,24 +1242,24 @@ public:
 void testRng() {
     MicroBenchmark mb;
     XorShift128Plus xorshift(123);
-    uint64_t n = 0;
+    double d;
     uint64_t range = xorshift() % 400;
     while (mb.keepRunning()) {
-        n += xorshift(range);
+        d += xorshift.rand01();
     }
-    doNotOptmizeAway(n);
-    std::cout << mb.min() << " XorShift128Plus rng(321)" << n << std::endl;
+    doNotOptmizeAway(d);
+    std::cout << mb.min() << " XorShift128Plus rng(321)" << d << std::endl;
 
     MarsagliaMWC99 mwc99;
     mwc99.seed(123);
     while (mb.keepRunning()) {
-        n += mwc99(range);
+        d += mwc99.rand01();
     }
-    doNotOptmizeAway(n);
-    std::cout << mb.min() << " MarsagliaMWC99 rng(321)" << n << std::endl;
+    doNotOptmizeAway(d);
+    std::cout << mb.min() << " MarsagliaMWC99 rng(321)" << d << std::endl;
 
-    /*
     const size_t times = 10000000000;
+    /*
     const size_t upto = 1000;
     std::vector<size_t> counts(upto, 0);
     for (size_t i = 0; i < times; ++i) {
@@ -1270,12 +1270,12 @@ void testRng() {
         std::cout << counts[i] << std::endl;
     }
 
-
+    */
     double x = 0;
     double lower = 999;
     double upper = -999;
     for (size_t i = 0; i < times; ++i) {
-        auto r = rng.rand01();
+        auto r = xorshift.rand01();
         if (r < lower || r > upper) {
             printf("lower=%.50g, upper=%.50g\n", lower, upper);
         }
@@ -1284,7 +1284,6 @@ void testRng() {
         x += r;
     }
     std::cout << (x / times) << ", lower=" << lower << ", upper=" << upper << std::endl;
-    */
 }
 
 int main(int argc, char** argv) {

@@ -3,7 +3,9 @@
 #include <limits>
 #include <cstdint>
 
-/// Extremely fast, RNG that passes the BigCrush test.
+/// Extremely fast RNG that passes the BigCrush test.
+/// It has a period of 2^128 - 1, and is even faster than MarsagliaMWC99.
+/// 
 /// @see http://xoroshiro.di.unimi.it/xoroshiro128plus.c
 class XorShift128Plus {
 public:
@@ -31,10 +33,17 @@ public:
         return result;
     }
 
-    /// Random float value between 0 and 1.
+    /// Uniform random double value in the interval [0..1).
+    /// See http://xoroshiro.di.unimi.it/ "Generating uniform doubles in the unit interval"
     inline double rand01() {
+        union {
+            uint64_t i;
+            double d;
+        } x;
+        x.i = UINT64_C(0x3FF) << 52 | operator()() >> 12;
+        return x.d - 1.0;
         // 1.0 / (2^64 - 1)
-        return operator()() * 5.4210108624275221703311375920553e-20;
+        //return operator()() * 5.4210108624275221703311375920553e-20;
     }
 
     /// Random float value between min and max.
