@@ -17,7 +17,7 @@ public:
 
     // Seeds the random number generator with a 64 bit value.
     // This uses splitmix64 RNG to provide two 64bit state seeds.
-    void seed(uint64_t state) {
+    inline void seed(uint64_t state) {
         mState[0] = splitmix64(state);
         mState[1] = splitmix64(state);
     }
