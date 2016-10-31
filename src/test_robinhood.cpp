@@ -1,3 +1,5 @@
+#include <XorShift128Plus.h>
+
 #include <hopscotch.h>
 #include <HopScotchAdaptive.h>
 #include <RobinHoodInfobitsHashbits.h>
@@ -13,7 +15,6 @@
 #include <marsagliamwc99.h>
 #include <XorShiftRng.h>
 #include <XorShiftStar.h>
-#include <XorShift128Plus.h>
 #include <Pcg32.h>
 
 #include <string>
@@ -1287,7 +1288,7 @@ void testRng() {
 }
 
 int main(int argc, char** argv) {
-    testRng();
+    //testRng();
 
     set_high_priority();
 

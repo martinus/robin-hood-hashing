@@ -1,6 +1,5 @@
 #pragma once
 
-#include <limits>
 #include <cstdint>
 
 /// Extremely fast RNG that passes the BigCrush test.
@@ -16,11 +15,15 @@ public:
         seed(initialState);
     }
 
+    // Seeds the random number generator with a 64 bit value.
+    // This uses splitmix64 RNG to provide two 64bit state seeds.
     void seed(uint64_t state) {
         mState[0] = splitmix64(state);
         mState[1] = splitmix64(state);
     }
 
+    // Generates a new 64bit random number. This is the core of
+    // the generator, used in the other operations as well.
     inline uint64_t operator()() {
         const uint64_t s0 = mState[0];
         uint64_t s1 = mState[1];
@@ -33,8 +36,8 @@ public:
         return result;
     }
 
-    /// Uniform random double value in the interval [0..1).
-    /// See http://xoroshiro.di.unimi.it/ "Generating uniform doubles in the unit interval"
+    // Uniform random double value in the interval [0..1).
+    // See http://xoroshiro.di.unimi.it/ "Generating uniform doubles in the unit interval"
     inline double rand01() {
         union {
             uint64_t i;
@@ -85,5 +88,6 @@ private:
         return z ^ (z >> 31);
     }
 
+    // internal state of the generator, to provide a 2^128-1 period.
     uint64_t mState[2];
 };
