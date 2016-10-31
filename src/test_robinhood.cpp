@@ -12,6 +12,9 @@
 #include <robinhood.h>
 #include <marsagliamwc99.h>
 #include <XorShiftRng.h>
+#include <XorShiftStar.h>
+#include <XorShift128Plus.h>
+#include <Pcg32.h>
 
 #include <string>
 #include <iostream>
@@ -112,7 +115,7 @@ void test1_std(int times) {
     // random test against std::unordered_map
     rhhs.clear();
     std::unordered_map<int, int> uo;
-    MarsagliaMWC99 rng;
+    XorShift128Plus rng;
     rng.seed(123);
 
     const int mod = times / 4;
@@ -213,7 +216,7 @@ void test4() {
     std::unordered_set<size_t> u;
     RobinHoodHashMap<int> r;
 
-    MarsagliaMWC99 rand;
+    XorShift128Plus rand;
 
     for (unsigned i = 0; i < 100000; ++i) {
         size_t val = static_cast<size_t>(rand(i + 1));
@@ -223,7 +226,7 @@ void test4() {
 
 template<class H>
 void bench_str(size_t insertions, size_t queries, size_t times) {
-    MarsagliaMWC99 rand(insertions * 5);
+    XorShift128Plus rand(insertions * 5);
     const int seed = 23154;
 
     size_t key_length = 5;
@@ -312,7 +315,7 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
 template<class T, class H>
 void bench1(size_t insertions, size_t queries, size_t times, T value) {
 
-    MarsagliaMWC99 rand(insertions * 5);
+    XorShift128Plus rand(insertions * 5);
     const int seed = 23154;
 
     {
@@ -463,7 +466,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
 template<class H>
 void bh(size_t insertions, size_t queries, size_t times, const typename H::value_type& value, const char* msg) {
 
-    MarsagliaMWC99 rand(insertions * 5);
+    XorShift128Plus rand(insertions * 5);
     const int seed = 23154;
 
     {
@@ -491,7 +494,7 @@ template<class T>
 void test_map1(size_t times) {
     {
         Timer t;
-        MarsagliaMWC99 rand;
+        XorShift128Plus rand;
         rand.seed(321);
         HopScotch::Map<size_t, int, T, HopScotch::Style::Fast> r;
         for (size_t i = 0; i < times; ++i) {
@@ -501,7 +504,7 @@ void test_map1(size_t times) {
     }
     {
         Timer t;
-        MarsagliaMWC99 rand;
+        XorShift128Plus rand;
         rand.seed(321);
         HopScotch::Map<size_t, int, T, HopScotch::Style::Default> r;
         for (size_t i = 0; i < times; ++i) {
@@ -511,7 +514,7 @@ void test_map1(size_t times) {
     }
     {
         Timer t;
-        MarsagliaMWC99 rand;
+        XorShift128Plus rand;
         rand.seed(321);
         HopScotch::Map<size_t, int, T, HopScotch::Style::Compact> r;
         for (size_t i = 0; i < times; ++i) {
@@ -521,7 +524,7 @@ void test_map1(size_t times) {
     }
     {
         Timer t;
-        MarsagliaMWC99 rand;
+        XorShift128Plus rand;
         rand.seed(321);
         hash_table<size_t, int, T> ht;
         for (size_t i = 0; i < times; ++i) {
@@ -531,7 +534,7 @@ void test_map1(size_t times) {
     }
     {
         Timer t;
-        MarsagliaMWC99 rand;
+        XorShift128Plus rand;
         rand.seed(321);
         RobinHoodHashMap<int, T> r;
         for (size_t i = 0; i < times; ++i) {
@@ -543,7 +546,7 @@ void test_map1(size_t times) {
 
     {
         Timer t;
-        MarsagliaMWC99 rand;
+        XorShift128Plus rand;
         rand.seed(321);
         std::unordered_map<size_t, int, T> u;
         for (size_t i = 0; i < times; ++i) {
@@ -555,7 +558,7 @@ void test_map1(size_t times) {
 }
 
 void test_compare(size_t times) {
-    MarsagliaMWC99 rand;
+    XorShift128Plus rand;
     size_t seed = 142323;
     rand.seed(seed);
 
@@ -678,7 +681,7 @@ public:
     int x;
 };
 
-std::string rand_str(MarsagliaMWC99& rand, const size_t num_letters) {
+std::string rand_str(XorShift128Plus& rand, const size_t num_letters) {
     std::string alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     std::string s;
     s.resize(num_letters);
@@ -697,7 +700,7 @@ struct HashX : public std::unary_function<size_t, X> {
 
 
 void test_count(size_t times) {
-    MarsagliaMWC99 rand;
+    XorShift128Plus rand;
     reset_x();
     {
         rand.seed(123);
@@ -708,7 +711,7 @@ void test_count(size_t times) {
 
         size_t f = 0;
         for (size_t i = 0; i < times * 10; ++i) {
-            if (hs.find(rand()) != nullptr) {
+            if (hs.find(static_cast<int>(rand())) != nullptr) {
                 ++f;
             }
         }
@@ -726,7 +729,7 @@ void test_count(size_t times) {
         }
         size_t f = 0;
         for (size_t i = 0; i < times * 10; ++i) {
-            if (ms.find(rand()) != ms.end()) {
+            if (ms.find(static_cast<int>(rand())) != ms.end()) {
                 ++f;
             }
         }
@@ -1082,7 +1085,8 @@ double random_bench_std(const std::string& title, int times, Op& o) {
     //std::ranlux24_base mt; // 15.3052
     //std::mt19937 mt; // 6.54914
     //XorShiftRng mt; // 3.67276
-    MarsagliaMWC99 mt; // 3.4988
+    //MarsagliaMWC99 mt; // 3.4988
+    XorShift128Plus mt;
     //std::uniform_int_distribution<int> ud(2, max_val);
 
     double min_ns = (std::numeric_limits<double>::max)();
@@ -1235,8 +1239,63 @@ public:
     }
 };
 
+void testRng() {
+    MicroBenchmark mb;
+    XorShift128Plus xorshift(123);
+    uint64_t n = 0;
+    uint64_t range = xorshift() % 400;
+    while (mb.keepRunning()) {
+        n += xorshift(range);
+    }
+    doNotOptmizeAway(n);
+    std::cout << mb.min() << " XorShift128Plus rng(321)" << n << std::endl;
+
+    MarsagliaMWC99 mwc99;
+    mwc99.seed(123);
+    while (mb.keepRunning()) {
+        n += mwc99(range);
+    }
+    doNotOptmizeAway(n);
+    std::cout << mb.min() << " MarsagliaMWC99 rng(321)" << n << std::endl;
+
+    /*
+    const size_t times = 10000000000;
+    const size_t upto = 1000;
+    std::vector<size_t> counts(upto, 0);
+    for (size_t i = 0; i < times; ++i) {
+        ++counts[rng(upto)];
+    }
+    std::sort(counts.begin(), counts.end());
+    for (size_t i = 0; i < counts.size(); ++i) {
+        std::cout << counts[i] << std::endl;
+    }
+
+
+    double x = 0;
+    double lower = 999;
+    double upper = -999;
+    for (size_t i = 0; i < times; ++i) {
+        auto r = rng.rand01();
+        if (r < lower || r > upper) {
+            printf("lower=%.50g, upper=%.50g\n", lower, upper);
+        }
+        lower = std::min(lower, r);
+        upper = std::max(upper, r);
+        x += r;
+    }
+    std::cout << (x / times) << ", lower=" << lower << ", upper=" << upper << std::endl;
+    */
+}
+
 int main(int argc, char** argv) {
+    testRng();
+
     set_high_priority();
+
+    benchRng<MarsagliaMWC99>("MarsagliaMWC99");
+    benchRng<XorShift128Plus>("XorShift128Plus");
+    benchRng<XorShiftStar>("XorShiftStar");
+    benchRng<Pcg32>("Pcg32");
     test1_std<RobinHoodInfobytePairNoOverflow::Map<int, int>>(100000);
 
     auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1000);
@@ -1281,7 +1340,7 @@ int main(int argc, char** argv) {
             googlemap.set_empty_key(-1);
             googlemap.set_deleted_key(-2);
             googlemap.max_load_factor(0.9f);
-            std::cout << random_bench_std("googlemap", 5, [&](MarsagliaMWC99& mt) {
+            std::cout << random_bench_std("googlemap", 5, [&](XorShift128Plus& mt) {
                 for (int i = 0; i < iters; ++i) {
                     googlemap[mt() & mask] = i;
                     googlemap.erase(mt() & mask);

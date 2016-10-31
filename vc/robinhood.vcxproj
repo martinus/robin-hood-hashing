@@ -145,6 +145,7 @@
     <ClInclude Include="..\src\HopScotchAdaptive.h" />
     <ClInclude Include="..\src\marsagliamwc99.h" />
     <ClInclude Include="..\src\MicroBenchmark.h" />
+    <ClInclude Include="..\src\Pcg32.h" />
     <ClInclude Include="..\src\robinhood.h" />
     <ClInclude Include="..\src\RobinHoodInfobitsHashbits.h" />
     <ClInclude Include="..\src\RobinHoodInfobyte.h" />
@@ -155,7 +156,9 @@
     <ClInclude Include="..\src\RobinHoodInfobytePairNoOverflow.h" />
     <ClInclude Include="..\src\RobinHoodInfobyteQuadraticprobing.h" />
     <ClInclude Include="..\src\timer.h" />
+    <ClInclude Include="..\src\XorShift128Plus.h" />
     <ClInclude Include="..\src\XorShiftRng.h" />
+    <ClInclude Include="..\src\XorShiftStar.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\3rdparty\sherwood_map\sherwood_map.cpp" />
