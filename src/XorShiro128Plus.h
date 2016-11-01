@@ -6,12 +6,12 @@
 /// It has a period of 2^128 - 1, and is even faster than MarsagliaMWC99.
 /// 
 /// @see http://xoroshiro.di.unimi.it/xoroshiro128plus.c
-class XorShift128Plus {
+class XorShiro128Plus {
 public:
     typedef uint64_t result_type;
 
     // random state created at https://www.random.org/cgi-bin/randbyte?nbytes=8&format=h
-    XorShift128Plus(uint64_t initialState = UINT64_C(0x853c49e6748fea9b)) {
+    XorShiro128Plus(uint64_t initialState = UINT64_C(0x853c49e6748fea9b)) {
         seed(initialState);
     }
 
@@ -43,8 +43,10 @@ public:
             uint64_t i;
             double d;
         } x;
+
         x.i = UINT64_C(0x3FF) << 52 | operator()() >> 12;
         return x.d - 1.0;
+
         // 1.0 / (2^64 - 1)
         //return operator()() * 5.4210108624275221703311375920553e-20;
     }
@@ -80,9 +82,10 @@ private:
         return (x << k) | (x >> (64 - k));
     }
 
+    // Simple RNG using a 64 bit seed. This RNG is just used to provide a seed.
     // see http://xoroshiro.di.unimi.it/splitmix64.c
-    static inline uint64_t splitmix64(uint64_t& x) {
-        uint64_t z = (x += UINT64_C(0x9E3779B97F4A7C15));
+    static inline uint64_t splitmix64(uint64_t& state) {
+        uint64_t z = (state += UINT64_C(0x9E3779B97F4A7C15));
         z = (z ^ (z >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
         z = (z ^ (z >> 27)) * UINT64_C(0x94D049BB133111EB);
         return z ^ (z >> 31);

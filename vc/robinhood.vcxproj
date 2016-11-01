@@ -156,9 +156,9 @@
     <ClInclude Include="..\src\RobinHoodInfobytePairNoOverflow.h" />
     <ClInclude Include="..\src\RobinHoodInfobyteQuadraticprobing.h" />
     <ClInclude Include="..\src\timer.h" />
-    <ClInclude Include="..\src\XorShift128Plus.h" />
     <ClInclude Include="..\src\XorShiftRng.h" />
     <ClInclude Include="..\src\XorShiftStar.h" />
+    <ClInclude Include="..\src\XorShiro128Plus.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\3rdparty\sherwood_map\sherwood_map.cpp" />

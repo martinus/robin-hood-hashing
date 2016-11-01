@@ -40,7 +40,7 @@
     <ClInclude Include="..\src\RobinHoodInfobytePairNoOverflow.h" />
     <ClInclude Include="..\src\Pcg32.h" />
     <ClInclude Include="..\src\XorShiftStar.h" />
-    <ClInclude Include="..\src\XorShift128Plus.h" />
+    <ClInclude Include="..\src\XorShiro128Plus.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="3rdparty">
