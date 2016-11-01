@@ -15,6 +15,7 @@ public:
         , _y(0xa8a7d469)
         , _z(0x97830e05)
         , _w(0x113ba7bb) {
+        operator()();
     }
 
     void seed(uint32_t val) {
@@ -22,17 +23,22 @@ public:
         _y = 0xa8a7d469;
         _z = 0x97830e05;
         _w = 0x113ba7bb;
+        operator()();
     }
 
+    // 582.0 non ILP (instruction level parallelism)
+    // 663.138 remembering result
     inline uint32_t operator()() {
         // Extremely fast non-cryptograpic RNG. Period is 2^128 - 1.
         // see Marsaglia, George (July 2003). ["Xorshift RNGs"](http://www.jstatsoft.org/v08/i14/paper).
         // Journal of Statistical Software. Vol. 8 (Issue 14).
+        const auto result = _result;
         const auto t = _x ^ (_x << 11);
         _x = _y;
         _y = _z;
         _z = _w;
-        return (_w = _w ^ (_w >> 19) ^ (t ^ (t >> 8)));
+        _result = (_w = _w ^ (_w >> 19) ^ (t ^ (t >> 8)));
+        return result;
     }
 
     /// Random float value between 0 and 1.
@@ -64,4 +70,5 @@ private:
     uint32_t _y;
     uint32_t _z;
     uint32_t _w;
+    uint32_t _result;
 };
