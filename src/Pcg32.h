@@ -28,7 +28,7 @@ public:
         const uint64_t oldstate = mState;
 
         // Advance internal state
-        mState = oldstate * 6364136223846793005ULL + mInc;
+        mState = oldstate * UINT64_C(6364136223846793005) + mInc;
 
         // Calculate output function (XSH RR), uses old state for max ILP
         const uint32_t xorshifted = static_cast<uint32_t>(((oldstate >> 18u) ^ oldstate) >> 27u);
