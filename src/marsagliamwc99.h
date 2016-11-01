@@ -17,22 +17,29 @@ public:
     MarsagliaMWC99()
         : _w(521288629)
         , _z(362436069) {
+        // one call is necessary to update _r
+        operator()();
     }
 
     void seed(size_t val) {
         _z = 362436069;
         _w = static_cast<uint32_t>(val);
+        // one call is necessary to update _r
+        operator()();
     }
 
     // This is the heart of the generator.
     // It uses George Marsaglia's MWC algorithm to produce an uint32_t integer.
     // @see https://groups.google.com/forum/?fromgroups=#!topic/sci.crypt/yoaCpGWKEk0
-    //
-    // This has a modulo bias.
+    // 634.405 MOPS standard form
+    // 653.949 MOPS creating r first (leads to better interleafing)
+    // 674.029 MOPS with storing _r (even more interleafing)
     inline uint32_t operator()() {
+        const auto r = _r;
         _z = 36969 * (_z & 65535) + (_z >> 16);
         _w = 18000 * (_w & 65535) + (_w >> 16);
-        return (_z << 16) + _w;
+        _r = (_z << 16) + _w;
+        return r;
     }
 
     /// Random float value between 0 and 1.
@@ -62,4 +69,5 @@ public:
 private:
     uint32_t _z;
     uint32_t _w;
+    uint32_t _r;
 };
