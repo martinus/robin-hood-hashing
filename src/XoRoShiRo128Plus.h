@@ -6,12 +6,12 @@
 /// It has a period of 2^128 - 1, and is even faster than MarsagliaMWC99.
 /// 
 /// @see http://xoroshiro.di.unimi.it/xoroshiro128plus.c
-class XorShiro128Plus {
+class XoRoShiRo128Plus {
 public:
     typedef uint64_t result_type;
 
     // random state created at https://www.random.org/cgi-bin/randbyte?nbytes=8&format=h
-    XorShiro128Plus(uint64_t initialState = UINT64_C(0x853c49e6748fea9b)) {
+    XoRoShiRo128Plus(uint64_t initialState = UINT64_C(0x853c49e6748fea9b)) {
         seed(initialState);
     }
 
