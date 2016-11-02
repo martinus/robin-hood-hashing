@@ -1,4 +1,4 @@
-#include <XorShiro128Plus.h>
+#include <XoRoShiRo128Plus.h>
 
 #include <hopscotch.h>
 #include <HopScotchAdaptive.h>
@@ -116,12 +116,12 @@ void test1_std(int times) {
     // random test against std::unordered_map
     rhhs.clear();
     std::unordered_map<int, int> uo;
-    XorShiro128Plus rng;
+    XoRoShiRo128Plus rng;
     rng.seed(123);
 
     const int mod = times / 4;
     for (int i = 0; i < times; ++i) {
-        int r = rng() % mod;
+        int r = static_cast<int>(rng(mod));
         auto rhh_it = rhhs.insert(std::make_pair(r, r * 2));
         auto uo_it = uo.insert(std::make_pair(r, r * 2));
         CHECK(rhh_it.second == uo_it.second);
@@ -133,7 +133,7 @@ void test1_std(int times) {
     uo.clear();
     rhhs.clear();
     for (int i = 0; i < times; ++i) {
-        int r = rng() % mod;
+        int r = static_cast<int>(rng(mod));
         rhhs[r] = r * 2;
         uo[r] = r * 2;
         CHECK(uo.find(r)->second == rhhs.find(r)->second);
@@ -217,7 +217,7 @@ void test4() {
     std::unordered_set<size_t> u;
     RobinHoodHashMap<int> r;
 
-    XorShiro128Plus rand;
+    XoRoShiRo128Plus rand;
 
     for (unsigned i = 0; i < 100000; ++i) {
         size_t val = static_cast<size_t>(rand(i + 1));
@@ -227,7 +227,7 @@ void test4() {
 
 template<class H>
 void bench_str(size_t insertions, size_t queries, size_t times) {
-    XorShiro128Plus rand(insertions * 5);
+    XoRoShiRo128Plus rand(insertions * 5);
     const int seed = 23154;
 
     size_t key_length = 5;
@@ -316,7 +316,7 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
 template<class T, class H>
 void bench1(size_t insertions, size_t queries, size_t times, T value) {
 
-    XorShiro128Plus rand(insertions * 5);
+    XoRoShiRo128Plus rand(insertions * 5);
     const int seed = 23154;
 
     {
@@ -467,7 +467,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
 template<class H>
 void bh(size_t insertions, size_t queries, size_t times, const typename H::value_type& value, const char* msg) {
 
-    XorShiro128Plus rand(insertions * 5);
+    XoRoShiRo128Plus rand(insertions * 5);
     const int seed = 23154;
 
     {
@@ -495,7 +495,7 @@ template<class T>
 void test_map1(size_t times) {
     {
         Timer t;
-        XorShiro128Plus rand;
+        XoRoShiRo128Plus rand;
         rand.seed(321);
         HopScotch::Map<size_t, int, T, HopScotch::Style::Fast> r;
         for (size_t i = 0; i < times; ++i) {
@@ -505,7 +505,7 @@ void test_map1(size_t times) {
     }
     {
         Timer t;
-        XorShiro128Plus rand;
+        XoRoShiRo128Plus rand;
         rand.seed(321);
         HopScotch::Map<size_t, int, T, HopScotch::Style::Default> r;
         for (size_t i = 0; i < times; ++i) {
@@ -515,7 +515,7 @@ void test_map1(size_t times) {
     }
     {
         Timer t;
-        XorShiro128Plus rand;
+        XoRoShiRo128Plus rand;
         rand.seed(321);
         HopScotch::Map<size_t, int, T, HopScotch::Style::Compact> r;
         for (size_t i = 0; i < times; ++i) {
@@ -525,7 +525,7 @@ void test_map1(size_t times) {
     }
     {
         Timer t;
-        XorShiro128Plus rand;
+        XoRoShiRo128Plus rand;
         rand.seed(321);
         hash_table<size_t, int, T> ht;
         for (size_t i = 0; i < times; ++i) {
@@ -535,7 +535,7 @@ void test_map1(size_t times) {
     }
     {
         Timer t;
-        XorShiro128Plus rand;
+        XoRoShiRo128Plus rand;
         rand.seed(321);
         RobinHoodHashMap<int, T> r;
         for (size_t i = 0; i < times; ++i) {
@@ -547,7 +547,7 @@ void test_map1(size_t times) {
 
     {
         Timer t;
-        XorShiro128Plus rand;
+        XoRoShiRo128Plus rand;
         rand.seed(321);
         std::unordered_map<size_t, int, T> u;
         for (size_t i = 0; i < times; ++i) {
@@ -559,7 +559,7 @@ void test_map1(size_t times) {
 }
 
 void test_compare(size_t times) {
-    XorShiro128Plus rand;
+    XoRoShiRo128Plus rand;
     size_t seed = 142323;
     rand.seed(seed);
 
@@ -682,7 +682,7 @@ public:
     int x;
 };
 
-std::string rand_str(XorShiro128Plus& rand, const size_t num_letters) {
+std::string rand_str(XoRoShiRo128Plus& rand, const size_t num_letters) {
     std::string alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     std::string s;
     s.resize(num_letters);
@@ -701,7 +701,7 @@ struct HashX : public std::unary_function<size_t, X> {
 
 
 void test_count(size_t times) {
-    XorShiro128Plus rand;
+    XoRoShiRo128Plus rand;
     reset_x();
     {
         rand.seed(123);
@@ -1087,7 +1087,7 @@ double random_bench_std(const std::string& title, int times, Op& o) {
     //std::mt19937 mt; // 6.54914
     //XorShiftRng mt; // 3.67276
     //MarsagliaMWC99 mt; // 3.4988
-    XorShiro128Plus mt;
+    XoRoShiRo128Plus mt;
     //std::uniform_int_distribution<int> ud(2, max_val);
 
     double min_ns = (std::numeric_limits<double>::max)();
@@ -1242,14 +1242,14 @@ public:
 
 void testRng() {
     MicroBenchmark mb;
-    XorShiro128Plus xorshift(123);
+    XoRoShiRo128Plus xorshift(123);
     double d;
     uint64_t range = xorshift() % 400;
     while (mb.keepRunning()) {
         d += xorshift.rand01();
     }
     doNotOptmizeAway(d);
-    std::cout << mb.min() << " XorShiro128Plus rng(321)" << d << std::endl;
+    std::cout << mb.min() << " XoRoShiRo128Plus rng(321)" << d << std::endl;
 
     MarsagliaMWC99 mwc99;
     mwc99.seed(123);
@@ -1291,12 +1291,13 @@ int main(int argc, char** argv) {
     //testRng();
 
     set_high_priority();
-
-    benchRng<XorShiro128Plus>("XorShiro128Plus");
+    /*
+    benchRng<XorShiftRng>("XorShiftRng");
+    benchRng<XoRoShiRo128Plus>("XoRoShiRo128Plus");
     benchRng<XorShiftStar>("XorShiftStar");
     benchRng<MarsagliaMWC99>("MarsagliaMWC99");
     benchRng<Pcg32>("Pcg32");
-    benchRng<XorShiftRng>("XorShiftRng");
+    */
     test1_std<RobinHoodInfobytePairNoOverflow::Map<int, int>>(100000);
 
     auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1000);
@@ -1341,7 +1342,7 @@ int main(int argc, char** argv) {
             googlemap.set_empty_key(-1);
             googlemap.set_deleted_key(-2);
             googlemap.max_load_factor(0.9f);
-            std::cout << random_bench_std("googlemap", 5, [&](XorShiro128Plus& mt) {
+            std::cout << random_bench_std("googlemap", 5, [&](XoRoShiRo128Plus& mt) {
                 for (int i = 0; i < iters; ++i) {
                     googlemap[mt() & mask] = i;
                     googlemap.erase(mt() & mask);

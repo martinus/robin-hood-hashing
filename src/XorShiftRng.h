@@ -27,7 +27,7 @@ public:
     }
 
     // 582.0 non ILP (instruction level parallelism)
-    // 663.138 remembering result
+    // 663.138 (648) remembering result
     inline uint32_t operator()() {
         // Extremely fast non-cryptograpic RNG. Period is 2^128 - 1.
         // see Marsaglia, George (July 2003). ["Xorshift RNGs"](http://www.jstatsoft.org/v08/i14/paper).
