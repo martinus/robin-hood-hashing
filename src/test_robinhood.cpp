@@ -246,7 +246,7 @@ std::string rand_str(XoRoShiRo128Plus& rand, const size_t num_letters) {
     for (size_t i = 0; i < num_letters; ++i) {
         s[i] = alphanum[rand(alphanum.size())];
     }
-    return std::move(s);
+    return s;
 }
 
 

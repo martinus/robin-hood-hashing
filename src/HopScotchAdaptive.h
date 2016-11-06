@@ -241,7 +241,7 @@ public:
 
                 // find the hash place h for element i by looking through the hops
                 swappable_candidate_hopidx = earliest_possible_hop_idx;
-                typename Traits::HopType hop_mask = (typename Traits::HopType)1 << (swappable_candidate_idx - earliest_possible_hop_idx);
+                typename Traits::HopType hop_mask = static_cast<typename Traits::HopType>(1) << (swappable_candidate_idx - earliest_possible_hop_idx);
 
                 // check all the hopfields starting from earliest_possible_hop_idx, up to the swappable_candidate_idx if
                 // one of them is the owner of swappable_candidate_idx
@@ -269,8 +269,8 @@ public:
                 _alloc_val.construct(_vals + idx, std::move(_vals[swappable_candidate_idx]));
                 _alloc_val.destroy(_vals + swappable_candidate_idx);
 
-                hop(swappable_candidate_hopidx) |= ((typename Traits::HopType)1 << (idx - swappable_candidate_hopidx));
-                hop(swappable_candidate_hopidx) ^= ((typename Traits::HopType)1 << (swappable_candidate_idx - swappable_candidate_hopidx));
+                hop(swappable_candidate_hopidx) |= (static_cast<typename Traits::HopType>(1) << (idx - swappable_candidate_hopidx));
+                hop(swappable_candidate_hopidx) ^= (static_cast<typename Traits::HopType>(1) << (swappable_candidate_idx - swappable_candidate_hopidx));
 
                 idx = swappable_candidate_idx;
             }
@@ -282,7 +282,7 @@ public:
         _alloc_key.construct(_keys + idx, std::forward<Key>(key));
 
         hop(idx) |= _is_bucket_taken_mask;
-        hop(initial_idx) |= ((typename Traits::HopType)1 << (idx - initial_idx));
+        hop(initial_idx) |= (static_cast<typename Traits::HopType>(1) << (idx - initial_idx));
         ++_num_elements;
         return true;
     }
@@ -338,7 +338,7 @@ public:
         size_t h = idx < _hopsize ? 0 : idx - _hopsize + 1;
         while (idx > initial_idx + _hopsize - 1) {
             size_t initial_h = h;
-            auto hops = hop(initial_h) & _hopmask;
+            hops = hop(initial_h) & _hopmask;
             while (hops && h < idx) {
                 if (hops & 1) {
                     // found something to move forward!
@@ -348,9 +348,9 @@ public:
                     _alloc_val.destroy(_vals + h);
 
                     // update hop bit
-                    hop(h) |= ((typename Traits::HopType)1 << (idx - h));
+                    hop(h) |= (static_cast<typename Traits::HopType>(1) << (idx - h));
                     // clear old hop bit
-                    hop(h) ^= ((typename Traits::HopType)1 << (h - initial_h));
+                    hop(h) ^= (static_cast<typename Traits::HopType>(1) << (h - initial_h));
 
                     hops = 0;
                     idx = h;
@@ -376,7 +376,7 @@ public:
         _alloc_key.construct(_keys + idx, std::forward<Key>(key));
 
         hop(idx) |= _is_bucket_taken_mask;
-        hop(initial_idx) |= ((typename Traits::HopType)1 << (idx - initial_idx));
+        hop(initial_idx) |= (static_cast<typename Traits::HopType>(1) << (idx - initial_idx));
         ++_num_elements;
         return true;
     }
@@ -454,7 +454,7 @@ private:
         */
 
         _hopsize = _hopwidth * 8 - 1;
-        _is_bucket_taken_mask = (typename Traits::HopType)1 << _hopsize;
+        _is_bucket_taken_mask = static_cast<typename Traits::HopType>(1) << _hopsize;
         _hopmask = _is_bucket_taken_mask - 1;
 
 

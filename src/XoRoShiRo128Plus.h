@@ -59,10 +59,10 @@ public:
     // Generates using the given range. This has a modulo bias.
     // see https://github.com/imneme/pcg-c-basic/blob/master/pcg_basic.c#L79
     inline uint64_t operator()(uint64_t bound) {
-        const auto threshold = (0 - bound) % bound;
+        const uint64_t threshold = (0 - bound) % bound;
 
         for (;;) {
-            const auto r = operator()();
+            const uint64_t r = operator()();
             if (r >= threshold) {
                 return r % bound;
             }
@@ -70,7 +70,7 @@ public:
     }
 
     inline static uint64_t max() {
-        return -1;
+        return static_cast<uint64_t>(-1);
     }
 
     inline static uint64_t min() {

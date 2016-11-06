@@ -20,7 +20,7 @@ struct Hop8 {
     enum resize_percentage { RESIZE_PERCENTAGE = 200 };
     enum hop_size { HOP_SIZE = 8 - 1 };
     enum add_range { ADD_RANGE = 496 };
-    inline static std::size_t h(std::size_t v, std::size_t s, std::size_t mask) {
+    inline static std::size_t h(std::size_t v, std::size_t, std::size_t mask) {
         return v & mask;
     }
 };
@@ -33,7 +33,7 @@ struct Hop16 {
     enum resize_percentage { RESIZE_PERCENTAGE = 200 };
     enum hop_size { HOP_SIZE = 16 - 1 };
     enum add_range { ADD_RANGE = 496 };
-    inline static std::size_t h(std::size_t v, std::size_t s, std::size_t mask) {
+    inline static std::size_t h(std::size_t v, std::size_t, std::size_t mask) {
         return v & mask;
     }
 };
@@ -46,7 +46,7 @@ struct Hop32 {
     enum resize_percentage { RESIZE_PERCENTAGE = 200 };
     enum hop_size { HOP_SIZE = 32 - 1 };
     enum add_range { ADD_RANGE = 496 };
-    inline static std::size_t h(std::size_t v, std::size_t s, std::size_t mask) {
+    inline static std::size_t h(std::size_t v, std::size_t, std::size_t mask) {
         return v & mask;
     }
 };
@@ -59,7 +59,7 @@ struct Hop64 {
     enum resize_percentage { RESIZE_PERCENTAGE = 200 };
     enum hop_size { HOP_SIZE = 64 - 1 };
     enum add_range { ADD_RANGE = 496 };
-    inline static std::size_t h(std::size_t v, std::size_t s, std::size_t mask) {
+    inline static std::size_t h(std::size_t v, std::size_t, std::size_t mask) {
         return v & mask;
     }
 };
@@ -101,7 +101,7 @@ public:
                 _alloc_val.destroy(_vals + i);
                 _alloc_key.destroy(_keys + i);
             }
-            _hops[i] = (typename Traits::HopType)0;
+            _hops[i] = static_cast<typename Traits::HopType>(0);
         }
         _num_elements = 0;
     }
@@ -183,7 +183,7 @@ public:
         //++_counts[idx - initial_idx];
 
         // set the empty spot's hop bit
-        _hops[idx] |= (typename Traits::HopType)1;
+        _hops[idx] |= static_cast<typename Traits::HopType>(1);
 
         // TODO can this be made faster?
         // we have found an empty spot, but it might be far away. We have to move the hole to the front
@@ -202,7 +202,7 @@ public:
                 ++i;
                 // find the hash place h for element i by looking through the hops
                 h = start_h;
-                typename Traits::HopType hop_mask = (typename Traits::HopType)1 << (i - h + 1);
+                typename Traits::HopType hop_mask = static_cast<typename Traits::HopType>(1) << (i - h + 1);
                 while (h <= i && !(_hops[h] & hop_mask)) {
                     ++h;
                     hop_mask >>= 1;
@@ -212,7 +212,7 @@ public:
             // insertion failed? resize and try again.
             if (i >= idx) {
                 // insertion failed, undo _hop[idx]
-                _hops[idx] ^= (typename Traits::HopType)1;
+                _hops[idx] ^= static_cast<typename Traits::HopType>(1);
                 increase_size();
                 return insert(std::forward<Key>(key), std::forward<Val>(val));
             }
@@ -224,10 +224,10 @@ public:
 
             _alloc_val.construct(_vals + idx, std::move(_vals[i]));
             _alloc_val.destroy(_vals + i);
-            _hops[h] |= ((typename Traits::HopType)1 << (idx - h + 1));
+            _hops[h] |= (static_cast<typename Traits::HopType>(1) << (idx - h + 1));
 
             // clear hop bit
-            _hops[h] ^= ((typename Traits::HopType)1 << (i - h + 1));
+            _hops[h] ^= (static_cast<typename Traits::HopType>(1) << (i - h + 1));
 
             idx = i;
         }
@@ -236,9 +236,9 @@ public:
         // it's rightful place.
         _alloc_val.construct(_vals + idx, std::forward<Val>(val));
         _alloc_key.construct(_keys + idx, std::forward<Key>(key));
-        _hops[idx] |= (typename Traits::HopType)1;
+        _hops[idx] |= static_cast<typename Traits::HopType>(1);
 
-        _hops[initial_idx] |= ((typename Traits::HopType)1 << (idx - initial_idx + 1));
+        _hops[initial_idx] |= (static_cast<typename Traits::HopType>(1) << (idx - initial_idx + 1));
         ++_num_elements;
         return true;
     }

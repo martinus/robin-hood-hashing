@@ -8,37 +8,36 @@ private:
     typedef std::chrono::high_resolution_clock clock;
 
 public:
-    MicroBenchmark(double maxTotalMeasuredSeconds = 1, uint64_t maxNumMeasurements = 1000)
+    MicroBenchmark(double maxTotalMeasuredSeconds = 1, uint64_t maxNumMeasurements = 1000, uint64_t measurementCertaintyFactor = 1000)
         : mItersLeft(0)
         , mNumIters(0) {
 
         // performs automatic calibration
-        uint64_t minNanos = -1;
+        uint64_t bestMeasurementPrecisionNanos = -1;
 
         for (size_t i = 0; i < 100; ++i) {
-            const auto startTime = clock::now();
+            // find out how precise we can measure time
             std::chrono::time_point<clock> finishedTime;
-            size_t iters = 0;
+            const auto startTime = clock::now();
             do {
                 finishedTime = clock::now();
-                ++iters;
             } while (startTime == finishedTime);
 
             std::chrono::duration<uint64_t, std::nano> duration = finishedTime - startTime;
-            minNanos = std::min(minNanos, duration.count());
+            bestMeasurementPrecisionNanos = std::min(bestMeasurementPrecisionNanos, duration.count());
         }
 
-        // I arbitrarily want to run 10000 times the measurement precision.
-        // at max 1 second.
-        const uint64_t measurementCertaintyFactor = 1000;
-        const uint64_t measurementTimeNanos = std::min(UINT64_C(1000000000), minNanos * measurementCertaintyFactor);
+        // we want to be well above the best measurement precision for each measurement
+        const uint64_t measurementTimeNanos = std::min(UINT64_C(1000000000), bestMeasurementPrecisionNanos * measurementCertaintyFactor);
 
-        // maximum 5 seconds
-        const uint64_t maxTotalTimeNanos = UINT64_C(5000000000);
+        // convert maxTotalMeasuredSeconds to nanos
+        const uint64_t maxTotalMeasuredNanos = static_cast<uint64_t>(maxTotalMeasuredSeconds * UINT64_C(1000000000));
 
-        mMaxNumMeasurements = static_cast<size_t>(std::min(maxNumMeasurements, maxTotalTimeNanos / measurementTimeNanos));
+        mMaxNumMeasurements = static_cast<size_t>(std::min(maxNumMeasurements, maxTotalMeasuredNanos / measurementTimeNanos));
         mDesiredSecondsPerMeasurement = measurementTimeNanos / 1e9;
         mMaxTotalMeasuredSeconds = maxTotalMeasuredSeconds;
+
+        //std::cout << "minNanos=" << minNanos << " , measurementTimeNanos=" << measurementTimeNanos << std::endl; 
     }
 
     MicroBenchmark(double maxTotalMeasuredSeconds, double secondsPerMeasurement, size_t minNumMeasurements, size_t maxNumMeasurements)
