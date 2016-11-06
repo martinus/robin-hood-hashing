@@ -1076,7 +1076,7 @@ inline void hash_combine(std::size_t& seed, T const& v)
     combiner(seed, hasher(v));
 }
     
-};
+}
 
 #endif // spp_utils_h_guard_
 

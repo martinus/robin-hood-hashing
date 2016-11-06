@@ -319,7 +319,7 @@ private:
         _mask = _max_elements - 1;
 
         // max * (1 - 1/20) = max * 0.95
-        _max_num_num_elements_allowed = _max_elements - std::max((size_t)1, _max_elements / 20);
+        _max_num_num_elements_allowed = _max_elements - std::max(static_cast<size_t>(1), _max_elements / 20);
 
         _info = _alloc_info.allocate(_max_elements + Traits::OVERFLOW_SIZE);
         _keys = _alloc_keys.allocate(_max_elements + Traits::OVERFLOW_SIZE, _info);

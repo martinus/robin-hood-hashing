@@ -1,4 +1,4 @@
-CXX = clang++ -ferror-limit=3 -Weverything -Werror -Wno-c++98-compat
+CXX = clang++ -ferror-limit=3 -Wall -Werror -Wno-c++98-compat
 #CXX = g++ -Wall -fmax-errors=3
 
 

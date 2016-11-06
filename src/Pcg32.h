@@ -10,7 +10,7 @@ public:
     typedef uint32_t result_type;
 
     // random state created at https://www.random.org/cgi-bin/randbyte?nbytes=8&format=h
-    Pcg32(uint64_t initialState = 0x853c49e6748fea9bULL, uint64_t sequenceSelectionConstant = 0xda3e39cb94b95bdbULL)
+    Pcg32(uint64_t initialState = UINT64_C(0x853c49e6748fea9b), uint64_t sequenceSelectionConstant = UINT64_C(0xda3e39cb94b95bdb))
         : mState(0)
         , mInc((sequenceSelectionConstant << 1u) | 1u) {
 
@@ -54,7 +54,7 @@ public:
     }
 
     inline static uint32_t max() {
-        return -1;
+        return static_cast<uint32_t>(-1);
     }
 
     inline static uint32_t min() {

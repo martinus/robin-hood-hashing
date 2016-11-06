@@ -150,11 +150,11 @@ public:
 
   std::pair<iterator, bool> insert(const value_type &value) {
     return emplace(value.first, value.second);
-  };
+  }
 
   std::pair<iterator, bool> insert(value_type &&value) {
     return emplace(value.first, std::move(value.second));
-  };
+  }
 
   template <typename... Args>
   std::pair<iterator, bool> emplace(key_type key, Args &&... args) {
@@ -169,7 +169,7 @@ public:
         return {iterator(this, idx), false};
       }
     }
-  };
+  }
 
   void erase(iterator it) {
     size_t bucket = it.idx_;

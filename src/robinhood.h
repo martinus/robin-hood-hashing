@@ -5,6 +5,16 @@
 #include <cstdint>
 #include <iostream>
 
+#ifndef __has_cpp_attribute         // Optional of course.
+  #define __has_cpp_attribute(x) 0  // Compatibility with non-clang compilers.
+#endif
+
+#if __has_cpp_attribute(clang::fallthrough)
+#define FALLTHROUGH [[clang::fallthrough]]
+#else
+#define FALLTHROUGH
+#endif
+
 struct MurmurHash2 : public std::unary_function<size_t, std::string> {
   inline size_t operator()(const std::string& t) const {
     const size_t m = 0x5bd1e995;
@@ -12,11 +22,11 @@ struct MurmurHash2 : public std::unary_function<size_t, std::string> {
     size_t len = t.size();
     size_t h = len;
 
-    size_t step_size = std::max((size_t)4, len/10);
+    size_t step_size = std::max(static_cast<size_t>(4), len/10);
 
-    const unsigned char* data = (const unsigned char*)t.c_str();
+    const unsigned char* data = reinterpret_cast<const unsigned char*>(t.c_str());
     while (len >= 4) {
-      uint32_t k = *(uint32_t*)data;
+      uint32_t k = *reinterpret_cast<const uint32_t*>(data);
       k *= m;
       k ^= k >> r;
       k *= m;
@@ -30,9 +40,11 @@ struct MurmurHash2 : public std::unary_function<size_t, std::string> {
 
     switch (len) {
     case 3:
-      h ^= data[2] << 16;
-    case 2:
-      h ^= data[1] << 8;
+      h ^= static_cast<size_t>(data[2]) << 16;
+      FALLTHROUGH;
+    case 2: 
+      h ^= static_cast<size_t>(data[1]) << 8;
+      FALLTHROUGH;
     case 1:
       h ^= data[0];
       h *= m;
@@ -56,7 +68,7 @@ struct Fnv : public std::unary_function<size_t, std::string> {
     size_t last = t.size();
     size_t stride = 1 + last/10;
     for (; first < last; first += stride) {
-      hash = (16777619U * hash) ^ (size_t)(t[first]);
+      hash = (16777619U * hash) ^ static_cast<size_t>(t[first]);
     }
     return hash;
   }
@@ -102,7 +114,7 @@ public:
 
   ~RobinHoodHashMap() {
     for (size_t i=0; i<_size; ++i) {
-      if (_keys[i] != (size_t)-1) {
+      if (_keys[i] != static_cast<size_t>(-1)) {
         _allocator.destroy(_values + i);
       }
     }
@@ -113,7 +125,7 @@ public:
 
   // inline because it should be fast
   inline bool insert(size_t key, T val) {
-    const size_t sentinel = -1;
+    const size_t sentinel = static_cast<size_t>(-1);
     size_t i = _hash(key) & _mask;
 
     size_t dist_key = 0;
@@ -152,7 +164,7 @@ public:
   }
 
   T& find(size_t key, bool& success) {
-    static const size_t sentinel = -1;
+    static const size_t sentinel = static_cast<size_t>(-1);
     size_t i = _hash(key) & _mask;
     size_t dist_key = 0;
 
@@ -206,7 +218,7 @@ private:
     init_data(_max_size*2);
 
     for (size_t i=0; i<old_size; ++i) {
-      if (old_keys[i] != (size_t)-1) {
+      if (old_keys[i] != static_cast<size_t>(-1)) {
         insert(old_keys[i], old_values[i]);
         _allocator.destroy(old_values + i);
       }
@@ -223,7 +235,7 @@ private:
     _keys = new size_t[_max_size];
     _values = _allocator.allocate(_max_size);
     for (size_t i=0; i<_max_size; ++i) {
-      _keys[i] = (size_t)-1;
+      _keys[i] = static_cast<size_t>(-1);
     }
     _max_fullness = _max_size*70/100;
   }

@@ -6,10 +6,6 @@
 #include <RobinHoodInfobyte.h>
 #include <RobinHoodInfobyteJumpheuristic.h>
 #include <RobinHoodInfobyteFastforward.h>
-#include <3rdparty/rigtorp/HashMap.h>
-#include <3rdparty/sparsepp/sparsepp.h>
-#include <3rdparty/tessil/hopscotch_map.h>
-#include <3rdparty/sherwood_map/sherwood_map.hpp>
 
 #include <robinhood.h>
 #include <marsagliamwc99.h>
@@ -35,6 +31,11 @@
 
 #include <chrono>
 #include <thread>
+
+#include <3rdparty/rigtorp/HashMap.h>
+#include <3rdparty/sparsepp/sparsepp.h>
+#include <3rdparty/tessil/hopscotch_map.h>
+#include <3rdparty/sherwood_map/sherwood_map.hpp>
 
 #ifdef _WIN32
 #include <Windows.h>

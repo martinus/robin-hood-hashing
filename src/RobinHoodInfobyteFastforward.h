@@ -238,12 +238,12 @@ public:
 private:
     void init_data() {
         _num_elements = 0;
-        _max_elements = (size_t)1 << _level;
+        _max_elements = static_cast<size_t>(1) << _level;
         _mask = _max_elements - 1;
 
         // max * (1 - 1/50) = max * 0.98
         // we allow a maximum fullness of 98%.
-        _max_num_num_elements_allowed = _max_elements - std::max((size_t)1, _max_elements / 20);
+        _max_num_num_elements_allowed = _max_elements - std::max(static_cast<size_t>(1), _max_elements / 20);
 
         _info = _alloc_info.allocate(_max_elements + Traits::OVERFLOW_SIZE);
         _keys = _alloc_keys.allocate(_max_elements + Traits::OVERFLOW_SIZE, _info);

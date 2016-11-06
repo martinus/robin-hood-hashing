@@ -10,7 +10,7 @@ public:
     typedef uint64_t result_type;
 
     // random state created at https://www.random.org/cgi-bin/randbyte?nbytes=8&format=h
-    XorShiftStar(uint64_t initialState = 0x853c49e6748fea9bULL)
+    XorShiftStar(uint64_t initialState = UINT64_C(0x853c49e6748fea9b))
         : mState(initialState) {
     }
 
@@ -44,7 +44,7 @@ public:
     }
 
     inline static uint64_t max() {
-        return -1;
+        return static_cast<uint64_t>(-1);
     }
 
     inline static uint64_t min() {

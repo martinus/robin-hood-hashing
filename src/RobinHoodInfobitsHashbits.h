@@ -76,7 +76,7 @@ struct Large {
     //         |
     //       full? 
     typedef std::uint16_t InfoType;
-    static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 15;
+    static constexpr InfoType IS_BUCKET_TAKEN_MASK = static_cast<InfoType>(1) << 15;
     static constexpr InfoType NUM_HASH_BITS = 11;
     static constexpr InfoType OFFSET_INC = 1 << NUM_HASH_BITS;
     static constexpr InfoType OFFSET_MASK = (IS_BUCKET_TAKEN_MASK - 1) ^ (OFFSET_INC - 1);
@@ -94,7 +94,7 @@ struct Big {
     //         |
     //       full? 
     typedef std::uint32_t InfoType;
-    static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 31;
+    static constexpr InfoType IS_BUCKET_TAKEN_MASK = static_cast<InfoType>(1) << 31;
     static constexpr InfoType NUM_HASH_BITS = 27;
     static constexpr InfoType OFFSET_INC = 1 << NUM_HASH_BITS;
     static constexpr InfoType OFFSET_MASK = (IS_BUCKET_TAKEN_MASK - 1) ^ (OFFSET_INC - 1);
@@ -112,12 +112,12 @@ struct Huge {
     //         |
     //       full? 
     typedef std::uint64_t InfoType;
-    static constexpr InfoType IS_BUCKET_TAKEN_MASK = (InfoType)1 << 63;
+    static constexpr InfoType IS_BUCKET_TAKEN_MASK = static_cast<InfoType>(1) << 63;
     static constexpr InfoType NUM_HASH_BITS = 59;
-    static constexpr InfoType OFFSET_INC = (InfoType)1 << NUM_HASH_BITS;
+    static constexpr InfoType OFFSET_INC = static_cast<InfoType>(1) << NUM_HASH_BITS;
     static constexpr InfoType OFFSET_MASK = (IS_BUCKET_TAKEN_MASK - 1) ^ (OFFSET_INC - 1);
     static constexpr InfoType INITIAL_LEVEL = 5;
-    static constexpr InfoType HASH_MASK = ((InfoType)1 << NUM_HASH_BITS) - 1;
+    static constexpr InfoType HASH_MASK = (static_cast<InfoType>(1) << NUM_HASH_BITS) - 1;
     static constexpr InfoType MAX_OFFSET = IS_BUCKET_TAKEN_MASK >> NUM_HASH_BITS;
 };
 }
@@ -300,12 +300,12 @@ public:
 private:
     void init_data() {
         _num_elements = 0;
-        _max_elements = (size_t)1 << _level;
+        _max_elements = static_cast<size_t>(1) << _level;
         _mask = _max_elements - 1;
 
         // max * (1 - 1/50) = max * 0.98
         // we allow a maximum fullness of 98%.
-        _max_num_num_elements_allowed = _max_elements - std::max((size_t)1, _max_elements / 20);
+        _max_num_num_elements_allowed = _max_elements - std::max(static_cast<size_t>(1), _max_elements / 20);
      
         // e.g. for initial_level 5, rshift 3: 
         // level  5: (( 5 - 5) / 3) * 3 + 5 = 5

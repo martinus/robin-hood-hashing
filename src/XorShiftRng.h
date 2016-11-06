@@ -58,7 +58,7 @@ public:
     }
 
     inline static uint32_t max() {
-        return -1;
+        return static_cast<uint32_t>(-1);
     }
 
     inline static uint32_t min() {
