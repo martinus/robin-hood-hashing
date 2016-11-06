@@ -67,7 +67,7 @@ public:
     }
 
 private:
-    uint32_t _z;
     uint32_t _w;
+    uint32_t _z;
     uint32_t _r;
 };

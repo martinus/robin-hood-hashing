@@ -23,7 +23,7 @@ struct Fast {
     typedef uint8_t InfoType;
     static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 7;
     static constexpr std::size_t INITIAL_ELEMENTS = 32;
-    typedef std::allocator<typename InfoType> AInfo;
+    typedef std::allocator<InfoType> AInfo;
     static constexpr float MAX_LOAD_FACTOR = 0.50f;
 };
 
@@ -35,7 +35,7 @@ struct Default {
     typedef uint8_t InfoType;
     static constexpr InfoType IS_BUCKET_TAKEN_MASK = 1 << 7;
     static constexpr std::size_t INITIAL_ELEMENTS = 32;
-    typedef std::allocator<typename InfoType> AInfo;
+    typedef std::allocator<InfoType> AInfo;
     static constexpr float MAX_LOAD_FACTOR = 0.90f;
 };
 
@@ -412,7 +412,7 @@ private:
 
     float _max_load_factor;
 
-    typename Allocator _alloc_keyvals;
+    Allocator _alloc_keyvals;
     typename Traits::AInfo _alloc_info;
 };
 
