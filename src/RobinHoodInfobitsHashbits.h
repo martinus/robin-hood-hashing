@@ -147,7 +147,8 @@ public:
 
     /// Creates an empty hash map.
     Map()
-        : _level(Traits::INITIAL_LEVEL)
+        : _hash()
+        , _level(Traits::INITIAL_LEVEL)
     {
         init_data();
     }

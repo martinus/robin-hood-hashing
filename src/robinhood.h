@@ -90,7 +90,12 @@ template<class T, class H = DummyHash<size_t>, class A = std::allocator<T> >
 class RobinHoodHashMap {
 public:
   RobinHoodHashMap()
-  : _allocator()
+  : _steps_to_count()
+  , _moves()
+  , _keys(0)
+  , _values(0)
+  , _hash()
+  , _allocator()
   {
     init_data(8);
   }

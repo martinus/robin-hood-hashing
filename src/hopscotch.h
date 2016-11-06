@@ -89,7 +89,8 @@ public:
     typedef Map<Key, Val, H, Traits, Debug, AVal, AKey, AHop> Self;
 
     /// Creates an empty hash map.
-    Map() {
+    Map()
+    : _hash() {
         init_data(32);
     }
 
@@ -312,7 +313,7 @@ private:
             if (new_size < old_size) {
                 // another overflow! break.
                 // TODO do something smart here
-                throw std::exception("can't resize");
+                throw std::bad_alloc();
             }
         }
         init_data(new_size);

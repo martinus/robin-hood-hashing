@@ -33,6 +33,9 @@
 
 #include <timer.h>
 
+#include <chrono>
+#include <thread>
+
 #ifdef _WIN32
 #include <Windows.h>
 #include <psapi.h>
@@ -43,6 +46,7 @@ void set_high_priority() {
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 }
 #else
+#include <regex>
 void set_high_priority() {
 }
 #endif
@@ -70,10 +74,20 @@ double bench_hashing(int& data) {
     return timer.elapsed();
 }
 
+class MyException : public std::exception {
+public:
+	MyException(const char* msg)
+	: mMsg(msg) {
+	}
+	
+private:
+	const std::string mMsg;
+};
+
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
-#define CHECK(x) if (!(x)) throw std::exception(__FILE__ "(" TOSTRING(__LINE__) "): " #x);
+#define CHECK(x) if (!(x)) throw MyException(__FILE__ "(" TOSTRING(__LINE__) "): " #x);
 
 template<class H>
 void test1_std(int times) {
@@ -95,8 +109,8 @@ void test1_std(int times) {
             CHECK(found != rhhs.end());
         }
         CHECK(found->second == i);
-        if (rhhs.size() != 2 + i) {
-            CHECK(rhhs.size() == 2 + i);
+        if (rhhs.size() != 2 + static_cast<size_t>(i)) {
+            CHECK(rhhs.size() == 2 + static_cast<size_t>(i));
         }
     }
 
@@ -157,8 +171,8 @@ void test1(int times) {
             CHECK(found != nullptr);
         }
         CHECK(*found == i);
-        if (rhhs.size() != 2 + i) {
-            CHECK(rhhs.size() == 2 + i);
+        if (rhhs.size() != 2 + static_cast<size_t>(i)) {
+            CHECK(rhhs.size() == 2 + static_cast<size_t>(i));
         }
     }
 
@@ -225,6 +239,18 @@ void test4() {
     }
 }
 
+std::string rand_str(XoRoShiRo128Plus& rand, const size_t num_letters) {
+    std::string alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    std::string s;
+    s.resize(num_letters);
+    for (size_t i = 0; i < num_letters; ++i) {
+        s[i] = alphanum[rand(alphanum.size())];
+    }
+    return std::move(s);
+}
+
+
+
 template<class H>
 void bench_str(size_t insertions, size_t queries, size_t times) {
     XoRoShiRo128Plus rand(insertions * 5);
@@ -234,7 +260,7 @@ void bench_str(size_t insertions, size_t queries, size_t times) {
     size_t val_length = 10;
 
     {
-        HopScotch::Map<std::string, std::string, H, HopScotch::Style::Fast> r;
+        HopScotch::Map<std::string, std::string, H, HopScotch::Style::Hop16> r;
         rand.seed(seed);
         size_t f = 0;
         Timer t;
@@ -422,6 +448,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
         r.print_steps();
     }
 
+/*
     {
         hash_table<size_t, T, H> r;
         rand.seed(seed);
@@ -441,7 +468,7 @@ void bench1(size_t insertions, size_t queries, size_t times, T value) {
         std::cout << t.elapsed();
         std::cout << " hash_table<size_t, T, H> " << r.size() << " " << f << std::endl;
     }
-
+*/
     {
         std::unordered_map<size_t, T, H> r;
         rand.seed(seed);
@@ -497,7 +524,7 @@ void test_map1(size_t times) {
         Timer t;
         XoRoShiRo128Plus rand;
         rand.seed(321);
-        HopScotch::Map<size_t, int, T, HopScotch::Style::Fast> r;
+        HopScotch::Map<size_t, int, T, HopScotch::Style::Hop16> r;
         for (size_t i = 0; i < times; ++i) {
             r.insert(rand(i + 1), static_cast<int>(i));
         }
@@ -507,7 +534,7 @@ void test_map1(size_t times) {
         Timer t;
         XoRoShiRo128Plus rand;
         rand.seed(321);
-        HopScotch::Map<size_t, int, T, HopScotch::Style::Default> r;
+        HopScotch::Map<size_t, int, T, HopScotch::Style::Hop32> r;
         for (size_t i = 0; i < times; ++i) {
             r.insert(rand(i + 1), static_cast<int>(i));
         }
@@ -517,12 +544,13 @@ void test_map1(size_t times) {
         Timer t;
         XoRoShiRo128Plus rand;
         rand.seed(321);
-        HopScotch::Map<size_t, int, T, HopScotch::Style::Compact> r;
+        HopScotch::Map<size_t, int, T, HopScotch::Style::Hop64> r;
         for (size_t i = 0; i < times; ++i) {
             r.insert(rand(i + 1), static_cast<int>(i));
         }
         std::cout << t.elapsed() << " HopScotch::Map<size_t, int, T, HopScotch::Style::Compact> " << r.size() << std::endl;
     }
+    /*
     {
         Timer t;
         XoRoShiRo128Plus rand;
@@ -533,6 +561,7 @@ void test_map1(size_t times) {
         }
         std::cout << t.elapsed() << " hash_table<size_t, int> " << ht.size() << std::endl;
     }
+    */
     {
         Timer t;
         XoRoShiRo128Plus rand;
@@ -682,16 +711,6 @@ public:
     int x;
 };
 
-std::string rand_str(XoRoShiRo128Plus& rand, const size_t num_letters) {
-    std::string alphanum = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    std::string s;
-    s.resize(num_letters);
-    for (size_t i = 0; i < num_letters; ++i) {
-        s[i] = alphanum[rand(alphanum.size())];
-    }
-    return std::move(s);
-}
-
 struct HashX : public std::unary_function<size_t, X> {
     inline size_t operator()(const X& t) const {
         ++x_hash;
@@ -726,7 +745,7 @@ void test_count(size_t times) {
         typedef std::unordered_map<X, X, HashX> StdMap;
         StdMap ms;
         for (size_t i = 0; i < times; ++i) {
-            std::pair<StdMap::iterator, bool> p = ms.insert(StdMap::value_type(static_cast<int>(rand()), static_cast<int>(i)));
+            ms.insert(StdMap::value_type(static_cast<int>(rand()), static_cast<int>(i)));
         }
         size_t f = 0;
         for (size_t i = 0; i < times * 10; ++i) {
@@ -742,11 +761,25 @@ void test_count(size_t times) {
 
 
 size_t get_mem() {
+#ifdef _WIN32
     PROCESS_MEMORY_COUNTERS_EX info;
     info.cb = sizeof(info);
     if (GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&info, info.cb)) {
         return info.PrivateUsage;
     }
+#else
+    const static std::regex vmsizeRegex("VmSize:\\s*(\\d*) kB");
+    
+    std::ifstream file("/proc/self/status");
+    std::smatch matchResult;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::regex_match(line, matchResult, vmsizeRegex);
+        if (2 == matchResult.size()) {
+            return std::stoll(matchResult[1].str()) * 1024;
+        }
+    }
+#endif
     return 0;
 }
 
@@ -789,89 +822,6 @@ struct Stats {
     }
 };
 
-template<class HS>
-void bench_sequential_insert(HS& r, MicroBenchmark& mb, const std::string& title, size_t increase, size_t totalTimes, std::vector<std::vector<Stats>>& all_stats) {
-    std::cout << title << "; ";
-    std::cout.flush();
-    std::vector<Stats> stats;
-    Stats s;
-    s.title = title;
-    Timer t;
-    size_t mem_before = get_mem();
-    const int upTo = static_cast<int>(increase);
-    const int times = static_cast<int>(totalTimes);
-    int i = 0;
-    size_t found = 0;
-    for (int ti = 0; ti < static_cast<int>(times); ++ti) {
-        // insert
-        t.restart();
-        for (size_t up = 0; up < upTo; ++up) {
-            r[i] = i;
-            ++i;
-        }
-        s.elapsed_insert = t.elapsed() / upTo;
-        auto gm = get_mem();
-        s.mem = gm - mem_before;
-        if (gm < mem_before) {
-            // overflow check
-            s.mem = 0;
-        }
-        s.num = r.size();
-
-
-        // query existing
-        const auto endIt = r.end();
-        const int inc = ti + 1;
-        while (mb.keepRunning()) {
-            for (int v = 0, e = upTo * inc; v < e; v += inc) {
-                if (endIt != r.find(v)) {
-                    ++found;
-                }
-            }
-        }
-        s.elapsed_find_existing = mb.min() / upTo;
-
-        // query nonexisting
-        while (mb.keepRunning()) {
-            for (int v = times*upTo, e = times*upTo + upTo; v < e; ++v) {
-                if (endIt != r.find(v)) {
-                    ++found;
-                }
-            }
-        }
-        s.elapsed_find_nonexisting = mb.min() / upTo;
-        s.found = found;
-        stats.push_back(s);
-    }
-
-    Stats sum;
-    std::for_each(stats.begin(), stats.end(), [&sum](const Stats& s) {
-        sum += s;
-    });
-    sum /= stats.size();
-
-    std::cout
-        << 1000000 * sum.elapsed_insert << "; "
-        << 1000000 * sum.elapsed_find_existing << "; "
-        << 1000000 * sum.elapsed_find_nonexisting << "; "
-        << sum.mem / (1024.0 * 1024) << "; "
-        << sum.found << std::endl;
-
-    all_stats.push_back(stats);
-
-    std::ofstream fout("out.txt");
-    print(fout, all_stats);
-}
-
-
-template<class O>
-void print_header(O& out, const std::vector<std::vector<Stats>>& s, const std::string& title) {
-    out << std::endl << title << std::endl;
-    for (size_t i = 0; i < s.size(); ++i) {
-        out << ";" << s[i][0].title;
-    }
-    out << std::endl;
-}
 
 template<class O>
 void print(O& out, const std::vector<std::vector<Stats>>& s) {
@@ -938,6 +888,90 @@ void print(O& out, const std::vector<std::vector<Stats>>& s) {
         }
     }
     out << "num checked." << std::endl;
+}
+
+template<class HS>
+void bench_sequential_insert(HS& r, MicroBenchmark& mb, const std::string& title, size_t increase, size_t totalTimes, std::vector<std::vector<Stats>>& all_stats) {
+    std::cout << title << "; ";
+    std::cout.flush();
+    std::vector<Stats> stats;
+    Stats s;
+    s.title = title;
+    Timer t;
+    size_t mem_before = get_mem();
+    const int upTo = static_cast<int>(increase);
+    const int times = static_cast<int>(totalTimes);
+    int i = 0;
+    size_t found = 0;
+    for (int ti = 0; ti < static_cast<int>(times); ++ti) {
+        // insert
+        t.restart();
+        for (size_t up = 0; up < static_cast<size_t>(upTo); ++up) {
+            r[i] = i;
+            ++i;
+        }
+        s.elapsed_insert = t.elapsed() / upTo;
+        auto gm = get_mem();
+        s.mem = gm - mem_before;
+        if (gm < mem_before) {
+            // overflow check
+            s.mem = 0;
+        }
+        s.num = r.size();
+
+
+        // query existing
+        const auto endIt = r.end();
+        const int inc = ti + 1;
+        while (mb.keepRunning()) {
+            for (int v = 0, e = upTo * inc; v < e; v += inc) {
+                if (endIt != r.find(v)) {
+                    ++found;
+                }
+            }
+        }
+        s.elapsed_find_existing = mb.min() / upTo;
+
+        // query nonexisting
+        while (mb.keepRunning()) {
+            for (int v = times*upTo, e = times*upTo + upTo; v < e; ++v) {
+                if (endIt != r.find(v)) {
+                    ++found;
+                }
+            }
+        }
+        s.elapsed_find_nonexisting = mb.min() / upTo;
+        s.found = found;
+        stats.push_back(s);
+    }
+
+    Stats sum;
+    std::for_each(stats.begin(), stats.end(), [&sum](const Stats& s) {
+        sum += s;
+    });
+    sum /= stats.size();
+
+    std::cout
+        << 1000000 * sum.elapsed_insert << "; "
+        << 1000000 * sum.elapsed_find_existing << "; "
+        << 1000000 * sum.elapsed_find_nonexisting << "; "
+        << sum.mem / (1024.0 * 1024) << "; "
+        << sum.found << std::endl;
+
+    all_stats.push_back(stats);
+
+    std::ofstream fout("out.txt");
+    print(fout, all_stats);
+}
+
+
+template<class O>
+void print_header(O& out, const std::vector<std::vector<Stats>>& s, const std::string& title) {
+    out << std::endl << title << std::endl;
+    for (size_t i = 0; i < s.size(); ++i) {
+        out << ";" << s[i][0].title;
+    }
+    out << std::endl;
 }
 
 
@@ -1075,7 +1109,7 @@ private:
 };
 
 template<class Op>
-double random_bench_std(const std::string& title, int times, Op& o) {
+double random_bench_std(const std::string& title, int times, Op o) {
     //std::ranlux48 mt; // 544.425
     //std::ranlux24 mt; // 142.268
     //std::ranlux48_base mt; // 14.9259
@@ -1103,6 +1137,17 @@ double random_bench_std(const std::string& title, int times, Op& o) {
     return min_ns;
 }
 
+
+template<class T>
+void doNotOptmizeAway(T&& dat) {
+#ifdef _WIN32
+    volatile auto x = &dat;
+#else
+    // see https://www.reddit.com/r/cpp/comments/52yg8b/donotoptimizeaway_for_pre_c11_compilers/
+    asm volatile("" : : "g"(dat) : "memory");
+#endif
+}
+
 template<class R>
 void benchRng(const char *name) {
     MicroBenchmark mb(5, 1.0);
@@ -1115,10 +1160,6 @@ void benchRng(const char *name) {
     std::cout << (1 / ((mb.min)() * 1000*1000)) << " Million OPS for " << name << std::endl;
 }
 
-template<class T>
-void doNotOptmizeAway(T&& dat) {
-    volatile auto x = &dat;
-}
 
 template<class M>
 void benchRandomInsertAndDelete(const char* name, uint32_t mask, uint32_t numElements) {
@@ -1243,8 +1284,7 @@ public:
 void testRng() {
     MicroBenchmark mb;
     XoRoShiRo128Plus xorshift(123);
-    double d;
-    uint64_t range = xorshift() % 400;
+    double d = 0;
     while (mb.keepRunning()) {
         d += xorshift.rand01();
     }
@@ -1288,16 +1328,14 @@ void testRng() {
 }
 
 int main(int argc, char** argv) {
-    //testRng();
-
     set_high_priority();
-    /*
+
     benchRng<XorShiftRng>("XorShiftRng");
     benchRng<XoRoShiRo128Plus>("XoRoShiRo128Plus");
     benchRng<XorShiftStar>("XorShiftStar");
     benchRng<MarsagliaMWC99>("MarsagliaMWC99");
     benchRng<Pcg32>("Pcg32");
-    */
+
     test1_std<RobinHoodInfobytePairNoOverflow::Map<int, int>>(100000);
 
     auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1000);
