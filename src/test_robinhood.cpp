@@ -946,7 +946,7 @@ std::vector<std::vector<Stats>> bench_sequential_insert(size_t upTo, size_t time
     std::cout << "Title;1M inserts [sec];find 1M existing [sec];find 1M nonexisting [sec];memory usage [MB];foundcount" << std::endl;
     std::vector<std::vector<Stats>> all_stats;
 
-    MicroBenchmark mb(5, 0.3);
+    MicroBenchmark mb;
     //bench_sequential_insert(hopscotch_map<int, int, H>(), "tessil/hopscotch_map", upTo, times, all_stats);
 
 
@@ -1105,7 +1105,8 @@ double random_bench_std(const std::string& title, int times, Op& o) {
 
 template<class R>
 void benchRng(const char *name) {
-    MicroBenchmark mb(5, 1.0);
+    //MicroBenchmark mb(5, 1.0);
+    MicroBenchmark mb;
     R rng;
     auto n = rng();
     while (mb.keepRunning()) {
@@ -1122,7 +1123,7 @@ void doNotOptmizeAway(T&& dat) {
 
 template<class M>
 void benchRandomInsertAndDelete(const char* name, uint32_t mask, uint32_t numElements) {
-    MicroBenchmark mb(5, 0.5);
+    MicroBenchmark mb;
     XorShiftRng rng;
 
     size_t s = 0;
@@ -1141,7 +1142,7 @@ void benchRandomInsertAndDelete(const char* name, uint32_t mask, uint32_t numEle
 
 template<class M>
 void benchRandomFind(const char* name, uint32_t mask, uint32_t numElements) {
-    MicroBenchmark mb(5, 2.0);
+    MicroBenchmark mb;
     XorShiftRng rng;
 
     rng.seed(321);
@@ -1177,7 +1178,7 @@ void benchRandomFind(const char* name, uint32_t mask, uint32_t numElements) {
 
 template<class M>
 void benchRandomInsert(const char* name, uint32_t mask, uint32_t numElements) {
-    MicroBenchmark mb(5, 0.1);
+    MicroBenchmark mb;
     XorShiftRng rng;
 
     float s = 0;
@@ -1291,13 +1292,12 @@ int main(int argc, char** argv) {
     //testRng();
 
     set_high_priority();
-    /*
     benchRng<XorShiftRng>("XorShiftRng");
     benchRng<XoRoShiRo128Plus>("XoRoShiRo128Plus");
     benchRng<XorShiftStar>("XorShiftStar");
     benchRng<MarsagliaMWC99>("MarsagliaMWC99");
     benchRng<Pcg32>("Pcg32");
-    */
+
     test1_std<RobinHoodInfobytePairNoOverflow::Map<int, int>>(100000);
 
     auto stats = bench_sequential_insert<std::hash<size_t>>(100 * 1000, 1000);
