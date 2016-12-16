@@ -226,11 +226,13 @@ public:
                 // until we find one that is either empty or has zero offset.
                 //
                 // Note: no need to check for last element, this acts as a sentinel
-                while (_info[idx + 1] > Traits::IS_BUCKET_TAKEN_MASK) {
-                    _info[idx] = _info[idx + 1] - 1;
-                    _keys[idx] = std::move(_keys[idx + 1]);
-                    _vals[idx] = std::move(_vals[idx + 1]);
-                    ++idx;
+                size_t nextIdx = (idx + 1) & _mask;
+                while (_info[nextIdx] > Traits::IS_BUCKET_TAKEN_MASK) {
+                    _info[idx] = _info[nextIdx] - 1;
+                    _keys[idx] = std::move(_keys[nextIdx]);
+                    _vals[idx] = std::move(_vals[nextIdx]);
+                    idx = nextIdx;
+                    nextIdx = (idx + 1) & _mask;
                 }
                 if (_info[idx]) {
                     _info[idx] = 0;
