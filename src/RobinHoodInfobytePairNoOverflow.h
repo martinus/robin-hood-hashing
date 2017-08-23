@@ -346,7 +346,7 @@ public:
         return 0 == _num_elements;
     }
 
-    inline void max_load_factor() const {
+    inline float max_load_factor() const {
         return _max_load_factor;
     }
 
