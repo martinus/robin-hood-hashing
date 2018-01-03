@@ -8,6 +8,8 @@ The HopScotch algorithm features:
 * 2 times faster lookup than std::unordered_map
 * 2.6 times less memory usage than std::unordered_map
 
+EDIT: Be aware that this implementation currently is buggy. Use with care!
+
 All benchmarks done with Visual Studio 2015, Update 3, 64 bit.
 
 See detailed description of the different variants here:
