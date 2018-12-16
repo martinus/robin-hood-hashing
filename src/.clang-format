@@ -1,0 +1,14 @@
+# see https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+---
+BasedOnStyle: LLVM
+IndentWidth: 4
+Language: Cpp
+Standard: Cpp11
+TabWidth: 4
+UseTab: ForContinuationAndIndentation
+ColumnLimit: 150
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: Empty
+PointerAlignment: Left
+BreakConstructorInitializers: BeforeComma
+AlwaysBreakTemplateDeclarations: true
