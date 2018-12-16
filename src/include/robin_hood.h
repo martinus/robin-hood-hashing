@@ -465,9 +465,7 @@ private:
 	template <typename HashKey>
 	size_t keyToIdx(HashKey&& key) const {
 #if ROBIN_HOOD_BITNESS == 64
-		// constant from http://zimbry.blogspot.com/2011/09/better-bit-mixing-improving-on.html
-		static size_t constexpr const factor = UINT64_C(0x7fb5'd329'728e'a185);
-
+		static size_t constexpr const factor = UINT64_C(0xda942042e4dd58b5);
 #else
 		static size_t constexpr const factor = UINT32_C(0x728e'a185);
 #endif
