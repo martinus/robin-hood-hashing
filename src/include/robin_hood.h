@@ -324,7 +324,7 @@ template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std:
 		  bool IsDirect = sizeof(Key) + sizeof(T) <= sizeof(void*) * 3 &&
 						  std::is_nothrow_move_constructible<std::pair<Key, T>>::value&& std::is_nothrow_move_assignable<std::pair<Key, T>>::value>
 
-class map : Hash, KeyEqual, detail::NodeAllocator<detail::Pair<Key, T>, 4, 16384, IsDirect> {
+class unordered_map : Hash, KeyEqual, detail::NodeAllocator<detail::Pair<Key, T>, 4, 16384, IsDirect> {
 	// configuration defaults
 	static constexpr uint8_t MaxLoadFactor128 = 102; // 1 byte
 	static constexpr size_t InitialNumElements = 4;
@@ -339,7 +339,7 @@ public:
 	using size_type = size_t;
 	using hasher = Hash;
 	using key_equal = KeyEqual;
-	using Self = map<key_type, mapped_type, hasher, key_equal, IsDirect>;
+	using Self = unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect>;
 
 private:
 	// Primary template for the data node. We have special implementations for small and big objects.
@@ -551,8 +551,8 @@ private:
 		}
 	};
 
-	void cloneData(const map& o) {
-		Cloner<map, IsDirect && std::is_trivially_copyable<Node>::value>()(o, *this);
+	void cloneData(const unordered_map& o) {
+		Cloner<unordered_map, IsDirect && std::is_trivially_copyable<Node>::value>()(o, *this);
 	}
 
 	// inserts a keyval that is guaranteed to be new, e.g. when the hashmap is resized.
@@ -646,7 +646,7 @@ private:
 		}
 
 	private:
-		friend class map<key_type, mapped_type, hasher, key_equal, IsDirect>;
+		friend class unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect>;
 		NodePtr mKeyVals;
 		uint8_t const* mInfo;
 	};
@@ -660,25 +660,25 @@ public:
 	/// penalty is payed at the first insert, and not before. Lookup of this empty map works
 	/// because everybody points to sDummyInfoByte.
 	/// parameter bucket_count is dictated by the standard, but we can ignore it.
-	explicit map(size_t ROBIN_HOOD_UNUSED(bucket_count) = 0, const Hash& hash = Hash(), const KeyEqual& equal = KeyEqual())
+	explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) = 0, const Hash& hash = Hash(), const KeyEqual& equal = KeyEqual())
 		: Hash(hash)
 		, KeyEqual(equal) {}
 
 	template <class Iter>
-	map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) = 0, const Hash& hash = Hash(), const KeyEqual& equal = KeyEqual())
+	unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) = 0, const Hash& hash = Hash(), const KeyEqual& equal = KeyEqual())
 		: Hash(hash)
 		, KeyEqual(equal) {
 		insert(first, last);
 	}
 
-	map(std::initializer_list<value_type> init, size_t ROBIN_HOOD_UNUSED(bucket_count) = 0, const Hash& hash = Hash(),
-		const KeyEqual& equal = KeyEqual())
+	unordered_map(std::initializer_list<value_type> init, size_t ROBIN_HOOD_UNUSED(bucket_count) = 0, const Hash& hash = Hash(),
+				  const KeyEqual& equal = KeyEqual())
 		: Hash(hash)
 		, KeyEqual(equal) {
 		insert(init.begin(), init.end());
 	}
 
-	map(map&& o)
+	unordered_map(unordered_map&& o)
 		: Hash(std::move(static_cast<Hash&>(o)))
 		, KeyEqual(std::move(static_cast<KeyEqual&>(o)))
 		, DataPool(std::move(static_cast<DataPool&>(o)))
@@ -692,7 +692,7 @@ public:
 		o.mMask = 0;
 	}
 
-	map& operator=(map&& o) {
+	unordered_map& operator=(unordered_map&& o) {
 		if (&o != this) {
 			// different, move it
 			destroy();
@@ -711,7 +711,7 @@ public:
 		return *this;
 	}
 
-	map(const map& o)
+	unordered_map(const unordered_map& o)
 		: Hash(static_cast<const Hash&>(o))
 		, KeyEqual(static_cast<const KeyEqual&>(o))
 		, DataPool(static_cast<const DataPool&>(o)) {
@@ -732,7 +732,7 @@ public:
 	}
 
 	// Creates a copy of the given map. Copy constructor of each entry is used.
-	map& operator=(const map& o) {
+	unordered_map& operator=(const unordered_map& o) {
 		if (&o == this) {
 			// prevent assigning of itself
 			return *this;
@@ -788,7 +788,7 @@ public:
 	}
 
 	// Swaps everything between the two maps.
-	void swap(map& o) {
+	void swap(unordered_map& o) {
 		using std::swap;
 		swap(mKeyVals, o.mKeyVals);
 		swap(mInfo, o.mInfo);
@@ -818,12 +818,12 @@ public:
 	}
 
 	/// Destroys the map and all it's contents.
-	~map() {
+	~unordered_map() {
 		destroy();
 	}
 
 	/// Checks if both maps contain the same entries. Order is irrelevant.
-	bool operator==(const map& other) const {
+	bool operator==(const unordered_map& other) const {
 		if (other.size() != size()) {
 			return false;
 		}
@@ -838,7 +838,7 @@ public:
 		return true;
 	}
 
-	bool operator!=(const map& other) const {
+	bool operator!=(const unordered_map& other) const {
 		return !operator==(other);
 	}
 
@@ -1230,10 +1230,10 @@ private:
 };
 
 template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<Key>>
-using direct_map = map<Key, T, Hash, KeyEqual, true>;
+using flat_map = unordered_map<Key, T, Hash, KeyEqual, true>;
 
 template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<Key>>
-using indirect_map = map<Key, T, Hash, KeyEqual, false>;
+using node_map = unordered_map<Key, T, Hash, KeyEqual, false>;
 
 } // namespace robin_hood
 

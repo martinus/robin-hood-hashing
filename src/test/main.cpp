@@ -1,8 +1,7 @@
-#include <robin_hood_map.h>
-#include <sfc64.h>
+#include <robin_hood.h>
 
 int main(int argc, char** argv) {
-	robin_hood::map<int, int> m;
+	robin_hood::unordered_map<int, int> m;
 	m[123] = 321;
 	m[42] = 3553;
 
