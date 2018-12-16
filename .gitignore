@@ -1,5 +1,6 @@
 src/robinhood-test
 .browse.VC*
+.vscode
 
 
 #################
