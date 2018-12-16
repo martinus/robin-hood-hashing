@@ -1,9 +1,8 @@
-CXX = clang++ -ferror-limit=3 -Wall -Werror -Wno-c++98-compat
+CXX = clang++ -ferror-limit=3 -Wall -Werror -Wno-c++98-compat -Wpedantic
 #CXX = g++ -Wall -fmax-errors=3
 
-
-all: src/test_robinhood.cpp
-	ccache $(CXX) -O2 -std=c++14 -o robinhood -Isrc -Isrc/3rdparty/google src/test_robinhood.cpp
+all: src/main.cpp
+	ccache $(CXX) -O2 -std=c++14 -o robinhood-test -Isrc src/main.cpp
 
 clean:
 	$(RM) robinhood
