@@ -1,4 +1,4 @@
-CXX = ccache clang++ -ferror-limit=3 -Wall -Werror -Wno-c++98-compat -Wpedantic
+CXX = ccache clang++ -O2 -Wall -Werror -Wno-c++98-compat -Wpedantic
 LD = clang++
 
 SRC_DIR := test
