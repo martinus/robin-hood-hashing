@@ -1,8 +1,17 @@
-CXX = clang++ -ferror-limit=3 -Wall -Werror -Wno-c++98-compat -Wpedantic
-#CXX = g++ -Wall -fmax-errors=3
+CXX = ccache clang++ -ferror-limit=3 -Wall -Werror -Wno-c++98-compat -Wpedantic
+LD = clang++
 
-all: test/main.cpp
-	ccache $(CXX) -O2 -std=c++14 -o robinhood-test -Iinclude -Itest test/main.cpp
+SRC_DIR := test
+OBJ_DIR := ../build
+BINARY := $(OBJ_DIR)/robinhood-test
+SRC_FILES := $(wildcard $(SRC_DIR)/*.cpp)
+OBJ_FILES := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRC_FILES))
+
+all: $(OBJ_FILES)
+	$(LD) -o $(BINARY) $^
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
+	$(CXX) -O2 -std=c++14 -Iinclude -Itest -c -o $@ $<
 
 clean:
-	$(RM) robinhood
+	rm $(OBJ_DIR)/*.o $(BINARY)
