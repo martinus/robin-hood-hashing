@@ -36,10 +36,10 @@ inline uint64_t hash(const M& map) {
 
 		// make sure we never multiply by 0
 		if (entry_hash == 0) {
-			seed = UINT64_C(0x853c49e6748fea9b);
+			entry_hash = UINT64_C(0x853c49e6748fea9b);
 		}
 
-		h *= seed;
+		h *= entry_hash;
 		++numElements;
 	}
 

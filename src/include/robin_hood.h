@@ -1219,12 +1219,12 @@ private:
 	}
 
 	// members are sorted so no padding occurs
-	Node* mKeyVals = reinterpret_cast<Node*>(&detail::sDummyInfoByte - sizeof(Node)); // 8 byte
-	uint8_t* mInfo = reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte);             // 8 byte
-	size_t mNumElements = 0;                                                          // 8 byte
-	size_t mMask = 0;                                                                 // 8 byte
-	size_t mMaxNumElementsAllowed = 0;                                                // 8 byte
-	uint_fast8_t mShift = InitialShiftVal;                                            // 1 byte
+	Node* mKeyVals = reinterpret_cast<Node*>(reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte) - sizeof(Node)); // 8 byte
+	uint8_t* mInfo = reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte);                                         // 8 byte
+	size_t mNumElements = 0;                                                                                      // 8 byte
+	size_t mMask = 0;                                                                                             // 8 byte
+	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte
+	uint_fast8_t mShift = InitialShiftVal;                                                                        // 1 byte
 };
 
 template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<Key>>
