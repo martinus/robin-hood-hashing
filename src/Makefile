@@ -14,4 +14,4 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) -O2 -std=c++14 -Iinclude -Itest -c -o $@ $<
 
 clean:
-	rm $(OBJ_DIR)/*.o $(BINARY)
+	rm -f $(OBJ_DIR)/*.o $(BINARY)
