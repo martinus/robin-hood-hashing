@@ -858,6 +858,8 @@ public:
 
 	template <class... Args>
 	std::pair<iterator, bool> emplace(Args&&... args) {
+		// TODO it can be very inefficient to create a temporary and move that into the map.
+		// Do this without the temporary!
 		return insert(std::move(value_type(std::forward<Args>(args)...)));
 	}
 

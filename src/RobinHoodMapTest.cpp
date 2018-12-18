@@ -49,24 +49,6 @@ TEST_CASE(RobinHoodMapTest, testAllAssignCombinations) {
 	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
 }
 
-struct BigObject {
-	std::string str;
-	std::vector<int> vec;
-	std::shared_ptr<int> ptr;
-	std::list<int> list;
-};
-
-// provide a dummy hash
-namespace std {
-template <>
-struct hash<BigObject> {
-	size_t operator()(const BigObject& md) const {
-		return 0;
-	}
-};
-
-} // namespace std
-
 template <class T>
 void benchmarkCtor(size_t fixedNumIters, const std::string& typeName) {
 	util::MicroBenchmark mb;
@@ -175,36 +157,6 @@ void benchmarkCtorAndAddElements(size_t fixedNumIters, size_t numInserts, const 
 		}
 		noOpt += m.size();
 	}
-}
-
-#define PRINT_SIZEOF(x, A, B) std::cout << sizeof(x<A, B>) << " bytes for " #x "<" #A ", " #B ">" << std::endl
-
-TEST_CASE(RobinHoodMapTest, testSizeof) {
-	util::RobinHood::Map<int, int> a;
-	util::RobinHood::Map<BigObject, BigObject> b;
-
-	PRINT_SIZEOF(util::RobinHood::Map, int, int);
-	PRINT_SIZEOF(std::map, int, int);
-	PRINT_SIZEOF(boost::unordered_map, int, int);
-	PRINT_SIZEOF(std::unordered_map, int, int);
-	std::cout << std::endl;
-
-	PRINT_SIZEOF(util::RobinHood::Map, int, BigObject);
-	PRINT_SIZEOF(std::map, int, BigObject);
-	PRINT_SIZEOF(boost::unordered_map, int, BigObject);
-	PRINT_SIZEOF(std::unordered_map, int, BigObject);
-	std::cout << std::endl;
-
-	PRINT_SIZEOF(util::RobinHood::Map, BigObject, BigObject);
-	PRINT_SIZEOF(std::map, BigObject, BigObject);
-	PRINT_SIZEOF(boost::unordered_map, BigObject, BigObject);
-	PRINT_SIZEOF(std::unordered_map, BigObject, BigObject);
-	std::cout << std::endl;
-
-	PRINT_SIZEOF(util::RobinHood::Map, BigObject, int);
-	PRINT_SIZEOF(std::map, BigObject, int);
-	PRINT_SIZEOF(boost::unordered_map, BigObject, int);
-	PRINT_SIZEOF(std::unordered_map, BigObject, int);
 }
 
 TEST_CASE(RobinHoodMapTest, testCtorAndSingleElementAdded) {
@@ -425,95 +377,6 @@ struct BigCounter : public Counter<T> {
 	double c;
 	double d;
 };
-
-// Tests if all objects are properly constructed and destructed
-TEST_CASE(RobinHoodMapTest, testCountCtorAndDtor) {
-	printStaticHeader();
-
-	size_t numIters = 100000;
-	size_t maxElements = 100000;
-
-	resetStaticCounts();
-	{ randomInsertDelete<util::RobinHood::DirectMap<Counter<size_t>, Counter<size_t>>>(numIters, maxElements); }
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-	printStaticCounts("util::RobinHood::DirectMap<Counter, Counter>");
-
-	resetStaticCounts();
-	{ randomInsertDelete<util::RobinHood::IndirectMap<Counter<size_t>, Counter<size_t>>>(numIters, maxElements); }
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-	printStaticCounts("util::RobinHood::IndirectMap<Counter, Counter>");
-
-	resetStaticCounts();
-	{ randomInsertDelete<boost::unordered_map<Counter<size_t>, Counter<size_t>>>(numIters, maxElements); }
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-	printStaticCounts("boost::unordered_map");
-
-	resetStaticCounts();
-	{ randomInsertDelete<std::unordered_map<Counter<size_t>, Counter<size_t>>>(numIters, maxElements); }
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-	printStaticCounts("std::unordered_map");
-
-	resetStaticCounts();
-	{ randomInsertDelete<std::map<Counter<size_t>, Counter<size_t>>>(numIters, maxElements); }
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-	printStaticCounts("std::map");
-}
-
-TEST_CASE(RobinHoodMapTest, testCountCtorAndDtorFill) {
-	printStaticHeader();
-
-	resetStaticCounts();
-	{
-		util::RobinHood::DirectMap<Counter<size_t>, Counter<size_t>> map;
-		fill(map, 100000);
-	}
-	printStaticCounts("util::RobinHood::DirectMap<Counter, Counter>");
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-
-	resetStaticCounts();
-	{
-		util::RobinHood::IndirectMap<Counter<size_t>, Counter<size_t>> map;
-		fill(map, 100000);
-	}
-	printStaticCounts("util::RobinHood::IndirectMap<Counter, Counter>");
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-
-	resetStaticCounts();
-	{
-		boost::unordered_map<Counter<size_t>, Counter<size_t>> map;
-		fill(map, 100000);
-	}
-	printStaticCounts("boost::unordered_map");
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-
-	resetStaticCounts();
-	{
-		std::unordered_map<Counter<size_t>, Counter<size_t>> map;
-		fill(map, 100000);
-	}
-	printStaticCounts("std::unordered_map");
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-}
-
-class Node {
-public:
-	Node(int x) {}
-};
-
-// TODO this test does not compile if Node has no default constructor :-(
-TEST_CASE(RobinHoodMapTest, testNoDefaultCtor) {
-	std::pair<size_t, Node> p(123, Node(123));
-	{
-		boost::unordered_map<size_t, Node> map;
-		// util::RobinHood::Map<size_t, Node> map;
-		map.insert(p);
-	}
-}
-
-TEST_CASE(RobinHoodMapTest, testUniquePtr) {
-	util::RobinHood::Map<int, std::unique_ptr<int>> map;
-	map[321].reset(new int(123));
-}
 
 TEST_CASE(RobinHoodMapTest, testEraseIterator) {
 	typedef util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier> M;
@@ -1470,27 +1333,4 @@ TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_accessExistingWithConstRef) {
 	benchStringQuery<util::RobinHood::IndirectMap<std::string, size_t>>(mb, "util::RobinHood::IndirectMap");
 
 	mb.plot();
-}
-
-TEST_CASE(RobinHoodMapTest, testCopyable) {
-	static_assert(std::is_trivially_copyable<util::RobinHood::Pair<int, int>>::value, "NOT is_trivially_copyable");
-	static_assert(std::is_trivially_destructible<util::RobinHood::Pair<int, int>>::value, "NOT is_trivially_destructible");
-}
-
-TEST_CASE(RobinHoodMapTest, testInsertList) {
-	std::vector<util::RobinHood::Pair<int, int>> v;
-	v.emplace_back(1, 2);
-	v.emplace_back(3, 4);
-
-	util::RobinHood::Map<int, int> map(v.begin(), v.end());
-}
-
-struct Hash {
-	size_t operator()(uint64_t x) {
-		return (size_t)x;
-	}
-};
-
-TEST_CASE(RobinHoodMapTest, testCustomHash) {
-	util::RobinHood::Map<uint64_t, int16_t, Hash> map;
 }
