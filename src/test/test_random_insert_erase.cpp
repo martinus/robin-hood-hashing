@@ -186,7 +186,7 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 		typename Map::iterator found = rhhs.find(i * 4);
 		REQUIRE(rhhs.end() != found);
 		REQUIRE(found->second.val() == i);
-		REQUIRE(rhhs.size() == 2 + i);
+		REQUIRE(rhhs.size() == (size_t)(2 + i));
 	}
 
 	// check if everything can be found
@@ -252,4 +252,52 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 		++numChecks;
 	}
 	REQUIRE(rhhs.size() == numChecks);
+}
+
+template <class M>
+void fill(M& map, size_t num, bool isExisting = true) {
+	if (isExisting) {
+		for (size_t i = 0; i < num; ++i) {
+			map[static_cast<typename M::key_type>(i)];
+		}
+	} else {
+		for (size_t i = 0; i < num; ++i) {
+			map[static_cast<typename M::key_type>(i + num)];
+		}
+	}
+}
+
+TEMPLATE_TEST_CASE("assign, iterate, clear", "", FlatMapVerifier, NodeMapVerifier) {
+	using Map = TestType;
+	{
+		Map m;
+		fill(m, 1);
+		for (typename Map::const_iterator it = m.begin(); it != m.end(); ++it) {
+			REQUIRE(CtorDtorVerifier::contains(&it->first));
+			REQUIRE(CtorDtorVerifier::contains(&it->second));
+		}
+		// dtor
+	}
+	if (0 != CtorDtorVerifier::mapSize()) {
+		CtorDtorVerifier::printMap();
+	}
+	REQUIRE(CtorDtorVerifier::mapSize() == 0);
+}
+
+TEMPLATE_TEST_CASE("random insert & erase with Verifier", "", FlatMapVerifier, NodeMapVerifier) {
+	Rng rng(123);
+
+	TestType map;
+	for (size_t i = 0; i < 10000; ++i) {
+		map[rng(i)] = rng(i);
+		map.erase(rng(i));
+	}
+
+	INFO("map size is " << CtorDtorVerifier::mapSize());
+	REQUIRE(CtorDtorVerifier::mapSize() == 6620);
+	REQUIRE(hash(map) == UINT64_C(0xa1931649d033a499));
+	map.clear();
+
+	REQUIRE(CtorDtorVerifier::mapSize() == 0);
+	REQUIRE(hash(map) == UINT64_C(0x9e3779f8));
 }

@@ -1,8 +1,7 @@
-#include "catch.hpp"
-#include "robin_hood.h"
+#include "test_base.h"
 
-TEST_CASE("find with empty map") {
-	using Map = robin_hood::unordered_map<int, int>;
+TEMPLATE_TEST_CASE("find with empty map", "", FlatMap, NodeMap) {
+	using Map = TestType;
 	Map m;
 
 	REQUIRE(m.end() == m.find(123));

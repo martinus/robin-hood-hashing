@@ -12,7 +12,7 @@ M createMap(int numElements) {
 	return m;
 }
 
-TEMPLATE_TEST_CASE("test copy and assign maps", "", FlatMap, NodeMap) {
+TEMPLATE_TEST_CASE("copy and assign maps", "", FlatMap, NodeMap) {
 	using Map = TestType;
 
 	{ Map a = createMap<Map>(15); }

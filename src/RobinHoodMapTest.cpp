@@ -30,122 +30,7 @@ struct DummyHash {
 	}
 };
 
-template <class Map>
-void testAssignmentCombinations() {
-	{
-		Map a;
-		Map b;
-		b = a;
-	}
-	{
-		Map a;
-		Map const& aConst = a;
-		Map b;
-		a[123] = 321;
-		b = a;
-
-		REQUIRE(a.find(123)->second == 321);
-		REQUIRE(aConst.find(123)->second == 321);
-
-		REQUIRE(b.find(123)->second == 321);
-		a[123] = 111;
-		REQUIRE(a.find(123)->second == 111);
-		REQUIRE(aConst.find(123)->second == 111);
-		REQUIRE(b.find(123)->second == 321);
-		b[123] = 222;
-		REQUIRE(a.find(123)->second == 111);
-		REQUIRE(aConst.find(123)->second == 111);
-		REQUIRE(b.find(123)->second == 222);
-	}
-
-	{
-		Map a;
-		Map b;
-		a[123] = 321;
-		a.clear();
-		b = a;
-
-		REQUIRE(a.size() == 0);
-		REQUIRE(b.size() == 0);
-	}
-
-	{
-		Map a;
-		Map b;
-		b[123] = 321;
-		b = a;
-
-		REQUIRE(a.size() == 0);
-		REQUIRE(b.size() == 0);
-	}
-	{
-		Map a;
-		Map b;
-		b[123] = 321;
-		b.clear();
-		b = a;
-
-		REQUIRE(a.size() == 0);
-		REQUIRE(b.size() == 0);
-	}
-	{
-		Map a;
-		a[1] = 2;
-		Map b;
-		b[3] = 4;
-		b = a;
-
-		REQUIRE(a.size() == 1);
-		REQUIRE(b.size() == 1);
-		REQUIRE(b.find(1)->second == 2);
-		a[1] = 123;
-		REQUIRE(a.size() == 1);
-		REQUIRE(b.size() == 1);
-		REQUIRE(b.find(1)->second == 2);
-	}
-	{
-		Map a;
-		a[1] = 2;
-		a.clear();
-		Map b;
-		b[3] = 4;
-		b = a;
-	}
-	{
-		Map a;
-		a[1] = 2;
-		Map b;
-		b[3] = 4;
-		b.clear();
-		b = a;
-	}
-	{
-		Map a;
-		a[1] = 2;
-		a.clear();
-		Map b;
-		b[3] = 4;
-		b.clear();
-		b = a;
-	}
-}
-
 template <class M>
-void taic() {
-	{
-		M m;
-		fill(m, 1);
-		for (typename M::const_iterator it = m.begin(); it != m.end(); ++it) {
-			REQUIRE(CtorDtorVerifier::contains(&it->first));
-			REQUIRE(CtorDtorVerifier::contains(&it->second));
-		}
-		// m.clear();
-	}
-	if (0 != CtorDtorVerifier::mapSize()) {
-		CtorDtorVerifier::printMap();
-	}
-	REQUIRE(CtorDtorVerifier::mapSize() == 0);
-}
 
 TEST_CASE(RobinHoodMapTest, testAssignIterateClear) {
 	taic<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, util::RobinHood::FastHash<CtorDtorVerifier>,
@@ -344,19 +229,6 @@ TEST_P(RobinHoodMapSize10Params, PERFORMANCE_SLOW_benchmarkCtorAndSingleElementA
 	benchmarkCtorAndAddElements<BigObject>(1000 * 1000 / size, size, "int");
 }
 
-template <class M>
-void fill(M& map, size_t num, bool isExisting = true) {
-	if (isExisting) {
-		for (size_t i = 0; i < num; ++i) {
-			map[static_cast<typename M::key_type>(i)];
-		}
-	} else {
-		for (size_t i = 0; i < num; ++i) {
-			map[static_cast<typename M::key_type>(i + num)];
-		}
-	}
-}
-
 inline uint32_t limit(uint32_t r, uint32_t endExclusive) {
 	uint64_t x = r;
 	x *= endExclusive;
@@ -506,42 +378,6 @@ TEST_P(RobinHoodMapSizeParams, PERFORMANCE_SLOW_benchmarkRandomInsertDeleteBigOb
 INSTANTIATE_TEST_CASE_P(RobinHoodInstance, RobinHoodMapSizeParams,
 						::testing::Values(0x1F * 100 / 50, 0x1FF * 100 / 70, 0x1FFFF * 100 / 51, 0x1FFFF * 100 / 70, 0x1FFFF * 100 / 80,
 										  0x1FFFF * 100 / 90, 0x1FFFF * 100 / 95));
-
-TEST_P(RobinHoodMapTestRandomTest, SLOW_verifyRandomInsertDelete) {
-	util::MicroBenchmark mb(1, 0.3);
-	randomMapInsertDelete<util::RobinHood::Map<int, CtorDtorVerifier>>(GetParam(), mb, "CtorDtorVerifier");
-	REQUIRE(0 == CtorDtorVerifier::mapSize());
-}
-
-template <class Map>
-size_t check(const size_t num) {
-	boost::mt19937 gen;
-	gen.seed(static_cast<uint32_t>(num));
-
-	Map map;
-	for (size_t i = 0; i < num; ++i) {
-		map[gen() % 5000] = typename Map::mapped_type(i);
-		map.erase(gen() % 5000);
-	}
-
-	// generateds a somewhat reasonable representation of the map, that's independent of the ordering.
-	std::size_t hash = map.size();
-	for (typename Map::const_iterator it = map.begin(), end = map.end(); it != end; ++it) {
-		hash *= (std::max)(static_cast<size_t>(1), 1779033703 + it->first * 123 + it->second);
-	}
-	return hash;
-}
-
-// Performs lots of assign and erase operations, then checks if the maps have the same content.
-TEST_CASE(RobinHoodMapTest, SLOW_testRandomInserteDeleteSameAsBoostMap) {
-	for (size_t i = 0; i < 500; ++i) {
-		size_t a = check<boost::unordered_map<size_t, size_t>>(i);
-		size_t b = check<util::RobinHood::Map<size_t, size_t, util::RobinHood::FastHash<size_t>, util::RobinHood::EqualTo<size_t>, false>>(i);
-		size_t c = check<util::RobinHood::Map<size_t, size_t, util::RobinHood::FastHash<size_t>, util::RobinHood::EqualTo<size_t>, true>>(i);
-		REQUIRE(b == a);
-		REQUIRE(c == a);
-	}
-}
 
 static size_t sCountCtor = 0;
 static size_t sCountDefaultCtor = 0;
