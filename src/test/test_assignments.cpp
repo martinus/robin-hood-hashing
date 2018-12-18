@@ -146,16 +146,22 @@ TEMPLATE_TEST_CASE("test assignment combinations", "", FlatMap, NodeMap) {
 		a[1] = 2;
 		a.clear();
 		Map b;
+		REQUIRE(a == b);
 		b[3] = 4;
+		REQUIRE(a != b);
 		b = a;
+		REQUIRE(a == b);
 	}
 	{
 		Map a;
 		a[1] = 2;
 		Map b;
+		REQUIRE(a != b);
 		b[3] = 4;
 		b.clear();
+		REQUIRE(a != b);
 		b = a;
+		REQUIRE(a == b);
 	}
 	{
 		Map a;
@@ -163,7 +169,10 @@ TEMPLATE_TEST_CASE("test assignment combinations", "", FlatMap, NodeMap) {
 		a.clear();
 		Map b;
 		b[3] = 4;
+		REQUIRE(a != b);
 		b.clear();
+		REQUIRE(a == b);
 		b = a;
+		REQUIRE(a == b);
 	}
 }
