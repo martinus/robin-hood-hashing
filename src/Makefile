@@ -1,5 +1,5 @@
-CXX = ccache clang++ -ggdb -std=c++14 -Wall -Werror
-LD = clang++
+CXX = ccache g++ -ggdb -O2 -std=c++14 -Wall -Werror
+LD = g++
 
 SRC_DIR := test
 OBJ_DIR := ../build

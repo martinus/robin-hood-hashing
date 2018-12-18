@@ -301,3 +301,94 @@ TEMPLATE_TEST_CASE("random insert & erase with Verifier", "", FlatMapVerifier, N
 	REQUIRE(CtorDtorVerifier::mapSize() == 0);
 	REQUIRE(hash(map) == UINT64_C(0x9e3779f8));
 }
+
+// Dummy hash for testing collisions
+template <class T>
+struct DummyHash {
+	std::size_t operator()(const T&) const {
+		return 123;
+	}
+};
+
+TEMPLATE_TEST_CASE("collisions", "", (robin_hood::flat_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>),
+				   (robin_hood::node_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>)) {
+	{
+		TestType m;
+		for (int i = 0; i < 255; ++i) {
+			m[i];
+		}
+		REQUIRE(m.size() == 255);
+		REQUIRE_THROWS_AS(m[255], std::overflow_error);
+		REQUIRE(m.size() == 255);
+	}
+	if (0 != CtorDtorVerifier::mapSize()) {
+		CtorDtorVerifier::printMap();
+	}
+	REQUIRE(CtorDtorVerifier::mapSize() == 0);
+
+	{
+		TestType m;
+		for (int i = 0; i < 255; ++i) {
+			REQUIRE(m.insert(typename TestType::value_type(i, i)).second);
+		}
+		REQUIRE(m.size() == 255);
+		REQUIRE_THROWS_AS(m.insert(typename TestType::value_type(255, 255)), std::overflow_error);
+		REQUIRE(m.size() == 255);
+	}
+	if (0 != CtorDtorVerifier::mapSize()) {
+		CtorDtorVerifier::printMap();
+	}
+	REQUIRE(CtorDtorVerifier::mapSize() == 0);
+}
+
+TEMPLATE_TEST_CASE("erase iterator", "", FlatMapVerifier, NodeMapVerifier) {
+	{
+		TestType map;
+		for (int i = 0; i < 100; ++i) {
+			map[i * 101] = i * 101;
+		}
+
+		typename TestType::const_iterator it = map.find(20 * 101);
+		REQUIRE(map.size() == 100);
+		REQUIRE(map.end() != map.find(20 * 101));
+		it = map.erase(it);
+		REQUIRE(map.size() == 99);
+		REQUIRE(map.end() == map.find(20 * 101));
+
+		it = map.begin();
+		size_t currentSize = map.size();
+		while (it != map.end()) {
+			it = map.erase(it);
+			currentSize--;
+			REQUIRE(map.size() == currentSize);
+		}
+		REQUIRE(map.size() == (size_t)0);
+	}
+	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
+}
+
+TEMPLATE_TEST_CASE("test vector", "", FlatMapVerifier, NodeMapVerifier) {
+	{
+		std::vector<TestType> maps;
+		for (size_t i = 0; i < 10; ++i) {
+			TestType m;
+			fill(m, 100);
+			maps.push_back(m);
+		}
+	}
+	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
+}
+
+TEMPLATE_TEST_CASE("maps of maps", "", FlatMapVerifier, NodeMapVerifier) {
+	{
+		robin_hood::unordered_map<CtorDtorVerifier, TestType> maps;
+		for (int i = 0; i < 10; ++i) {
+			fill(maps[i], 100);
+		}
+
+		robin_hood::unordered_map<CtorDtorVerifier, TestType> maps2;
+		maps2 = maps;
+		REQUIRE(maps2 == maps);
+	}
+	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
+}

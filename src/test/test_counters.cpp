@@ -1,5 +1,7 @@
 #include "test_base.h"
 
+#include <bitset>
+#include <iomanip>
 #include <list>
 #include <map>
 #include <unordered_map>
@@ -316,4 +318,29 @@ TEST_CASE("show datastructure sizes") {
 	PRINT_SIZEOF(robin_hood::unordered_map, BigObject, int);
 	PRINT_SIZEOF(std::map, BigObject, int);
 	PRINT_SIZEOF(std::unordered_map, BigObject, int);
+}
+
+void showHash(uint64_t val) {
+	auto qm = robin_hood::detail::quickmix(val);
+	std::cout << std::setfill('0') << std::setw(16) << std::hex << val << " -> " << std::setfill('0') << std::setw(16) << std::hex << qm << " "
+			  << std::bitset<64>(qm) << std::endl;
+}
+
+TEST_CASE("show hash distribution") {
+	std::cout << "input               output hex       output binary" << std::endl;
+	for (uint64_t i = 0; i < 16; ++i) {
+		showHash(i);
+	}
+
+	for (uint64_t i = 0; i < 5; ++i) {
+		showHash(0x000023d700000063ULL + i * 0x100000000ULL);
+	}
+
+	for (uint64_t i = 0; i < 5; ++i) {
+		showHash(i * 0x1000000000000000ULL);
+	}
+
+	for (uint64_t i = 1; i != 0; i *= 2) {
+		showHash(i);
+	}
 }

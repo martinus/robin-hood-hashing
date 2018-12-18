@@ -22,33 +22,6 @@ struct FastHash<CtorDtorVerifier> {
 } // namespace RobinHood
 } // namespace util
 
-// Dummy hash for testing collisions
-template <class T>
-struct DummyHash {
-	std::size_t operator()(const T&) const {
-		return 123;
-	}
-};
-
-template <class M>
-
-TEST_CASE(RobinHoodMapTest, testAssignIterateClear) {
-	taic<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, util::RobinHood::FastHash<CtorDtorVerifier>,
-							  util::RobinHood::EqualTo<CtorDtorVerifier>, false>>();
-	taic<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, util::RobinHood::FastHash<CtorDtorVerifier>,
-							  util::RobinHood::EqualTo<CtorDtorVerifier>, true>>();
-}
-
-TEST_CASE(RobinHoodMapTest, testAllAssignCombinations) {
-	testAssignmentCombinations<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, util::RobinHood::FastHash<CtorDtorVerifier>,
-													util::RobinHood::EqualTo<CtorDtorVerifier>, false>>();
-	testAssignmentCombinations<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, util::RobinHood::FastHash<CtorDtorVerifier>,
-													util::RobinHood::EqualTo<CtorDtorVerifier>, true>>();
-	testAssignmentCombinations<util::RobinHood::Map<int, int, util::RobinHood::FastHash<int>, util::RobinHood::EqualTo<int>, false>>();
-	testAssignmentCombinations<util::RobinHood::Map<int, int, util::RobinHood::FastHash<int>, util::RobinHood::EqualTo<int>, true>>();
-	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
-}
-
 template <class T>
 void benchmarkCtor(size_t fixedNumIters, const std::string& typeName) {
 	util::MicroBenchmark mb;
@@ -157,14 +130,6 @@ void benchmarkCtorAndAddElements(size_t fixedNumIters, size_t numInserts, const 
 		}
 		noOpt += m.size();
 	}
-}
-
-TEST_CASE(RobinHoodMapTest, testCtorAndSingleElementAdded) {
-	boost::unordered_map<int, BigObject> uo;
-	uo[123];
-
-	util::RobinHood::Map<int, BigObject> rh;
-	rh[123];
 }
 
 class RobinHoodMapSize10Params : public ::testing::TestWithParam<int> {};
@@ -378,59 +343,6 @@ struct BigCounter : public Counter<T> {
 	double d;
 };
 
-TEST_CASE(RobinHoodMapTest, testEraseIterator) {
-	typedef util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier> M;
-	{
-		M map;
-		for (int i = 0; i < 100; ++i) {
-			map[i * 101] = i * 101;
-		}
-
-		M::const_iterator it = map.find(20 * 101);
-		REQUIRE(map.size() == 100);
-		REQUIRE(map.end() != map.find(20 * 101));
-		it = map.erase(it);
-		REQUIRE(map.size() == 99);
-		REQUIRE(map.end() == map.find(20 * 101));
-
-		it = map.begin();
-		size_t currentSize = map.size();
-		while (it != map.end()) {
-			it = map.erase(it);
-			currentSize--;
-			REQUIRE(map.size() == currentSize);
-		}
-		REQUIRE(map.size() == (size_t)0);
-	}
-	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
-}
-
-TEST_CASE(RobinHoodMapTest, testVector) {
-	typedef util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier> Map;
-	{
-		std::vector<Map> maps;
-		for (size_t i = 0; i < 10; ++i) {
-			Map m;
-			fill(m, 100);
-			maps.push_back(m);
-		}
-	}
-	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
-}
-
-TEST_CASE(RobinHoodMapTest, testMapOfMaps) {
-	{
-		util::RobinHood::Map<CtorDtorVerifier, util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier>> maps;
-		for (size_t i = 0; i < 10; ++i) {
-			fill(maps[(int)i], 100);
-		}
-
-		util::RobinHood::Map<CtorDtorVerifier, util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier>> maps2;
-		maps2 = maps;
-	}
-	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
-}
-
 template <class I>
 struct PassThroughHash {
 	inline size_t operator()(const I& i) const {
@@ -438,34 +350,8 @@ struct PassThroughHash {
 	}
 };
 
-void showHash(apr_uint64_t val) {
-	PassThroughHash<apr_uint64_t> ph;
-	boost::hash<apr_uint64_t> bh;
-	util::RobinHood::FastHash<apr_uint64_t> fh;
-	printf("h(0x%016" APR_UINT64_T_HEX_FMT "): 0x%016zx 0x%016zx 0x%016zx\n", val, ph(val), bh(val), fh(val));
-}
-
 template <class H>
 void showHashSamples(const std::string& str) {}
-
-TEST_CASE(RobinHoodMapTest, showHashDistribution) {
-	std::cout << "                          PassThroughHash    boost::hash     util::RobinHood::FastHash" << std::endl;
-	for (apr_uint64_t i = 0; i < 5; ++i) {
-		showHash(i);
-	}
-
-	for (apr_uint64_t i = 0; i < 5; ++i) {
-		showHash(0x000023d700000063ULL + i * 0x100000000ULL);
-	}
-
-	for (apr_uint64_t i = 0; i < 5; ++i) {
-		showHash(i * 0x1000000000000000ULL);
-	}
-
-	for (apr_uint64_t i = 1; i != 0; i *= 2) {
-		showHash(i);
-	}
-}
 
 template <class I>
 void benchHash(size_t fixedNumIters, const std::string& titleStr) {
@@ -615,37 +501,6 @@ TEST_CASE(RobinHoodMapTest, testCustomEquals) {
 	REQUIRE(state == 103);
 
 	// can't swap, deleted function.
-}
-
-template <class Map>
-void testCollisions() {
-	{
-		Map m;
-		for (int i = 0; i < 255; ++i) {
-			m[i];
-		}
-		REQUIRE(m.size() == (size_t)255);
-		REQUIRE_THROWS_AS(m[255], std::overflow_error);
-		REQUIRE(m.size() == (size_t)255);
-	}
-	if (0 != CtorDtorVerifier::mapSize()) {
-		CtorDtorVerifier::printMap();
-	}
-	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
-
-	{
-		Map m;
-		for (int i = 0; i < 255; ++i) {
-			REQUIRE(m.insert(typename Map::value_type(i, i)).second);
-		}
-		REQUIRE(m.size() == (size_t)255);
-		REQUIRE_THROWS_AS(m.insert(typename Map::value_type(255, 255)), std::overflow_error);
-		REQUIRE(m.size() == (size_t)255);
-	}
-	if (0 != CtorDtorVerifier::mapSize()) {
-		CtorDtorVerifier::printMap();
-	}
-	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
 }
 
 TEST_CASE(RobinHoodMapTest, testCollisionSmall) {

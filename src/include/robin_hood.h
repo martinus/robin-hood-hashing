@@ -75,6 +75,37 @@ static T* assertNotNull(T* t, Args&&... args) {
 	return t;
 }
 
+static inline uint64_t ror64(uint64_t v, int r) {
+	return (v >> r) | (v << (64 - r));
+}
+
+static size_t quickmix(size_t h) {
+#if ROBIN_HOOD_BITNESS == 64
+	static size_t constexpr const factor = UINT64_C(0x220999681725bc2c);
+#else
+	static size_t constexpr const factor = UINT32_C(0x728e'a185);
+#endif
+	return factor * h;
+
+#if 0
+	h ^= h >> 33;
+	h *= 0xff51afd7ed558ccd;
+	h ^= h >> 33;
+	h *= 0xc4ceb9fe1a85ec53;
+	h ^= h >> 33;
+	return h;
+#endif
+
+#if 0
+	// from http://mostlymangling.blogspot.com/2018/07/on-mixing-functions-in-fast-splittable.html
+	h ^= ror64(h, 49) ^ ror64(h, 24);
+	h *= 0x9FB21C651E98DF25L;
+	h ^= h >> 28;
+	h *= 0x9FB21C651E98DF25L;
+	return h ^ h >> 28;
+#endif
+}
+
 // Allocates bulks of memory for objects of type T. This deallocates the memory in the destructor, and keeps a linked list of the allocated memory
 // around. Overhead per allocation is the size of a pointer.
 template <class T, size_t MinNumAllocs = 4, size_t MaxNumAllocs = 256>
@@ -464,12 +495,7 @@ private:
 	// Much better avalanching can be achieved with e.g. Murmur3 finalizer, but it is generally much slower.
 	template <typename HashKey>
 	size_t keyToIdx(HashKey&& key) const {
-#if ROBIN_HOOD_BITNESS == 64
-		static size_t constexpr const factor = UINT64_C(0xda942042e4dd58b5);
-#else
-		static size_t constexpr const factor = UINT32_C(0x728e'a185);
-#endif
-		return (factor * Hash::operator()(key)) >> mShift;
+		return detail::quickmix(Hash::operator()(key)) >> mShift;
 	}
 
 	// forwards the index by one, wrapping around at the end
