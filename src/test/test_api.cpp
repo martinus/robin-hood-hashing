@@ -1,5 +1,4 @@
-#include "catch.hpp"
-#include "robin_hood.h"
+#include "test_base.h"
 
 TEST_CASE("Api demonstration") {
 	robin_hood::unordered_map<int, int> map;
