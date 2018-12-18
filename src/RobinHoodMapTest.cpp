@@ -1,115 +1,4 @@
 
-class CtorDtorVerifier : private boost::noncopyable {
-public:
-	CtorDtorVerifier(int val)
-		: mVal(val) {
-		if (!mConstructedAddresses.insert(this).second) {
-			std::cerr << "ERROR" << std::endl;
-			EXPECT_TRUE(false);
-		}
-		if (mDoPrintDebugInfo) {
-			std::cout << this << " ctor(int) " << mConstructedAddresses.size() << std::endl;
-		}
-	}
-
-	CtorDtorVerifier(size_t val)
-		: mVal(static_cast<int>(val)) {
-		if (!mConstructedAddresses.insert(this).second) {
-			std::cerr << "ERROR" << std::endl;
-			EXPECT_TRUE(false);
-		}
-		if (mDoPrintDebugInfo) {
-			std::cout << this << " ctor(size_t) " << mConstructedAddresses.size() << std::endl;
-		}
-	}
-
-	CtorDtorVerifier()
-		: mVal(-1) {
-		if (!mConstructedAddresses.insert(this).second) {
-			std::cerr << "ERROR" << std::endl;
-			EXPECT_TRUE(false);
-		}
-		if (mDoPrintDebugInfo) {
-			std::cout << this << " ctor() " << mConstructedAddresses.size() << std::endl;
-		}
-	}
-
-	CtorDtorVerifier(const CtorDtorVerifier& o)
-		: mVal(o.mVal) {
-		if (!mConstructedAddresses.insert(this).second) {
-			std::cerr << "ERROR" << std::endl;
-			EXPECT_TRUE(false);
-		}
-		if (mDoPrintDebugInfo) {
-			std::cout << this << " ctor(const CtorDtorVerifier& o) " << mConstructedAddresses.size() << std::endl;
-		}
-	}
-
-	CtorDtorVerifier& operator=(CtorDtorVerifier&& o) {
-		if (1 != mConstructedAddresses.count(this)) {
-			std::cerr << "ERROR" << std::endl;
-			EXPECT_TRUE(false);
-		}
-		if (1 != mConstructedAddresses.count(&o)) {
-			std::cerr << "ERROR" << std::endl;
-			EXPECT_TRUE(false);
-		}
-		mVal = std::move(o.mVal);
-		return *this;
-	}
-
-	CtorDtorVerifier& operator=(const CtorDtorVerifier& o) {
-		if (1 != mConstructedAddresses.count(this)) {
-			std::cerr << "ERROR" << std::endl;
-			EXPECT_TRUE(false);
-		}
-		if (1 != mConstructedAddresses.count(&o)) {
-			std::cerr << "ERROR" << std::endl;
-			EXPECT_TRUE(false);
-		}
-		mVal = o.mVal;
-		return *this;
-	}
-
-	~CtorDtorVerifier() {
-		if (1 != mConstructedAddresses.erase(this)) {
-			std::cerr << "ERROR" << std::endl;
-			EXPECT_TRUE(false);
-		}
-		if (mDoPrintDebugInfo) {
-			std::cout << this << " dtor " << mConstructedAddresses.size() << std::endl;
-		}
-	}
-
-	bool eq(const CtorDtorVerifier& o) const {
-		return mVal == o.mVal;
-	}
-
-	int val() const {
-		return mVal;
-	}
-
-	static size_t mapSize() {
-		return mConstructedAddresses.size();
-	}
-
-	static void printMap() {
-		std::cout << "data in map:" << std::endl;
-		for (boost::unordered_set<CtorDtorVerifier const*>::const_iterator it = mConstructedAddresses.begin(), end = mConstructedAddresses.end();
-			 it != end; ++it) {
-			std::cout << "\t" << *it << std::endl;
-		}
-	}
-
-	static bool contains(CtorDtorVerifier const* ptr) {
-		return 1 == mConstructedAddresses.count(ptr);
-	}
-
-private:
-	int mVal;
-	static boost::unordered_set<CtorDtorVerifier const*> mConstructedAddresses;
-	static bool mDoPrintDebugInfo;
-};
 
 boost::unordered_set<CtorDtorVerifier const*> CtorDtorVerifier::mConstructedAddresses;
 bool CtorDtorVerifier::mDoPrintDebugInfo = false;
@@ -258,14 +147,14 @@ void taic() {
 	REQUIRE(CtorDtorVerifier::mapSize() == 0);
 }
 
-TEST(RobinHoodMapTest, testAssignIterateClear) {
+TEST_CASE(RobinHoodMapTest, testAssignIterateClear) {
 	taic<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, util::RobinHood::FastHash<CtorDtorVerifier>,
 							  util::RobinHood::EqualTo<CtorDtorVerifier>, false>>();
 	taic<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, util::RobinHood::FastHash<CtorDtorVerifier>,
 							  util::RobinHood::EqualTo<CtorDtorVerifier>, true>>();
 }
 
-TEST(RobinHoodMapTest, testAllAssignCombinations) {
+TEST_CASE(RobinHoodMapTest, testAllAssignCombinations) {
 	testAssignmentCombinations<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, util::RobinHood::FastHash<CtorDtorVerifier>,
 													util::RobinHood::EqualTo<CtorDtorVerifier>, false>>();
 	testAssignmentCombinations<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, util::RobinHood::FastHash<CtorDtorVerifier>,
@@ -273,114 +162,6 @@ TEST(RobinHoodMapTest, testAllAssignCombinations) {
 	testAssignmentCombinations<util::RobinHood::Map<int, int, util::RobinHood::FastHash<int>, util::RobinHood::EqualTo<int>, false>>();
 	testAssignmentCombinations<util::RobinHood::Map<int, int, util::RobinHood::FastHash<int>, util::RobinHood::EqualTo<int>, true>>();
 	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
-}
-
-TEST(RobinHoodMapTest, testIterators) {
-	for (size_t i = 0; i < 10; ++i) {
-		util::RobinHood::Map<int, int> m;
-		REQUIRE(m.begin() == m.end());
-
-		REQUIRE(m.end() == m.find(132));
-
-		m[1];
-		REQUIRE(m.begin() != m.end());
-		REQUIRE(++m.begin() == m.end());
-		m.clear();
-
-		REQUIRE(m.begin() == m.end());
-	}
-}
-
-TEST(RobinHoodMapTest, SLOW_simpleTest) {
-	using Map = util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, util::RobinHood::FastHash<CtorDtorVerifier>,
-									 util::RobinHood::EqualTo<CtorDtorVerifier>, true>;
-	Map rhhs;
-	REQUIRE(rhhs.size() == (size_t)0);
-	std::pair<Map::iterator, bool> it = rhhs.insert(typename Map::value_type(32145, 123));
-	REQUIRE(it.second);
-	REQUIRE(it.first->first == 32145);
-	REQUIRE(it.first->second == 123);
-	REQUIRE(rhhs.size() == (size_t)1);
-
-	const int times = 10000;
-	for (int i = 0; i < times; ++i) {
-		std::pair<Map::iterator, bool> it = rhhs.insert(typename Map::value_type(i * 4, i));
-
-		REQUIRE(it.second);
-		REQUIRE(it.first->first == i * 4);
-		REQUIRE(it.first->second == i);
-
-		Map::iterator found = rhhs.find(i * 4);
-		REQUIRE(rhhs.end() != found);
-		REQUIRE(found->second == i);
-		REQUIRE(rhhs.size() == (size_t)(2 + i));
-	}
-
-	// check if everything can be found
-	for (int i = 0; i < times; ++i) {
-		Map::iterator found = rhhs.find(i * 4);
-		REQUIRE(rhhs.end() != found);
-		REQUIRE(found->second == i);
-		REQUIRE(found->first == i * 4);
-	}
-
-	// check non-elements
-	for (int i = 0; i < times; ++i) {
-		Map::iterator found = rhhs.find((i + times) * 4);
-		REQUIRE(rhhs.end() == found);
-	}
-
-	// random test against std::unordered_map
-	rhhs.clear();
-	boost::unordered_map<int, int> uo;
-
-	boost::mt19937 gen;
-	gen.seed(123);
-	boost::random::uniform_int_distribution<> dist(0, times / 4);
-
-	for (int i = 0; i < times; ++i) {
-		int r = dist(gen);
-		std::pair<Map::iterator, bool> rhh_it = rhhs.insert(typename Map::value_type(r, r * 2));
-		std::pair<boost::unordered_map<int, int>::iterator, bool> uo_it = uo.insert(std::make_pair(r, r * 2));
-		REQUIRE(rhh_it.second == uo_it.second);
-		REQUIRE(rhh_it.first->first == uo_it.first->first);
-		REQUIRE(rhh_it.first->second == uo_it.first->second);
-		REQUIRE(rhhs.size() == uo.size());
-
-		r = dist(gen);
-		Map::iterator rhhsIt = rhhs.find(r);
-		boost::unordered_map<int, int>::iterator uoIt = uo.find(r);
-		REQUIRE(rhhs.end() == rhhsIt == uo.end() == uoIt);
-		if (rhhs.end() != rhhsIt) {
-			REQUIRE(rhhsIt->first == uoIt->first);
-			REQUIRE(rhhsIt->second == uoIt->second);
-		}
-	}
-
-	uo.clear();
-	rhhs.clear();
-	for (int i = 0; i < times; ++i) {
-		const int r = dist(gen);
-		rhhs[r] = r * 2;
-		uo[r] = r * 2;
-		REQUIRE(rhhs.find(r)->second == uo.find(r)->second);
-		REQUIRE(rhhs.size() == uo.size());
-	}
-
-	std::size_t numChecks = 0;
-	for (Map::const_iterator it = rhhs.begin(); it != rhhs.end(); ++it) {
-		REQUIRE(uo.end() != uo.find(it->first.val()));
-		++numChecks;
-	}
-	REQUIRE(rhhs.size() == numChecks);
-
-	numChecks = 0;
-	const Map& constRhhs = rhhs;
-	BOOST_FOREACH (const Map::value_type& vt, constRhhs) {
-		REQUIRE(uo.end() != uo.find(vt.first.val()));
-		++numChecks;
-	}
-	REQUIRE(rhhs.size() == numChecks);
 }
 
 struct BigObject {
@@ -425,11 +206,11 @@ void benchmarkCtor(size_t fixedNumIters, const std::string& typeName) {
 	}
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkCtorInt) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkCtorInt) {
 	benchmarkCtor<int>(20 * 1000 * 1000, "int");
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkCtorBigObject) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkCtorBigObject) {
 	benchmarkCtor<BigObject>(20 * 1000 * 1000, "BigObject");
 }
 
@@ -449,7 +230,7 @@ void benchCopy(util::MicroBenchmark& mb, const uint32_t param, const char* title
 	}
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkCopyInt) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkCopyInt) {
 	uint32_t numElements = 5000;
 
 	util::MicroBenchmark mb;
@@ -461,7 +242,7 @@ TEST(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkCopyInt) {
 	benchCopy<util::RobinHood::Map<int, int>>(mb, numElements, "copy util::RobinHood<int, int>");
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkCopyBigObject) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkCopyBigObject) {
 	uint32_t numElements = 5000;
 
 	util::MicroBenchmark mb;
@@ -513,7 +294,7 @@ void benchmarkCtorAndAddElements(size_t fixedNumIters, size_t numInserts, const 
 
 #define PRINT_SIZEOF(x, A, B) std::cout << sizeof(x<A, B>) << " bytes for " #x "<" #A ", " #B ">" << std::endl
 
-TEST(RobinHoodMapTest, testSizeof) {
+TEST_CASE(RobinHoodMapTest, testSizeof) {
 	util::RobinHood::Map<int, int> a;
 	util::RobinHood::Map<BigObject, BigObject> b;
 
@@ -541,7 +322,7 @@ TEST(RobinHoodMapTest, testSizeof) {
 	PRINT_SIZEOF(std::unordered_map, BigObject, int);
 }
 
-TEST(RobinHoodMapTest, testCtorAndSingleElementAdded) {
+TEST_CASE(RobinHoodMapTest, testCtorAndSingleElementAdded) {
 	boost::unordered_map<int, BigObject> uo;
 	uo[123];
 
@@ -639,7 +420,7 @@ void benchIterate(util::MicroBenchmark& mb, size_t numElements, const char* name
 	}
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkIteration) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkIteration) {
 	util::MicroBenchmark mb;
 	mb.fixedIterationsPerMeasurement(2000);
 
@@ -669,7 +450,7 @@ void benchIterateAlwaysEnd(util::MicroBenchmark& mb, size_t numElements, const c
 	}
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkIterationAlwaysEnd) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_benchmarkIterationAlwaysEnd) {
 	util::MicroBenchmark mb;
 	mb.fixedIterationsPerMeasurement(2000);
 
@@ -752,7 +533,7 @@ size_t check(const size_t num) {
 }
 
 // Performs lots of assign and erase operations, then checks if the maps have the same content.
-TEST(RobinHoodMapTest, SLOW_testRandomInserteDeleteSameAsBoostMap) {
+TEST_CASE(RobinHoodMapTest, SLOW_testRandomInserteDeleteSameAsBoostMap) {
 	for (size_t i = 0; i < 500; ++i) {
 		size_t a = check<boost::unordered_map<size_t, size_t>>(i);
 		size_t b = check<util::RobinHood::Map<size_t, size_t, util::RobinHood::FastHash<size_t>, util::RobinHood::EqualTo<size_t>, false>>(i);
@@ -944,7 +725,7 @@ struct BigCounter : public Counter<T> {
 };
 
 // Tests if all objects are properly constructed and destructed
-TEST(RobinHoodMapTest, testCountCtorAndDtor) {
+TEST_CASE(RobinHoodMapTest, testCountCtorAndDtor) {
 	printStaticHeader();
 
 	size_t numIters = 100000;
@@ -976,7 +757,7 @@ TEST(RobinHoodMapTest, testCountCtorAndDtor) {
 	printStaticCounts("std::map");
 }
 
-TEST(RobinHoodMapTest, testCountCtorAndDtorFill) {
+TEST_CASE(RobinHoodMapTest, testCountCtorAndDtorFill) {
 	printStaticHeader();
 
 	resetStaticCounts();
@@ -1018,7 +799,7 @@ public:
 };
 
 // TODO this test does not compile if Node has no default constructor :-(
-TEST(RobinHoodMapTest, testNoDefaultCtor) {
+TEST_CASE(RobinHoodMapTest, testNoDefaultCtor) {
 	std::pair<size_t, Node> p(123, Node(123));
 	{
 		boost::unordered_map<size_t, Node> map;
@@ -1027,12 +808,12 @@ TEST(RobinHoodMapTest, testNoDefaultCtor) {
 	}
 }
 
-TEST(RobinHoodMapTest, testUniquePtr) {
+TEST_CASE(RobinHoodMapTest, testUniquePtr) {
 	util::RobinHood::Map<int, std::unique_ptr<int>> map;
 	map[321].reset(new int(123));
 }
 
-TEST(RobinHoodMapTest, testEraseIterator) {
+TEST_CASE(RobinHoodMapTest, testEraseIterator) {
 	typedef util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier> M;
 	{
 		M map;
@@ -1059,7 +840,7 @@ TEST(RobinHoodMapTest, testEraseIterator) {
 	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
 }
 
-TEST(RobinHoodMapTest, testVector) {
+TEST_CASE(RobinHoodMapTest, testVector) {
 	typedef util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier> Map;
 	{
 		std::vector<Map> maps;
@@ -1072,7 +853,7 @@ TEST(RobinHoodMapTest, testVector) {
 	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
 }
 
-TEST(RobinHoodMapTest, testMapOfMaps) {
+TEST_CASE(RobinHoodMapTest, testMapOfMaps) {
 	{
 		util::RobinHood::Map<CtorDtorVerifier, util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier>> maps;
 		for (size_t i = 0; i < 10; ++i) {
@@ -1102,7 +883,7 @@ void showHash(apr_uint64_t val) {
 template <class H>
 void showHashSamples(const std::string& str) {}
 
-TEST(RobinHoodMapTest, showHashDistribution) {
+TEST_CASE(RobinHoodMapTest, showHashDistribution) {
 	std::cout << "                          PassThroughHash    boost::hash     util::RobinHood::FastHash" << std::endl;
 	for (apr_uint64_t i = 0; i < 5; ++i) {
 		showHash(i);
@@ -1158,15 +939,15 @@ void benchHash(size_t fixedNumIters, const std::string& titleStr) {
 	}
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_hashUint32) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_hashUint32) {
 	benchHash<apr_uint32_t>(100 * 1000 * 1000, "apr_uint32_t");
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_hashUint64) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_hashUint64) {
 	benchHash<apr_uint64_t>(100 * 1000 * 1000, "apr_uint64_t");
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_hashString) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_hashString) {
 	const std::string v = "This is a test string for hashing";
 	util::MicroBenchmark mb;
 	mb.fixedIterationsPerMeasurement(20 * 1000 * 1000);
@@ -1186,7 +967,7 @@ TEST(RobinHoodMapTest, PERFORMANCE_SLOW_hashString) {
 	}
 }
 
-TEST(RobinHoodMapTest, testCalcMaxLoadFactor128) {
+TEST_CASE(RobinHoodMapTest, testCalcMaxLoadFactor128) {
 	using util::RobinHood::calcMaxLoadFactor128;
 
 	for (float f = 0.0f; f < 2.0f; f += 0.01f) {
@@ -1201,7 +982,7 @@ TEST(RobinHoodMapTest, testCalcMaxLoadFactor128) {
 	REQUIRE(calcMaxLoadFactor128(0.8f) == static_cast<size_t>(102));
 }
 
-TEST(RobinHoodMapTest, testCalcMaxNumElementsAllowed128) {
+TEST_CASE(RobinHoodMapTest, testCalcMaxNumElementsAllowed128) {
 	using util::RobinHood::calcMaxNumElementsAllowed128;
 
 	for (size_t maxElements = 1; maxElements > 0; maxElements *= 2) {
@@ -1211,7 +992,7 @@ TEST(RobinHoodMapTest, testCalcMaxNumElementsAllowed128) {
 	}
 }
 
-TEST(RobinHoodMapTest, testCount) {
+TEST_CASE(RobinHoodMapTest, testCount) {
 	util::RobinHood::Map<int, int> rh;
 	boost::unordered_map<int, int> uo;
 	REQUIRE(rh.count(123) == uo.count(123));
@@ -1240,7 +1021,7 @@ struct MyEquals : private boost::noncopyable {
 	}
 };
 
-TEST(RobinHoodMapTest, testCustomEquals) {
+TEST_CASE(RobinHoodMapTest, testCustomEquals) {
 	int state = 0;
 	MyEquals eq(state);
 	typedef util::RobinHood::Map<int, int, util::RobinHood::FastHash<int>, MyEquals> MyMap;
@@ -1302,14 +1083,14 @@ void testCollisions() {
 	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
 }
 
-TEST(RobinHoodMapTest, testCollisionSmall) {
+TEST_CASE(RobinHoodMapTest, testCollisionSmall) {
 	testCollisions<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>, std::equal_to<CtorDtorVerifier>, true>>();
 }
-TEST(RobinHoodMapTest, testCollisionBig) {
+TEST_CASE(RobinHoodMapTest, testCollisionBig) {
 	testCollisions<util::RobinHood::Map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>, std::equal_to<CtorDtorVerifier>, false>>();
 }
 
-TEST(RobinHoodMapTest, testSmallTypes) {
+TEST_CASE(RobinHoodMapTest, testSmallTypes) {
 	util::RobinHood::Map<uint8_t, uint8_t> map8;
 	map8['x'] = 'a';
 	REQUIRE(map8['x'] == 'a');
@@ -1352,7 +1133,7 @@ void assertMapEq(const A& a, const B& b) {
 	assertMapEqDirected(b, a);
 }
 
-TEST(RobinHoodMapTest, testErase) {
+TEST_CASE(RobinHoodMapTest, testErase) {
 	typedef util::RobinHood::Map<uint32_t, uint32_t> Map;
 	Map rh;
 	boost::mt19937 gen;
@@ -1377,7 +1158,7 @@ TEST(RobinHoodMapTest, testErase) {
 }
 
 #ifdef BOOST_HAS_RVALUE_REFS
-TEST(RobinHoodMapTest, testMoves) {
+TEST_CASE(RobinHoodMapTest, testMoves) {
 	typedef util::RobinHood::Map<uint32_t, uint32_t> Map;
 	boost::scoped_ptr<Map> rh(new Map());
 	(*rh)[123] = 321;
@@ -1394,7 +1175,7 @@ TEST(RobinHoodMapTest, testMoves) {
 	REQUIRE(rh2.find(123)->second == 321);
 }
 
-TEST(RobinHoodMapTest, testMoveAssignment) {
+TEST_CASE(RobinHoodMapTest, testMoveAssignment) {
 	typedef util::RobinHood::Map<uint32_t, uint32_t> Map;
 	boost::scoped_ptr<Map> rh(new Map());
 	(*rh)[123] = 321;
@@ -1429,7 +1210,7 @@ void benchMoveMap(util::MicroBenchmark& mb, const char* title) {
 	REQUIRE(10000 == m1.size());
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_moveMap) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_moveMap) {
 	util::MicroBenchmark mb;
 	mb.unitScaling("move", (size_t)2);
 
@@ -1458,7 +1239,7 @@ void assertNeq(const M& a, const M& b) {
 	REQUIRE(!(b == a));
 }
 
-TEST(RobinHoodMapTest, testCompare) {
+TEST_CASE(RobinHoodMapTest, testCompare) {
 	util::RobinHood::Map<std::string, int> a;
 	util::RobinHood::Map<std::string, int> b;
 	assertEq(a, b);
@@ -1488,12 +1269,12 @@ TEST(RobinHoodMapTest, testCompare) {
 
 #include <boost/assign/list_of.hpp> // for 'map_list_of()'
 
-TEST(RobinHoodMapTest, testAssignListOf) {
+TEST_CASE(RobinHoodMapTest, testAssignListOf) {
 	util::RobinHood::Map<std::string, int> m = boost::assign::map_list_of("a", 1)("b", 2);
 	REQUIRE(m.size() == (size_t)2);
 }
 
-TEST(RobinHoodMapTest, testFindOtherType) {
+TEST_CASE(RobinHoodMapTest, testFindOtherType) {
 	util::RobinHood::Map<std::string, int, util::RobinHood::FastHash<>, util::RobinHood::EqualTo<>> m;
 	m["asdf"] = 123;
 
@@ -1543,7 +1324,7 @@ void benchStringQuery(M& m, util::MicroBenchmark& mb, const char* title) {
 	}
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_testBoostStringView) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_testBoostStringView) {
 	util::MicroBenchmark mb;
 	mb.fixedIterationsPerMeasurement(1 * 1000 * 1000);
 	{
@@ -1558,7 +1339,7 @@ TEST(RobinHoodMapTest, PERFORMANCE_SLOW_testBoostStringView) {
 	}
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_testPerformanceStringSearchIsTransparentTag) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_testPerformanceStringSearchIsTransparentTag) {
 	typedef util::typed::String<util::typed::CCSID_UTF8> Str;
 	typedef util::typed::StringView<util::typed::CCSID_UTF8> View;
 
@@ -1572,7 +1353,7 @@ TEST(RobinHoodMapTest, PERFORMANCE_SLOW_testPerformanceStringSearchIsTransparent
 	}
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_testPerformanceStringSearch) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_testPerformanceStringSearch) {
 	typedef util::typed::String<util::typed::CCSID_UTF8> Str;
 	typedef util::typed::StringView<util::typed::CCSID_UTF8> View;
 
@@ -1587,7 +1368,7 @@ TEST(RobinHoodMapTest, PERFORMANCE_SLOW_testPerformanceStringSearch) {
 	}
 }
 
-TEST(RobinHoodMapTest, testFindTyped) {
+TEST_CASE(RobinHoodMapTest, testFindTyped) {
 	// use FastHash<> and equal_to<> to enable the find() operation which does not copy.
 	util::RobinHood::Map<util::typed::String<util::typed::CCSID_ASCII7>, int, util::RobinHood::FastHash<>, util::RobinHood::EqualTo<>> m;
 
@@ -1832,33 +1613,33 @@ void benchCreateClearDestroy(size_t numIters) {
 	std::cout << c << std::endl;
 }
 
-TEST(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearRobinHoodBig) {
+TEST_CASE(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearRobinHoodBig) {
 	benchRamUsage<util::RobinHood::Map<size_t, BigObject>>(10000000);
 }
-TEST(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearStdUnorderedMapBig) {
+TEST_CASE(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearStdUnorderedMapBig) {
 	benchRamUsage<std::unordered_map<size_t, BigObject>>(10000000);
 }
-TEST(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearBoostUnorderedMapBig) {
+TEST_CASE(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearBoostUnorderedMapBig) {
 	benchRamUsage<boost::unordered_map<size_t, BigObject>>(10000000);
 }
-TEST(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearStdMapBig) {
+TEST_CASE(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearStdMapBig) {
 	benchRamUsage<std::map<size_t, BigObject>>(10000000);
 }
 
-TEST(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearRobinHoodSizeT) {
+TEST_CASE(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearRobinHoodSizeT) {
 	benchRamUsage<util::RobinHood::Map<size_t, size_t>>(10000000);
 }
-TEST(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearStdUnorderedMapSizeT) {
+TEST_CASE(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearStdUnorderedMapSizeT) {
 	benchRamUsage<std::unordered_map<size_t, size_t>>(10000000);
 }
-TEST(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearBoostUnorderedMapSizeT) {
+TEST_CASE(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearBoostUnorderedMapSizeT) {
 	benchRamUsage<boost::unordered_map<size_t, size_t>>(10000000);
 }
-TEST(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearStdMapSizeT) {
+TEST_CASE(RobinHoodMapTest, DISABLED_PERFORMANCE_SLOW_benchCreateClearStdMapSizeT) {
 	benchRamUsage<std::map<size_t, size_t>>(10000000);
 }
 
-TEST(RobinHoodMapTest, DISABLED_testRamUsage) {
+TEST_CASE(RobinHoodMapTest, DISABLED_testRamUsage) {
 	// typedef util::RobinHood::Map<size_t, size_t> Map;
 	// typedef util::RobinHood::Map<size_t, size_t, util::RobinHood::FastHash<size_t>, std::equal_to<size_t>, false> Map;
 	// typedef util::RobinHood::Map<size_t, size_t, boost::hash<size_t>, std::equal_to<size_t>, false> Map;
@@ -1878,7 +1659,7 @@ TEST(RobinHoodMapTest, DISABLED_testRamUsage) {
 }
 */
 
-TEST(RobinHoodMapTest, testEmplace) {
+TEST_CASE(RobinHoodMapTest, testEmplace) {
 	util::RobinHood::Map<std::string, std::string> map;
 	auto itAndInserted = map.emplace("key", "val");
 	REQUIRE(itAndInserted.second);
@@ -1894,12 +1675,12 @@ TEST(RobinHoodMapTest, testEmplace) {
 	REQUIRE(itAndInserted.first->second == "val");
 }
 
-TEST(RobinHoodMapTest, testStringMoved) {
+TEST_CASE(RobinHoodMapTest, testStringMoved) {
 	util::RobinHood::Map<std::string, std::string> map;
 	map["foo"] = "bar";
 }
 
-TEST(RobinHoodMapTest, testAssignIterat) {
+TEST_CASE(RobinHoodMapTest, testAssignIterat) {
 	const std::string key = "key";
 	util::RobinHood::Map<std::string, std::string> map;
 	map[key] = "sadf";
@@ -1922,7 +1703,7 @@ void testInitializerList() {
 	REQUIRE(m.size() == (size_t)3);
 }
 
-TEST(RobinHoodMapTest, testInitializerList) {
+TEST_CASE(RobinHoodMapTest, testInitializerList) {
 	testInitializerList<std::map<int, std::string>>();
 	testInitializerList<util::RobinHood::Map<int, std::string>>();
 }
@@ -1945,16 +1726,16 @@ void testBrackets() {
 	resetStaticCounts();
 }
 
-TEST(RobinHoodMapTest, testBracketsRobinHoodDirect) {
+TEST_CASE(RobinHoodMapTest, testBracketsRobinHoodDirect) {
 	testBrackets<util::RobinHood::DirectMap<Counter<int>, int>>();
 }
-TEST(RobinHoodMapTest, testBracketsRobinHoodIndirect) {
+TEST_CASE(RobinHoodMapTest, testBracketsRobinHoodIndirect) {
 	testBrackets<util::RobinHood::IndirectMap<Counter<int>, int>>();
 }
-TEST(RobinHoodMapTest, testBracketsUnorderedMap) {
+TEST_CASE(RobinHoodMapTest, testBracketsUnorderedMap) {
 	testBrackets<std::unordered_map<Counter<int>, int>>();
 }
-TEST(RobinHoodMapTest, testBracketsMap) {
+TEST_CASE(RobinHoodMapTest, testBracketsMap) {
 	testBrackets<std::map<Counter<int>, int>>();
 }
 
@@ -1975,7 +1756,7 @@ void benchStringQuery(util::MicroBenchmark& mb, const char* title) {
 	mb.noOpt(m.size());
 }
 
-TEST(RobinHoodMapTest, PERFORMANCE_SLOW_accessExistingWithConstRef) {
+TEST_CASE(RobinHoodMapTest, PERFORMANCE_SLOW_accessExistingWithConstRef) {
 	util::MicroBenchmark mb;
 	mb.fixedIterationsPerMeasurement(20'000);
 	mb.unitScaling("operator[]", 100ull);
@@ -1989,12 +1770,12 @@ TEST(RobinHoodMapTest, PERFORMANCE_SLOW_accessExistingWithConstRef) {
 	mb.plot();
 }
 
-TEST(RobinHoodMapTest, testCopyable) {
+TEST_CASE(RobinHoodMapTest, testCopyable) {
 	static_assert(std::is_trivially_copyable<util::RobinHood::Pair<int, int>>::value, "NOT is_trivially_copyable");
 	static_assert(std::is_trivially_destructible<util::RobinHood::Pair<int, int>>::value, "NOT is_trivially_destructible");
 }
 
-TEST(RobinHoodMapTest, testInsertList) {
+TEST_CASE(RobinHoodMapTest, testInsertList) {
 	std::vector<util::RobinHood::Pair<int, int>> v;
 	v.emplace_back(1, 2);
 	v.emplace_back(3, 4);
@@ -2008,6 +1789,6 @@ struct Hash {
 	}
 };
 
-TEST(RobinHoodMapTest, testCustomHash) {
+TEST_CASE(RobinHoodMapTest, testCustomHash) {
 	util::RobinHood::Map<uint64_t, int16_t, Hash> map;
 }
