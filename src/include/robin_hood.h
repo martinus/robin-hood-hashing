@@ -310,6 +310,11 @@ struct Pair {
 		: first(std::move(firstArg))
 		, second(std::move(secondArg)) {}
 
+	template <typename FirstArg, typename SecondArg>
+	constexpr Pair(FirstArg&& firstArg, SecondArg&& secondArg)
+		: first(std::forward<FirstArg>(firstArg))
+		, second(std::forward<SecondArg>(secondArg)) {}
+
 	template <class... Args1, class... Args2>
 	Pair(std::piecewise_construct_t, std::tuple<Args1...> firstArgs, std::tuple<Args2...> secondArgs)
 		: Pair(firstArgs, secondArgs, std::index_sequence_for<Args1...>(), std::index_sequence_for<Args2...>()) {}
@@ -884,9 +889,13 @@ public:
 
 	template <class... Args>
 	std::pair<iterator, bool> emplace(Args&&... args) {
-		// TODO it can be very inefficient to create a temporary and move that into the map.
-		// Do this without the temporary!
-		return insert(std::move(value_type(std::forward<Args>(args)...)));
+		Node n{*this, std::forward<Args>(args)...};
+		auto r = doInsertNode(std::move(n));
+		if (!r.second) {
+			// insertion not possible: destroy node
+			n.destroy(*this);
+		}
+		return r;
 	}
 
 	std::pair<iterator, bool> insert(const value_type& keyval) {
@@ -1152,6 +1161,55 @@ private:
 
 			// put at empty spot
 			new (mKeyVals + idx) Node(*this, std::forward<Arg>(keyval));
+			mInfo[idx] = insertion_info;
+
+			// bubble down into correct position
+			bubbleDown(idx, insertion_idx);
+
+			++mNumElements;
+			return std::make_pair(iterator(mKeyVals + insertion_idx, mInfo + insertion_idx), true);
+		}
+	}
+
+	// This is exactly the same code as operator[], except for the return values
+	// TODO do not duplicate code from doInsert, but how?
+	std::pair<iterator, bool> doInsertNode(Node&& n) {
+		while (true) {
+			size_t idx = keyToIdx(n->first);
+
+			int info = 1;
+			nextWhileLess(info, idx);
+
+			// while we potentially have a match
+			while (info == mInfo[idx]) {
+				if (KeyEqual::operator()(n->first, mKeyVals[idx]->first)) {
+					// key already exists, do NOT insert.
+					// see http://en.cppreference.com/w/cpp/container/unordered_map/insert
+					return std::make_pair<iterator, bool>(iterator(mKeyVals + idx, mInfo + idx), false);
+				}
+				next(info, idx);
+			}
+
+			// unlikely that this evaluates to true
+			if (mNumElements >= mMaxNumElementsAllowed) {
+				increase_size();
+				continue;
+			}
+
+			// key not found, so we are now exactly where we want to insert it.
+			const size_t insertion_idx = idx;
+			uint8_t insertion_info = info;
+			if (0xFF == insertion_info) {
+				mMaxNumElementsAllowed = 0;
+			}
+
+			// find an empty spot
+			while (0 != mInfo[idx]) {
+				next(info, idx);
+			}
+
+			// put at empty spot
+			new (mKeyVals + idx) Node(std::move(n));
 			mInfo[idx] = insertion_info;
 
 			// bubble down into correct position

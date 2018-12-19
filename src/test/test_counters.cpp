@@ -166,8 +166,9 @@ TEMPLATE_TEST_CASE("map ctor & dtor", "[display]", (std::map<Counter, Counter>),
 
 	resetStaticCounts();
 	{ TestType map; }
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	printStaticCounts(std::string("ctor & dtor ") + name(TestType{}));
+	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
+	REQUIRE(sCountDtor == 0);
 	resetStaticCounts();
 }
 
@@ -181,8 +182,8 @@ TEMPLATE_TEST_CASE("1 emplace", "[display]", (std::map<Counter, Counter>), (std:
 		TestType map;
 		map.emplace(1, 2);
 	}
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	printStaticCounts(std::string("1 emplace ") + name(TestType{}));
+	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	resetStaticCounts();
 }
 
@@ -202,8 +203,8 @@ TEMPLATE_TEST_CASE("10k random emplace & erase", "[display]", (std::map<Counter,
 		}
 	}
 
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	printStaticCounts(std::string("10k random insert&erase for ") + name(TestType{}));
+	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	resetStaticCounts();
 }
 
@@ -222,8 +223,8 @@ TEMPLATE_TEST_CASE("10k random operator[] & erase", "[display]", (std::map<Count
 		}
 	}
 
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	printStaticCounts(std::string("10k random operator[] & erase for ") + name(TestType{}));
+	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	resetStaticCounts();
 }
 
@@ -239,8 +240,8 @@ TEMPLATE_TEST_CASE("10k emplace", "[display]", (std::map<Counter, Counter>), (st
 			map.emplace(i, i);
 		}
 	}
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	printStaticCounts(std::string("10k emplace ") + name(TestType{}));
+	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	resetStaticCounts();
 }
 
@@ -256,8 +257,9 @@ TEMPLATE_TEST_CASE("10k operator[]", "[display]", (std::map<Counter, Counter>), 
 			map[i] = i;
 		}
 	}
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
+
 	printStaticCounts(std::string("10k operator[] ") + name(TestType{}));
+	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	resetStaticCounts();
 }
 
@@ -273,9 +275,20 @@ TEMPLATE_TEST_CASE("10k insert", "[display]", (std::map<Counter, Counter>), (std
 			map.insert(typename TestType::value_type{i, i});
 		}
 	}
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	printStaticCounts(std::string("10k insert ") + name(TestType{}));
+	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	resetStaticCounts();
+}
+
+TEMPLATE_TEST_CASE("insert erase", "", (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
+	resetStaticCounts();
+	{
+		TestType map;
+		map.emplace(1, 2);
+		map.emplace(1, 2);
+	}
+	printStaticCounts(std::string("10k insert ") + name(TestType{}));
+	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 }
 
 #define PRINT_SIZEOF(x, A, B) std::cout << sizeof(x<A, B>) << " bytes for " #x "<" #A ", " #B ">" << std::endl
