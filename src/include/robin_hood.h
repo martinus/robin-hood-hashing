@@ -292,6 +292,9 @@ struct Pair;
 // in std::memcpy. This struct is copyable, which is also tested.
 template <class First, class Second>
 struct Pair {
+	using first_type = First;
+	using second_type = Second;
+
 	// pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
 	explicit Pair(std::pair<First, Second> const& pair)
 		: first(pair.first)
@@ -324,6 +327,19 @@ struct Pair {
 	Pair(Tuple1& val1, Tuple2& val2, std::index_sequence<Indexes1...>, std::index_sequence<Indexes2...>)
 		: first(std::get<Indexes1>(std::move(val1))...)
 		, second(std::get<Indexes2>(std::move(val2))...) {}
+
+	first_type& getFirst() {
+		return first;
+	}
+	first_type const& getFirst() const {
+		return first;
+	}
+	second_type& getSecond() {
+		return second;
+	}
+	second_type const& getSecond() const {
+		return second;
+	}
 
 	First first;
 	Second second;
@@ -392,6 +408,9 @@ private:
 		DataNode(M& ROBIN_HOOD_UNUSED(map), Args&&... args)
 			: mData(std::forward<Args>(args)...) {}
 
+		DataNode(M& ROBIN_HOOD_UNUSED(map), DataNode<M, true>&& n)
+			: mData(std::move(n.mData)) {}
+
 		// doesn't do anything
 		void destroy(M& ROBIN_HOOD_UNUSED(map)) {}
 		void destroyDoNotDeallocate() {}
@@ -409,6 +428,22 @@ private:
 
 		value_type& operator*() {
 			return mData;
+		}
+
+		typename value_type::first_type& getFirst() {
+			return mData.first;
+		}
+
+		typename value_type::first_type const& getFirst() const {
+			return mData.first;
+		}
+
+		typename value_type::second_type& getSecond() {
+			return mData.second;
+		}
+
+		typename value_type::second_type const& getSecond() const {
+			return mData.second;
 		}
 
 		void swap(DataNode<M, true>& o) {
@@ -430,6 +465,9 @@ private:
 			: mData(map.allocate()) {
 			new (mData) value_type(std::forward<Args>(args)...);
 		}
+
+		DataNode(M& map, DataNode<M, false>&& n)
+			: mData(std::move(n.mData)) {}
 
 		void destroy(M& map) {
 			// don't deallocate, just put it into list of datapool.
@@ -455,6 +493,22 @@ private:
 
 		value_type& operator*() {
 			return *mData;
+		}
+
+		typename value_type::first_type& getFirst() {
+			return mData->first;
+		}
+
+		typename value_type::first_type const& getFirst() const {
+			return mData->first;
+		}
+
+		typename value_type::second_type& getSecond() {
+			return mData->second;
+		}
+
+		typename value_type::second_type const& getSecond() const {
+			return mData->second;
 		}
 
 		void swap(DataNode<M, false>& o) {
@@ -890,7 +944,7 @@ public:
 	template <class... Args>
 	std::pair<iterator, bool> emplace(Args&&... args) {
 		Node n{*this, std::forward<Args>(args)...};
-		auto r = doInsertNode(std::move(n));
+		auto r = doInsert(std::move(n));
 		if (!r.second) {
 			// insertion not possible: destroy node
 			n.destroy(*this);
@@ -1126,14 +1180,14 @@ private:
 	template <class Arg>
 	std::pair<iterator, bool> doInsert(Arg&& keyval) {
 		while (true) {
-			size_t idx = keyToIdx(keyval.first);
+			size_t idx = keyToIdx(keyval.getFirst());
 
 			int info = 1;
 			nextWhileLess(info, idx);
 
 			// while we potentially have a match
 			while (info == mInfo[idx]) {
-				if (KeyEqual::operator()(keyval.first, mKeyVals[idx]->first)) {
+				if (KeyEqual::operator()(keyval.getFirst(), mKeyVals[idx]->first)) {
 					// key already exists, do NOT insert.
 					// see http://en.cppreference.com/w/cpp/container/unordered_map/insert
 					return std::make_pair<iterator, bool>(iterator(mKeyVals + idx, mInfo + idx), false);
@@ -1161,55 +1215,6 @@ private:
 
 			// put at empty spot
 			new (mKeyVals + idx) Node(*this, std::forward<Arg>(keyval));
-			mInfo[idx] = insertion_info;
-
-			// bubble down into correct position
-			bubbleDown(idx, insertion_idx);
-
-			++mNumElements;
-			return std::make_pair(iterator(mKeyVals + insertion_idx, mInfo + insertion_idx), true);
-		}
-	}
-
-	// This is exactly the same code as operator[], except for the return values
-	// TODO do not duplicate code from doInsert, but how?
-	std::pair<iterator, bool> doInsertNode(Node&& n) {
-		while (true) {
-			size_t idx = keyToIdx(n->first);
-
-			int info = 1;
-			nextWhileLess(info, idx);
-
-			// while we potentially have a match
-			while (info == mInfo[idx]) {
-				if (KeyEqual::operator()(n->first, mKeyVals[idx]->first)) {
-					// key already exists, do NOT insert.
-					// see http://en.cppreference.com/w/cpp/container/unordered_map/insert
-					return std::make_pair<iterator, bool>(iterator(mKeyVals + idx, mInfo + idx), false);
-				}
-				next(info, idx);
-			}
-
-			// unlikely that this evaluates to true
-			if (mNumElements >= mMaxNumElementsAllowed) {
-				increase_size();
-				continue;
-			}
-
-			// key not found, so we are now exactly where we want to insert it.
-			const size_t insertion_idx = idx;
-			uint8_t insertion_info = info;
-			if (0xFF == insertion_info) {
-				mMaxNumElementsAllowed = 0;
-			}
-
-			// find an empty spot
-			while (0 != mInfo[idx]) {
-				next(info, idx);
-			}
-
-			// put at empty spot
-			new (mKeyVals + idx) Node(std::move(n));
 			mInfo[idx] = insertion_info;
 
 			// bubble down into correct position
