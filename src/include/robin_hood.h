@@ -79,7 +79,7 @@ static inline uint64_t ror64(uint64_t v, int r) {
 	return (v >> r) | (v << (64 - r));
 }
 
-static size_t quickmix(size_t h) {
+static inline size_t quickmix(size_t h) {
 #if ROBIN_HOOD_BITNESS == 64
 	static size_t constexpr const factor = UINT64_C(0x220999681725bc2c);
 #else
@@ -1310,12 +1310,12 @@ private:
 	}
 
 	// members are sorted so no padding occurs
-	Node* mKeyVals = reinterpret_cast<Node*>(reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte) - sizeof(Node)); // 8 byte
-	uint8_t* mInfo = reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte);                                         // 8 byte
-	size_t mNumElements = 0;                                                                                      // 8 byte
-	size_t mMask = 0;                                                                                             // 8 byte
-	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte
-	uint_fast8_t mShift = InitialShiftVal;                                                                        // 1 byte
+	Node* mKeyVals = reinterpret_cast<Node*>(reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte) - sizeof(Node)); // 8 byte  8
+	uint8_t* mInfo = reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte);                                         // 8 byte 16
+	size_t mNumElements = 0;                                                                                      // 8 byte 24
+	size_t mMask = 0;                                                                                             // 8 byte 32
+	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte 40
+	uint_fast8_t mShift = InitialShiftVal;                                                                        // 1 byte 48
 };
 
 template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<Key>>

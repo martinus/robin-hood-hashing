@@ -187,7 +187,7 @@ TEMPLATE_TEST_CASE("1 emplace", "[display]", (std::map<Counter, Counter>), (std:
 	resetStaticCounts();
 }
 
-TEMPLATE_TEST_CASE("10k random emplace & erase", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
+TEMPLATE_TEST_CASE("10k random insert & erase", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
 				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
 
 	printStaticHeaderOnce();
@@ -197,98 +197,22 @@ TEMPLATE_TEST_CASE("10k random emplace & erase", "[display]", (std::map<Counter,
 		Rng rng(321);
 		TestType map;
 		for (size_t i = 0; i < 10000; ++i) {
-			// map[rng(i)] = rng(i);
-			map.emplace(rng(i), rng(i));
-			map.erase(rng(i));
+			for (size_t j = 0; j < 10; ++j) {
+				map[rng(i)] = i;
+				map.erase(rng(i));
+
+				map.emplace(rng(i), i);
+				map.erase(rng(i));
+
+				map.insert(typename TestType::value_type{rng(i), i});
+				map.erase(rng(i));
+			}
 		}
 	}
 
-	printStaticCounts(std::string("10k random insert&erase for ") + name(TestType{}));
+	printStaticCounts(std::string("10k random insert & erase - ") + name(TestType{}));
 	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 	resetStaticCounts();
-}
-
-TEMPLATE_TEST_CASE("10k random operator[] & erase", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
-
-	printStaticHeaderOnce();
-
-	resetStaticCounts();
-	{
-		Rng rng(321);
-		TestType map;
-		for (size_t i = 0; i < 10000; ++i) {
-			map[rng(i)] = rng(i);
-			map.erase(rng(i));
-		}
-	}
-
-	printStaticCounts(std::string("10k random operator[] & erase for ") + name(TestType{}));
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-	resetStaticCounts();
-}
-
-TEMPLATE_TEST_CASE("10k emplace", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
-
-	printStaticHeaderOnce();
-
-	resetStaticCounts();
-	{
-		TestType map;
-		for (int i = 0; i < 10000; ++i) {
-			map.emplace(i, i);
-		}
-	}
-	printStaticCounts(std::string("10k emplace ") + name(TestType{}));
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-	resetStaticCounts();
-}
-
-TEMPLATE_TEST_CASE("10k operator[]", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
-
-	printStaticHeaderOnce();
-
-	resetStaticCounts();
-	{
-		TestType map;
-		for (int i = 0; i < 10000; ++i) {
-			map[i] = i;
-		}
-	}
-
-	printStaticCounts(std::string("10k operator[] ") + name(TestType{}));
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-	resetStaticCounts();
-}
-
-TEMPLATE_TEST_CASE("10k insert", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
-
-	printStaticHeaderOnce();
-
-	resetStaticCounts();
-	{
-		TestType map;
-		for (int i = 0; i < 10000; ++i) {
-			map.insert(typename TestType::value_type{i, i});
-		}
-	}
-	printStaticCounts(std::string("10k insert ") + name(TestType{}));
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
-	resetStaticCounts();
-}
-
-TEMPLATE_TEST_CASE("insert erase", "", (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
-	resetStaticCounts();
-	{
-		TestType map;
-		map.emplace(1, 2);
-		map.emplace(1, 2);
-	}
-	printStaticCounts(std::string("10k insert ") + name(TestType{}));
-	REQUIRE(sCountDtor == sCountCtor + sCountDefaultCtor + sCountCopyCtor + sCountMoveCtor);
 }
 
 #define PRINT_SIZEOF(x, A, B) std::cout << sizeof(x<A, B>) << " bytes for " #x "<" #A ", " #B ">" << std::endl
