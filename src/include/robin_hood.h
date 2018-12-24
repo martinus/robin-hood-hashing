@@ -79,33 +79,6 @@ static inline uint64_t ror64(uint64_t v, int r) {
 	return (v >> r) | (v << (64 - r));
 }
 
-static inline size_t quickmix(size_t h) {
-#if ROBIN_HOOD_BITNESS == 64
-	static size_t constexpr const factor = UINT64_C(0x220999681725bc2c);
-#else
-	static size_t constexpr const factor = UINT32_C(0x728e'a185);
-#endif
-	return factor * h;
-
-#if 0
-	h ^= h >> 33;
-	h *= 0xff51afd7ed558ccd;
-	h ^= h >> 33;
-	h *= 0xc4ceb9fe1a85ec53;
-	h ^= h >> 33;
-	return h;
-#endif
-
-#if 0
-	// from http://mostlymangling.blogspot.com/2018/07/on-mixing-functions-in-fast-splittable.html
-	h ^= ror64(h, 49) ^ ror64(h, 24);
-	h *= 0x9FB21C651E98DF25L;
-	h ^= h >> 28;
-	h *= 0x9FB21C651E98DF25L;
-	return h ^ h >> 28;
-#endif
-}
-
 // Allocates bulks of memory for objects of type T. This deallocates the memory in the destructor, and keeps a linked list of the allocated memory
 // around. Overhead per allocation is the size of a pointer.
 template <class T, size_t MinNumAllocs = 4, size_t MaxNumAllocs = 256>
@@ -349,6 +322,39 @@ struct Pair {
 
 struct is_transparent_tag {};
 
+// A thin wrapper around std::hash, performing a single multiplication to (hopefully) get nicely randomized upper bits, which are used by the
+// unordered_map.
+template <typename T>
+struct hash_fast : public std::hash<T> {
+	size_t operator()(T const& obj) const {
+#if ROBIN_HOOD_BITNESS == 64
+		using u128 = unsigned __int128;
+		// 17305020488 masksum, 82527 geomean for MaxLoadFactor = 128
+		// 234676356088 masksum, 1.22857e+06 geomean for 0xe02b61472f2e2abf 0x90c9f3e278ea1ac7
+		static constexpr const u128 factor = (u128{0xe02b61472f2e2abf} << 64) | 0x90c9f3e278ea1ac7;
+#else
+		static constexpr const uint64_t factor = 0xf6bac76475c201ef;
+#endif
+		return (std::hash<T>::operator()(obj) * factor) >> ROBIN_HOOD_BITNESS;
+	}
+};
+
+// Thin wrapper around std::hash, providing very good mixing of the std::hash function. This uses the MurmurHash3 finalizer, which is quite fast and
+// has extremely good mixing capabilities. Use this if you are unsure of the quality of your hash.
+template <typename T>
+struct hash_safe : public std::hash<T> {
+	size_t operator()(T const& obj) const {
+		// 17196638 swaps, 21068829 equals, capacity=524288
+		size_t h = std::hash<T>::operator()(obj);
+		h ^= (h >> 33);
+		h *= 0xff51afd7ed558ccd;
+		h ^= (h >> 33);
+		h *= 0xc4ceb9fe1a85ec53;
+		h ^= (h >> 33);
+		return h;
+	}
+};
+
 // A highly optimized hashmap implementation, using the Robin Hood algorithm.
 //
 // In most cases, this map should be usable as a drop-in replacement for std::unordered_map, but be about 2x faster in most cases
@@ -376,11 +382,10 @@ template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std:
 		  bool IsDirect = sizeof(Key) + sizeof(T) <= sizeof(void*) * 3 &&
 						  std::is_nothrow_move_constructible<std::pair<Key, T>>::value&& std::is_nothrow_move_assignable<std::pair<Key, T>>::value>
 
-class unordered_map : Hash, KeyEqual, detail::NodeAllocator<detail::Pair<Key, T>, 4, 16384, IsDirect> {
+class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<detail::Pair<Key, T>, 4, 16384, IsDirect> {
 	// configuration defaults
 	static constexpr uint8_t MaxLoadFactor128 = 102; // 1 byte
 	static constexpr size_t InitialNumElements = 4;
-	static constexpr uint8_t InitialShiftVal = sizeof(size_t) * 8 - 1;
 
 	using DataPool = detail::NodeAllocator<detail::Pair<Key, T>, 4, 16384, IsDirect>;
 
@@ -554,7 +559,7 @@ private:
 	// Much better avalanching can be achieved with e.g. Murmur3 finalizer, but it is generally much slower.
 	template <typename HashKey>
 	size_t keyToIdx(HashKey&& key) const {
-		return detail::quickmix(Hash::operator()(key)) >> mShift;
+		return Hash::operator()(key) & mMask;
 	}
 
 	// forwards the index by one, wrapping around at the end
@@ -769,8 +774,7 @@ public:
 		, mInfo(std::move(o.mInfo))
 		, mNumElements(std::move(o.mNumElements))
 		, mMask(std::move(o.mMask))
-		, mMaxNumElementsAllowed(std::move(o.mMaxNumElementsAllowed))
-		, mShift(std::move(o.mShift)) {
+		, mMaxNumElementsAllowed(std::move(o.mMaxNumElementsAllowed)) {
 		// set other's mask to 0 so its destructor won't do anything
 		o.mMask = 0;
 	}
@@ -784,7 +788,6 @@ public:
 			mNumElements = std::move(o.mNumElements);
 			mMask = std::move(o.mMask);
 			mMaxNumElementsAllowed = std::move(o.mMaxNumElementsAllowed);
-			mShift = std::move(o.mShift);
 			Hash::operator=(std::move(static_cast<Hash&>(o)));
 			KeyEqual::operator=(std::move(static_cast<KeyEqual&>(o)));
 			DataPool::operator=(std::move(static_cast<DataPool&>(o)));
@@ -809,7 +812,6 @@ public:
 			mNumElements = o.mNumElements;
 			mMask = o.mMask;
 			mMaxNumElementsAllowed = o.mMaxNumElementsAllowed;
-			mShift = o.mShift;
 			cloneData(o);
 		}
 	}
@@ -839,7 +841,6 @@ public:
 			mNumElements = 0;
 			mMask = 0;
 			mMaxNumElementsAllowed = 0;
-			mShift = InitialShiftVal;
 			return *this;
 		}
 
@@ -864,7 +865,6 @@ public:
 		mNumElements = o.mNumElements;
 		mMask = o.mMask;
 		mMaxNumElementsAllowed = o.mMaxNumElementsAllowed;
-		mShift = o.mShift;
 		cloneData(o);
 
 		return *this;
@@ -878,7 +878,6 @@ public:
 		swap(mNumElements, o.mNumElements);
 		swap(mMask, o.mMask);
 		swap(mMaxNumElementsAllowed, o.mMaxNumElementsAllowed);
-		swap(mShift, o.mShift);
 		swap(static_cast<Hash&>(*this), static_cast<Hash&>(o));
 		swap(static_cast<KeyEqual&>(*this), static_cast<KeyEqual&>(o));
 		// no harm done in swapping datapool
@@ -1101,6 +1100,10 @@ public:
 		return static_cast<float>(size()) / (mMask + 1);
 	}
 
+	size_t mask() const {
+		return mMask;
+	}
+
 private:
 	ROBIN_HOOD_NOINLINE void throwOverflowError() const {
 		throw std::overflow_error("robin_hood::map overflow");
@@ -1110,13 +1113,6 @@ private:
 		mNumElements = 0;
 		mMask = max_elements - 1;
 		mMaxNumElementsAllowed = calcMaxNumElementsAllowed128(max_elements, MaxLoadFactor128);
-
-		auto m = mMask;
-		mShift = sizeof(size_t) * 8;
-		while (m) {
-			--mShift;
-			m >>= 1;
-		}
 
 		// calloc also zeroes everything
 		mKeyVals = reinterpret_cast<Node*>(detail::assertNotNull<std::bad_alloc>(calloc(1, calcNumBytesTotal(max_elements))));
@@ -1315,13 +1311,12 @@ private:
 	size_t mNumElements = 0;                                                                                      // 8 byte 24
 	size_t mMask = 0;                                                                                             // 8 byte 32
 	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte 40
-	uint_fast8_t mShift = InitialShiftVal;                                                                        // 1 byte 48
 };
 
-template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<Key>>
+template <class Key, class T, class Hash = robin_hood::hash_fast<Key>, class KeyEqual = std::equal_to<Key>>
 using flat_map = unordered_map<Key, T, Hash, KeyEqual, true>;
 
-template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<Key>>
+template <class Key, class T, class Hash = robin_hood::hash_fast<Key>, class KeyEqual = std::equal_to<Key>>
 using node_map = unordered_map<Key, T, Hash, KeyEqual, false>;
 
 } // namespace robin_hood

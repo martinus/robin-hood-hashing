@@ -43,7 +43,7 @@ inline uint64_t hash(const M& map) {
 TEMPLATE_TEST_CASE("random insert & erase", "", FlatMap, NodeMap) {
 	Rng rng(123);
 
-	robin_hood::unordered_map<int, int> map;
+	TestType map;
 	for (size_t i = 0; i < 10000; ++i) {
 		map[rng(i)] = rng(i);
 		map.erase(rng(i));
