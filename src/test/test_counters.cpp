@@ -7,8 +7,11 @@
 #include <tuple>
 #include <unordered_map>
 
+// Counter for only swaps & equals. Used for optimizing.
+// Can't use static counters here because I want to do it in parallel.
 class Counter {
 public:
+	static size_t staticDefaultCtor;
 	struct Counts {
 		size_t ctor{};
 		size_t defaultCtor{};
@@ -55,7 +58,9 @@ public:
 	// required for operator[]
 	Counter()
 		: mData(0)
-		, mCounts(nullptr) {}
+		, mCounts(nullptr) {
+		++staticDefaultCtor;
+	}
 
 	Counter(const int& data, Counts& counts)
 		: mData(data)
@@ -84,6 +89,7 @@ public:
 	~Counter() {
 		if (mCounts) {
 			++mCounts->dtor;
+		} else {
 		}
 	}
 
@@ -156,6 +162,8 @@ private:
 	Counts* mCounts;
 };
 
+size_t Counter::staticDefaultCtor = 0;
+
 void swap(Counter& a, Counter& b) {
 	a.swap(b);
 }
@@ -196,7 +204,7 @@ TEMPLATE_TEST_CASE("map ctor & dtor", "[display]", (std::map<Counter, Counter>),
 				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
 
 	Counter::Counts counts;
-	counts.printHeader();
+	// counts.printHeader();
 	{ TestType map; }
 	counts.printCounts(std::string("ctor & dtor ") + name(TestType{}));
 	REQUIRE(counts.dtor == counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
@@ -239,7 +247,8 @@ TEMPLATE_TEST_CASE("10k random insert & erase", "[display]", (std::map<Counter, 
 				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
 
 	Counter::Counts counts;
-	counts.printHeader();
+	// counts.printHeader();
+	Counter::staticDefaultCtor = 0;
 	{
 		Rng rng(321);
 		TestType map;
@@ -257,8 +266,8 @@ TEMPLATE_TEST_CASE("10k random insert & erase", "[display]", (std::map<Counter, 
 		}
 	}
 
-	counts.printCounts(std::string("10k random insert & erase - ") + name(TestType{}));
-	REQUIRE(counts.dtor == counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
+	// counts.printCounts(std::string("10k random insert & erase - ") + name(TestType{}));
+	REQUIRE(counts.dtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
 #define PRINT_SIZEOF(x, A, B) std::cout << sizeof(x<A, B>) << " bytes for " #x "<" #A ", " #B ">" << std::endl
@@ -316,12 +325,14 @@ std::ostream& operator<<(std::ostream& os, hex const& h) {
 }
 
 void showHash(uint64_t val) {
-	auto qm = robin_hood::hash_fast<uint64_t>{}(val);
-	std::cout << hex(64) << val << " -> " << hex(64) << qm << " " << std::bitset<64>(qm) << std::endl;
+	auto sh = std::hash<uint64_t>{}(val);
+	auto hf = robin_hood::hash_fast<uint64_t>{}(val);
+	auto hs = robin_hood::hash_safe<uint64_t>{}(val);
+	std::cout << hex(64) << val << " ->  " << hex(64) << sh << "   " << hex(64) << hf << "   " << hex(64) << hs << std::endl;
 }
 
 TEST_CASE("show hash distribution") {
-	std::cout << "input               output hex       output binary" << std::endl;
+	std::cout << "input                 std::hash            robin_hood::hash_fast robin_hood::hash_safe" << std::endl;
 	for (uint64_t i = 0; i < 16; ++i) {
 		showHash(i);
 	}
