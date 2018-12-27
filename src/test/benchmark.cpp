@@ -3,8 +3,8 @@
 #include <map>
 #include <unordered_map>
 
-TEMPLATE_TEST_CASE("benchmark random insert erase", "[!benchmark]", (robin_hood::flat_map<int, int>), (robin_hood::node_map<int, int>),
-				   (std::unordered_map<int, int>), (std::map<int, int>)) {
+TEMPLATE_TEST_CASE("benchmark random insert erase", "[!benchmark]", (robin_hood::flat_map<uint64_t, int>), (robin_hood::node_map<uint64_t, int>),
+				   (std::unordered_map<uint64_t, int>), (std::map<uint64_t, int>)) {
 	Rng rng(123);
 	TestType map;
 
@@ -32,8 +32,8 @@ TEMPLATE_TEST_CASE("benchmark random insert erase", "[!benchmark]", (robin_hood:
 	}
 	REQUIRE(map.size() == 132147);
 
-	size_t sum_key = 0;
-	size_t sum_val = 0;
+	uint64_t sum_key = 0;
+	uint64_t sum_val = 0;
 	BENCHMARK("iterating") {
 		for (int i = 0; i < 1000; ++i) {
 			for (auto const& kv : map) {
@@ -42,7 +42,11 @@ TEMPLATE_TEST_CASE("benchmark random insert erase", "[!benchmark]", (robin_hood:
 			}
 		}
 	}
+#if ROBIN_HOOD_BITNESS == 64
 	REQUIRE(sum_key + sum_val == 0x778c26a1b4070);
+#else
+	REQUIRE(sum_key + sum_val == 123);
+#endif
 
 	BENCHMARK("clear") {
 		map.clear();

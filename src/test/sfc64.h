@@ -55,12 +55,26 @@ public:
 		return tmp;
 	}
 
-	// this is a bit biased, but for our use case that's not important.
+	template <typename T>
+	T uniform(T i) {
+		return static_cast<T>(operator()(i));
+	}
+
+	template <typename T>
+	T uniform() {
+		return static_cast<T>(operator()());
+	}
+
+	// Uses the java method. A bit slower than 128bit magic from https://arxiv.org/pdf/1805.10941.pdf, but produces the exact same results in both
+	// 32bit and 64 bit.
 	uint64_t operator()(uint64_t boundExcluded) noexcept {
-#ifdef __SIZEOF_INT128__
-		using u128 = unsigned __int128;
-		return (u128(operator()()) * u128(boundExcluded)) >> 64;
-#endif
+		uint64_t x;
+		uint64_t r;
+		do {
+			x = operator()();
+			r = x % boundExcluded;
+		} while (x - r > 0 - boundExcluded);
+		return r;
 	}
 
 	std::array<uint64_t, 4> state() const {

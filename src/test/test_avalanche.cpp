@@ -34,17 +34,17 @@ public:
 		for (uint64_t i = 0; i < num_iters; ++i) {
 			eval_input(m_rng(), op);
 			eval_input(m_count, op);
-			eval_input(m_count << 32, op);
+			eval_input(m_count << sizeof(size_t) * 8 / 2, op);
 			m_count += 3;
 		}
 	}
 
 	// calculate current root mean squared error
 	double rms() const {
-		int const expected_flips = m_count / 2;
+		auto const expected_flips = m_count / 2;
 		double sumtotal2 = 0;
 		for (size_t y = 0; y < 64 * 64; ++y) {
-			double e = m_flip_count[y] - expected_flips;
+			double e = static_cast<double>(m_flip_count[y] - expected_flips);
 			sumtotal2 += e * e;
 		}
 		return std::sqrt(sumtotal2 / (64 * 64));
@@ -104,9 +104,9 @@ public:
 	}
 
 private:
-	std::array<int, 64 * 64> m_flip_count{};
+	std::array<size_t, 64 * 64> m_flip_count{};
 	Rng m_rng{};
-	uint64_t m_count{};
+	size_t m_count{};
 };
 
 #if 0

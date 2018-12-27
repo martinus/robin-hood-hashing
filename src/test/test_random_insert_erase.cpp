@@ -40,34 +40,26 @@ inline uint64_t hash(const M& map) {
 }
 
 // randomly modifies a map and then checks if an std::unordered_map gave the same result.
-TEMPLATE_TEST_CASE("random insert & erase", "", FlatMap, NodeMap) {
+TEMPLATE_TEST_CASE("random insert & erase", "", FlatMap, NodeMap, (std::unordered_map<uint64_t, uint64_t>)) {
 	Rng rng(123);
 
 	TestType map;
-	for (size_t i = 0; i < 10000; ++i) {
+	for (size_t i = 1; i < 10000; ++i) {
 		map[rng(i)] = rng(i);
 		map.erase(rng(i));
 	}
 
 	// number generated with std::unordered_map
-	REQUIRE(hash(map) == UINT64_C(0x1215b1b2d32adfff));
+	REQUIRE(hash(map) == UINT64_C(0x4a95ae7c2a9e9607));
 }
 
 class CtorDtorVerifier {
 public:
-	CtorDtorVerifier(int val)
+	CtorDtorVerifier(uint64_t val)
 		: mVal(val) {
 		REQUIRE(mConstructedAddresses.insert(this).second);
 		if (mDoPrintDebugInfo) {
-			std::cout << this << " ctor(int) " << mConstructedAddresses.size() << std::endl;
-		}
-	}
-
-	CtorDtorVerifier(size_t val)
-		: mVal(static_cast<int>(val)) {
-		REQUIRE(mConstructedAddresses.insert(this).second);
-		if (mDoPrintDebugInfo) {
-			std::cout << this << " ctor(size_t) " << mConstructedAddresses.size() << std::endl;
+			std::cout << this << " ctor(uint64_t) " << mConstructedAddresses.size() << std::endl;
 		}
 	}
 
@@ -120,7 +112,7 @@ public:
 		return mVal == o.mVal;
 	}
 
-	int val() const {
+	uint64_t val() const {
 		return mVal;
 	}
 
@@ -141,7 +133,7 @@ public:
 	}
 
 private:
-	int mVal;
+	uint64_t mVal;
 	static std::unordered_set<CtorDtorVerifier const*> mConstructedAddresses;
 	static bool mDoPrintDebugInfo;
 };
@@ -175,8 +167,8 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 	REQUIRE(it.first->second.val() == 123);
 	REQUIRE(rhhs.size() == 1);
 
-	const int times = 10000;
-	for (int i = 0; i < times; ++i) {
+	const uint64_t times = 10000;
+	for (uint64_t i = 0; i < times; ++i) {
 		std::pair<typename Map::iterator, bool> it = rhhs.insert(typename Map::value_type(i * 4, i));
 
 		REQUIRE(it.second);
@@ -190,7 +182,7 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 	}
 
 	// check if everything can be found
-	for (int i = 0; i < times; ++i) {
+	for (uint64_t i = 0; i < times; ++i) {
 		typename Map::iterator found = rhhs.find(i * 4);
 		REQUIRE(rhhs.end() != found);
 		REQUIRE(found->second.val() == i);
@@ -198,21 +190,21 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 	}
 
 	// check non-elements
-	for (int i = 0; i < times; ++i) {
+	for (uint64_t i = 0; i < times; ++i) {
 		typename Map::iterator found = rhhs.find((i + times) * 4);
 		REQUIRE(rhhs.end() == found);
 	}
 
 	// random test against std::unordered_map
 	rhhs.clear();
-	std::unordered_map<int, int> uo;
+	std::unordered_map<uint64_t, uint64_t> uo;
 
 	Rng gen(123);
 
-	for (int i = 0; i < times; ++i) {
-		int r = gen(times / 4);
-		std::pair<typename Map::iterator, bool> rhh_it = rhhs.insert(typename Map::value_type(r, r * 2));
-		std::pair<std::unordered_map<int, int>::iterator, bool> uo_it = uo.insert(std::make_pair(r, r * 2));
+	for (uint64_t i = 0; i < times; ++i) {
+		auto r = gen(times / 4);
+		auto rhh_it = rhhs.insert(typename Map::value_type(r, r * 2));
+		auto uo_it = uo.insert(std::make_pair(r, r * 2));
 		REQUIRE(rhh_it.second == uo_it.second);
 		REQUIRE(rhh_it.first->first.val() == uo_it.first->first);
 		REQUIRE(rhh_it.first->second.val() == uo_it.first->second);
@@ -220,7 +212,7 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 
 		r = gen(times / 4);
 		typename Map::iterator rhhsIt = rhhs.find(r);
-		std::unordered_map<int, int>::iterator uoIt = uo.find(r);
+		auto uoIt = uo.find(r);
 		REQUIRE((rhhs.end() == rhhsIt) == (uo.end() == uoIt));
 		if (rhhs.end() != rhhsIt) {
 			REQUIRE(rhhsIt->first.val() == uoIt->first);
@@ -230,8 +222,8 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 
 	uo.clear();
 	rhhs.clear();
-	for (int i = 0; i < times; ++i) {
-		const int r = gen(times / 4);
+	for (uint64_t i = 0; i < times; ++i) {
+		const auto r = gen(times / 4);
 		rhhs[r] = r * 2;
 		uo[r] = r * 2;
 		REQUIRE(rhhs.find(r)->second.val() == uo.find(r)->second);
@@ -284,18 +276,19 @@ TEMPLATE_TEST_CASE("assign, iterate, clear", "", FlatMapVerifier, NodeMapVerifie
 	REQUIRE(CtorDtorVerifier::mapSize() == 0);
 }
 
-TEMPLATE_TEST_CASE("random insert & erase with Verifier", "", FlatMapVerifier, NodeMapVerifier) {
+TEMPLATE_TEST_CASE("random insert & erase with Verifier", "", FlatMapVerifier, NodeMapVerifier,
+				   (std::unordered_map<CtorDtorVerifier, CtorDtorVerifier>)) {
 	Rng rng(123);
 
 	TestType map;
-	for (size_t i = 0; i < 10000; ++i) {
+	for (size_t i = 1; i < 10000; ++i) {
 		map[rng(i)] = rng(i);
 		map.erase(rng(i));
 	}
 
 	INFO("map size is " << CtorDtorVerifier::mapSize());
 	REQUIRE(CtorDtorVerifier::mapSize() == 6620);
-	REQUIRE(hash(map) == UINT64_C(0xa1931649d033a499));
+	REQUIRE(hash(map) == UINT64_C(0xc01704b919454607));
 	map.clear();
 
 	REQUIRE(CtorDtorVerifier::mapSize() == 0);

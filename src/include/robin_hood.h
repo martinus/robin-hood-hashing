@@ -325,19 +325,77 @@ struct is_transparent_tag {};
 // A thin wrapper around std::hash, performing a single multiplication to (hopefully) get nicely randomized upper bits, which are used by the
 // unordered_map.
 template <typename T>
-struct hash_fast : public std::hash<T> {
+class hash : public std::hash<T> {
+public:
 	size_t operator()(T const& obj) const {
-#if ROBIN_HOOD_BITNESS == 64
-		using u128 = unsigned __int128;
-		// 17305020488 masksum, 82527 geomean for MaxLoadFactor = 128
-		// 234676356088 masksum, 1.22857e+06 geomean for 0xe02b61472f2e2abf 0x90c9f3e278ea1ac7
-		static constexpr const u128 factor = (u128{0xe02b61472f2e2abf} << 64) | 0x90c9f3e278ea1ac7;
-#else
-		static constexpr const uint64_t factor = 0xf6bac76475c201ef;
-#endif
-		return (std::hash<T>::operator()(obj) * factor) >> ROBIN_HOOD_BITNESS;
+		return std::hash<T>::operator()(obj);
 	}
 };
+
+template <>
+class hash<uint64_t> {
+public:
+	size_t operator()(uint64_t const& obj) const {
+#ifdef __SIZEOF_INT128__
+		static constexpr const auto factor = ((unsigned __int128){0xe02b61472f2e2abf} << 64) | 0x90c9f3e278ea1ac7;
+		return static_cast<size_t>((factor * (unsigned __int128)obj) >> 64);
+#else
+		// murmurhash 3 finalizer
+		uint64_t h = obj;
+		h ^= h >> 33;
+		h *= 0xff51afd7ed558ccd;
+		h ^= h >> 33;
+		h *= 0xc4ceb9fe1a85ec53;
+		h ^= h >> 33;
+		return static_cast<size_t>(h);
+#endif
+	}
+};
+
+template <>
+class hash<uint32_t> {
+public:
+	size_t operator()(uint32_t const& h) const {
+#if ROBIN_HOOD_BITNESS == 32
+		static constexpr uint64_t factor = 0xe02b61472f2e2abf;
+		return static_cast<size_t>((factor * h) >> 32);
+#else
+		return hash<uint64_t>{}(h);
+#endif
+	}
+};
+
+/*
+// integral types simply used with multiplicative hashing
+template <typename Arg>
+typename std::enable_if_t<std::is_integral<Arg>::value, size_t> doHash(Arg const& obj) const {
+	static constexpr uint64_t ah = 0xe02b61472f2e2abf;
+	static constexpr uint64_t al = 0x90c9f3e278ea1ac7;
+#if ROBIN_HOOD_BITNESS == 64
+	static constexpr const unsigned __int128 factor = (u128{ah} << 64) | al;
+	return (factor * obj) >> 64;
+#else
+	// from https://stackoverflow.com/a/22847373/48181
+	uint64_t bl = obj;
+	uint64_t p0 = al * bl;
+	uint64_t p2 = ah * bl;
+
+	return (p2 >> 32) + (((p0 >> 32) + (uint32_t)p2) >> 32);
+	// can't use 128bit multiplication
+#endif
+}
+
+// non-integral types use std::hash, without any modifications. Hopefully it's good enough.
+template <typename Arg>
+typename std::enable_if_t<!std::is_integral<Arg>::value, size_t> doHash(Arg const& obj) const {
+	return std::hash<Arg>::operator()(obj);
+}
+
+public:
+size_t operator()(T const& obj) const {
+	return doHash<T>(obj);
+}
+}; // namespace robin_hood
 
 // Thin wrapper around std::hash, providing very good mixing of the std::hash function. This uses the MurmurHash3 finalizer, which is quite fast and
 // has extremely good mixing capabilities. Use this if you are unsure of the quality of your hash.
@@ -346,15 +404,23 @@ struct hash_safe : public std::hash<T> {
 	size_t operator()(T const& obj) const {
 		// 17196638 swaps, 21068829 equals, capacity=524288
 		size_t h = std::hash<T>::operator()(obj);
+#if ROBIN_HOOD_BITNESS == 64
 		h ^= (h >> 33);
-		h *= 0xff51afd7ed558ccd;
+		h *= UINT64_C(0xff51afd7ed558ccd);
 		h ^= (h >> 33);
-		h *= 0xc4ceb9fe1a85ec53;
+		h *= UINT64_C(0xc4ceb9fe1a85ec53);
 		h ^= (h >> 33);
+#else
+		h ^= h >> 16;
+		h *= 0x85ebca6b;
+		h ^= h >> 13;
+		h *= 0xc2b2ae35;
+		h ^= h >> 16;
+#endif
 		return h;
 	}
 };
-
+*/
 // A highly optimized hashmap implementation, using the Robin Hood algorithm.
 //
 // In most cases, this map should be usable as a drop-in replacement for std::unordered_map, but be about 2x faster in most cases
@@ -663,7 +729,7 @@ private:
 
 		// key not found, so we are now exactly where we want to insert it.
 		const size_t insertion_idx = idx;
-		uint8_t insertion_info = info;
+		uint8_t insertion_info = static_cast<uint8_t>(info);
 		if (0xFF == insertion_info) {
 			mMaxNumElementsAllowed = 0;
 		}
@@ -1026,7 +1092,7 @@ public:
 		size_t idx = pos.mKeyVals - mKeyVals;
 		size_t nextIdx = (idx + 1) & mMask;
 		while (mInfo[nextIdx] > 1) {
-			mInfo[idx] = mInfo[nextIdx] - 1;
+			mInfo[idx] = (uint8_t)(mInfo[nextIdx] - 1);
 			mKeyVals[idx].swap(mKeyVals[nextIdx]);
 			idx = nextIdx;
 			nextIdx = (idx + 1) & mMask;
@@ -1059,7 +1125,7 @@ public:
 				// until we find one that is either empty or has zero offset.
 				size_t nextIdx = (idx + 1) & mMask;
 				while (mInfo[nextIdx] > 1) {
-					mInfo[idx] = mInfo[nextIdx] - 1;
+					mInfo[idx] = (uint8_t)(mInfo[nextIdx] - 1);
 					mKeyVals[idx].swap(mKeyVals[nextIdx]);
 					idx = nextIdx;
 					nextIdx = (idx + 1) & mMask;
@@ -1147,7 +1213,7 @@ private:
 
 			// key not found, so we are now exactly where we want to insert it.
 			size_t const insertion_idx = idx;
-			uint8_t const insertion_info = info;
+			uint8_t const insertion_info = static_cast<uint8_t>(info);
 			if (0xFF == insertion_info) {
 				// might overflow next time, set to 0 so we increase size next time
 				mMaxNumElementsAllowed = 0;
@@ -1199,7 +1265,7 @@ private:
 
 			// key not found, so we are now exactly where we want to insert it.
 			const size_t insertion_idx = idx;
-			uint8_t insertion_info = info;
+			uint8_t insertion_info = static_cast<uint8_t>(info);
 			if (0xFF == insertion_info) {
 				mMaxNumElementsAllowed = 0;
 			}
@@ -1313,10 +1379,10 @@ private:
 	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte 40
 };
 
-template <class Key, class T, class Hash = robin_hood::hash_fast<Key>, class KeyEqual = std::equal_to<Key>>
+template <class Key, class T, class Hash = robin_hood::hash<Key>, class KeyEqual = std::equal_to<Key>>
 using flat_map = unordered_map<Key, T, Hash, KeyEqual, true>;
 
-template <class Key, class T, class Hash = robin_hood::hash_fast<Key>, class KeyEqual = std::equal_to<Key>>
+template <class Key, class T, class Hash = robin_hood::hash<Key>, class KeyEqual = std::equal_to<Key>>
 using node_map = unordered_map<Key, T, Hash, KeyEqual, false>;
 
 } // namespace robin_hood
