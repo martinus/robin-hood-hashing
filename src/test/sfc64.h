@@ -65,9 +65,33 @@ public:
 		return static_cast<T>(operator()());
 	}
 
+	uint64_t multhi64(uint64_t const a, uint64_t const b) {
+		uint64_t a_lo = (uint32_t)a;
+		uint64_t a_hi = a >> 32;
+		uint64_t b_lo = (uint32_t)b;
+		uint64_t b_hi = b >> 32;
+
+		uint64_t a_x_b_hi = a_hi * b_hi;
+		uint64_t a_x_b_mid = a_hi * b_lo;
+		uint64_t b_x_a_mid = b_hi * a_lo;
+		uint64_t a_x_b_lo = a_lo * b_lo;
+
+		uint64_t carry_bit = ((uint64_t)(uint32_t)a_x_b_mid + (uint64_t)(uint32_t)b_x_a_mid + (a_x_b_lo >> 32)) >> 32;
+
+		uint64_t multhi = a_x_b_hi + (a_x_b_mid >> 32) + (b_x_a_mid >> 32) + carry_bit;
+
+		return multhi;
+	}
+
 	// Uses the java method. A bit slower than 128bit magic from https://arxiv.org/pdf/1805.10941.pdf, but produces the exact same results in both
 	// 32bit and 64 bit.
 	uint64_t operator()(uint64_t boundExcluded) noexcept {
+#ifdef __SIZEOF_INT128__
+		return (uint64_t)(((unsigned __int128)operator()() * (unsigned __int128)boundExcluded) >> 64);
+#else
+		return multhi64(operator()(), boundExcluded);
+#endif
+		/*
 		uint64_t x;
 		uint64_t r;
 		do {
@@ -75,6 +99,7 @@ public:
 			r = x % boundExcluded;
 		} while (x - r > 0 - boundExcluded);
 		return r;
+		*/
 	}
 
 	std::array<uint64_t, 4> state() const {

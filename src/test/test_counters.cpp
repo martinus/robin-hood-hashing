@@ -62,7 +62,7 @@ public:
 		++staticDefaultCtor;
 	}
 
-	Counter(const uint64_t& data, Counts& counts)
+	Counter(const size_t& data, Counts& counts)
 		: mData(data)
 		, mCounts(&counts) {
 		if (mCounts) {
@@ -127,14 +127,14 @@ public:
 		return *this;
 	}
 
-	uint64_t const& get() const {
+	size_t const& get() const {
 		if (mCounts) {
 			++mCounts->constGet;
 		}
 		return mData;
 	}
 
-	uint64_t& get() {
+	size_t& get() {
 		if (mCounts) {
 			++mCounts->get;
 		}
@@ -150,7 +150,7 @@ public:
 		}
 	}
 
-	uint64_t getForHash() const {
+	size_t getForHash() const {
 		if (mCounts) {
 			++mCounts->hash;
 		}
@@ -158,7 +158,7 @@ public:
 	}
 
 private:
-	uint64_t mData;
+	size_t mData;
 	Counts* mCounts;
 };
 
@@ -252,16 +252,16 @@ TEMPLATE_TEST_CASE("10k random insert & erase", "[display]", (std::map<Counter, 
 	{
 		Rng rng(321);
 		TestType map;
-		for (uint64_t i = 1; i < 10000; ++i) {
-			for (uint64_t j = 0; j < 10; ++j) {
-				map[Counter{rng(i), counts}] = Counter{i, counts};
-				map.erase(Counter{rng(i), counts});
+		for (size_t i = 1; i < 10000; ++i) {
+			for (size_t j = 0; j < 10; ++j) {
+				map[Counter{rng.uniform<size_t>(i), counts}] = Counter{i, counts};
+				map.erase(Counter{rng.uniform<size_t>(i), counts});
 
-				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng(i), counts), std::forward_as_tuple(i, counts));
-				map.erase(Counter{rng(i), counts});
+				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(i), counts), std::forward_as_tuple(i, counts));
+				map.erase(Counter{rng.uniform<size_t>(i), counts});
 
-				map.insert(typename TestType::value_type{Counter{rng(i), counts}, Counter{i, counts}});
-				map.erase(Counter{rng(i), counts});
+				map.insert(typename TestType::value_type{Counter{rng.uniform<size_t>(i), counts}, Counter{i, counts}});
+				map.erase(Counter{rng.uniform<size_t>(i), counts});
 			}
 		}
 	}
@@ -324,27 +324,28 @@ std::ostream& operator<<(std::ostream& os, hex const& h) {
 	return os;
 }
 
-void showHash(uint64_t val) {
-	auto sh = std::hash<uint64_t>{}(val);
-	auto rh = robin_hood::hash<uint64_t>{}(val);
-	std::cout << hex(64) << val << " ->  " << hex(64) << sh << "   " << hex(64) << rh << std::endl;
+void showHash(size_t val) {
+	auto sh = std::hash<size_t>{}(val);
+	auto rh = robin_hood::hash<size_t>{}(val);
+	std::cout << hex(ROBIN_HOOD_BITNESS) << val << " ->  " << hex(ROBIN_HOOD_BITNESS) << sh << "   " << hex(ROBIN_HOOD_BITNESS) << rh << std::endl;
 }
 
 TEST_CASE("show hash distribution") {
-	std::cout << "input                 std::hash            robin_hood::hash_fast" << std::endl;
-	for (uint64_t i = 0; i < 16; ++i) {
+	std::cout << "input                 std::hash            robin_hood::hash" << std::endl;
+	for (size_t i = 0; i < 16; ++i) {
 		showHash(i);
 	}
 
-	for (uint64_t i = 0; i < 5; ++i) {
-		showHash(0x000023d700000063ULL + i * 0x100000000ULL);
+	for (size_t i = 0; i < 10; ++i) {
+		size_t s = ((0x23d7 + i) << (ROBIN_HOOD_BITNESS / 2)) + (size_t)63;
+		showHash(s);
 	}
 
-	for (uint64_t i = 0; i < 5; ++i) {
-		showHash(i * 0x1000000000000000ULL);
+	for (size_t i = 1; i < 8; ++i) {
+		showHash(i * ((size_t)1 << (ROBIN_HOOD_BITNESS - 4)));
 	}
 
-	for (uint64_t i = 1; i != 0; i *= 2) {
+	for (size_t i = 1; i != 0; i *= 2) {
 		showHash(i);
 	}
 }
@@ -352,8 +353,14 @@ TEST_CASE("show hash distribution") {
 struct ConfigurableCounterHash {
 
 	// 234679895032 masksum, 1.17938e+06 geomean for 0xbdcbaec81634e906 0xa309d159626eef52
-	ConfigurableCounterHash()
-		: m_values{UINT64_C(0xe02b61472f2e2abf), UINT64_C(0x90c9f3e278ea1ac7)} {}
+	ConfigurableCounterHash() {
+#if ROBIN_HOOD_BITNESS == 64
+		m_values[0] = UINT64_C(0xb3e739ce9947bb0d);
+		m_values[1] = UINT64_C(0xa5f287615c7098e6);
+#else
+		m_values[0] = UINT64_C(0xa1ac131cae0b3f71);
+#endif
+	}
 
 	ConfigurableCounterHash(ConfigurableCounterHash&& o) = default;
 	ConfigurableCounterHash(ConfigurableCounterHash const& o) = default;
@@ -362,30 +369,9 @@ struct ConfigurableCounterHash {
 		m_values = std::move(o.m_values);
 		return *this;
 	}
-	/*
-		// integral types simply used with multiplicative hashing
-		template <typename Arg>
-		typename std::enable_if_t<std::is_integral<Arg>::value, size_t> doHash(Arg const& obj) const {
-			uint64_t const h = static_cast<uint64_t>(obj);
-	#if ROBIN_HOOD_BITNESS == 64
-			unsigned __int128 factor = (static_cast<unsigned __int128>(m_values[0]) << 64) | m_values[1];
-	#else
-			uint64_t const factor = m_values[0];
-			return h;
-	#endif
-			size_t result = static_cast<size_t>((h * factor) >> ROBIN_HOOD_BITNESS);
-			return result;
-		}
-
-		// non-integral types use std::hash, without any modifications. Hopefully it's good enough.
-		template <typename Arg>
-		typename std::enable_if_t<!std::is_integral<Arg>::value, size_t> doHash(Arg const& obj) const {
-			return std::hash<Arg>::operator()(obj);
-		}
-		*/
 
 	size_t operator()(Counter const& c) const {
-		uint64_t const h = static_cast<uint64_t>(c.getForHash());
+		size_t const h = c.getForHash();
 #if ROBIN_HOOD_BITNESS == 64
 		unsigned __int128 const factor = (static_cast<unsigned __int128>(m_values[0]) << 64) | m_values[1];
 #else
@@ -395,8 +381,13 @@ struct ConfigurableCounterHash {
 		return result;
 	}
 
+#if ROBIN_HOOD_BITNESS == 64
 	std::array<uint64_t, 2> m_values;
 	const std::array<uint64_t, 2> m_max_values = {UINT64_C(-1), UINT64_C(-1)};
+#else
+	std::array<uint64_t, 1> m_values;
+	const std::array<uint64_t, 1> m_max_values = {UINT64_C(-1)};
+#endif
 };
 
 template <size_t S>
@@ -413,7 +404,7 @@ void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandBool<>& rbool) {
 }
 
 template <typename A>
-void eval(size_t const iters, A const& current_values, size_t& num_usecases, size_t& current_mask_sum, double& current_ops_sum) {
+void eval(size_t const iters, A const& current_values, size_t& num_usecases, uint64_t& current_mask_sum, double& current_ops_sum) {
 	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash>;
 	try {
 		Rng rng(iters * 0x135ff36020fe2455);
@@ -421,37 +412,37 @@ void eval(size_t const iters, A const& current_values, size_t& num_usecases, siz
 
 		Counter::Counts counts;
 
-		uint64_t const num_iters = 50000;
+		uint64_t const num_iters = 70000;
 		Map map;
 		map.m_values = current_values;
 		for (size_t i = 0; i < num_iters; ++i) {
-			map[Counter{rng(i + 1), counts}] = Counter{rng(i + 1), counts};
-			map.erase(Counter{rng(i + 1), counts});
+			map[Counter{rng.uniform<size_t>(i + 1), counts}] = Counter{rng.uniform<size_t>(i + 1), counts};
+			map.erase(Counter{rng.uniform<size_t>(i + 1), counts});
 			current_mask_sum += map.mask();
 		}
-		current_ops_sum += std::log(counts.swaps + counts.equals);
+		current_ops_sum += std::log(counts.swaps + counts.equals + counts.hash);
 		++num_usecases;
 
 		counts.reset();
 		map = Map{};
 		map.m_values = current_values;
 		for (size_t i = 0; i < num_iters; ++i) {
-			map.emplace(std::piecewise_construct, std::forward_as_tuple(rng(), counts), std::forward_as_tuple(i, counts));
+			map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts), std::forward_as_tuple(i, counts));
 			current_mask_sum += map.mask();
 		}
-		current_ops_sum += std::log(counts.swaps + counts.equals);
+		current_ops_sum += std::log(counts.swaps + counts.equals + counts.hash);
 		++num_usecases;
 
 		counts.reset();
 		map = Map{};
 		map.m_values = current_values;
 		for (size_t i = 0; i < num_iters; ++i) {
-			map.emplace(std::piecewise_construct, std::forward_as_tuple(rng(10000) << (ROBIN_HOOD_BITNESS / 2), counts),
+			map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts),
 						std::forward_as_tuple(i, counts));
-			map.erase(Counter{rng(10000) << (ROBIN_HOOD_BITNESS / 2), counts});
+			map.erase(Counter{rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts});
 			current_mask_sum += map.mask();
 		}
-		current_ops_sum += std::log(counts.swaps + counts.equals);
+		current_ops_sum += std::log(counts.swaps + counts.equals + counts.hash);
 		++num_usecases;
 
 		// shifted data
@@ -459,37 +450,37 @@ void eval(size_t const iters, A const& current_values, size_t& num_usecases, siz
 		map = Map{};
 		static const size_t maxVal = 100000;
 		try {
-			for (uint64_t i = 0; i < num_iters / 8; ++i) {
-				int shift_inc = 8;
-				map[Counter{rng(maxVal), counts}] = Counter{i, counts};
+			for (size_t i = 0; i < num_iters / 8; ++i) {
+				int shift_inc = ROBIN_HOOD_BITNESS / 8;
+				map[Counter{rng.uniform<size_t>(maxVal), counts}] = Counter{i, counts};
 				current_mask_sum += map.mask();
-				map[Counter{rng(maxVal) << shift_inc, counts}] = Counter{i, counts};
+				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc, counts}] = Counter{i, counts};
 				current_mask_sum += map.mask();
-				map[Counter{rng(maxVal) << shift_inc * 2, counts}] = Counter{i, counts};
+				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 2, counts}] = Counter{i, counts};
 				current_mask_sum += map.mask();
-				map[Counter{rng(maxVal) << shift_inc * 3, counts}] = Counter{i, counts};
+				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 3, counts}] = Counter{i, counts};
 				current_mask_sum += map.mask();
-				map[Counter{rng(maxVal) << shift_inc * 4, counts}] = Counter{i, counts};
+				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 4, counts}] = Counter{i, counts};
 				current_mask_sum += map.mask();
-				map[Counter{rng(maxVal) << shift_inc * 5, counts}] = Counter{i, counts};
+				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 5, counts}] = Counter{i, counts};
 				current_mask_sum += map.mask();
-				map[Counter{rng(maxVal) << shift_inc * 6, counts}] = Counter{i, counts};
+				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 6, counts}] = Counter{i, counts};
 				current_mask_sum += map.mask();
-				map[Counter{rng(maxVal) << shift_inc * 7, counts}] = Counter{i, counts};
+				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 7, counts}] = Counter{i, counts};
 				current_mask_sum += map.mask();
-				map.erase(Counter{rng(maxVal), counts});
-				map.erase(Counter{rng(maxVal) << shift_inc, counts});
-				map.erase(Counter{rng(maxVal) << shift_inc * 2, counts});
-				map.erase(Counter{rng(maxVal) << shift_inc * 3, counts});
-				map.erase(Counter{rng(maxVal) << shift_inc * 4, counts});
-				map.erase(Counter{rng(maxVal) << shift_inc * 5, counts});
-				map.erase(Counter{rng(maxVal) << shift_inc * 6, counts});
-				map.erase(Counter{rng(maxVal) << shift_inc * 7, counts});
+				map.erase(Counter{rng.uniform<size_t>(maxVal), counts});
+				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc, counts});
+				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 2, counts});
+				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 3, counts});
+				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 4, counts});
+				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 5, counts});
+				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 6, counts});
+				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 7, counts});
 			}
 		} catch (std::overflow_error const&) {
 			std::cout << "asdf" << std::endl;
 		}
-		current_ops_sum += std::log(counts.swaps + counts.equals);
+		current_ops_sum += std::log(counts.swaps + counts.equals + counts.hash);
 		++num_usecases;
 
 		// just sequential insertion
@@ -500,7 +491,7 @@ void eval(size_t const iters, A const& current_values, size_t& num_usecases, siz
 			map.emplace(std::piecewise_construct, std::forward_as_tuple(i, counts), std::forward_as_tuple(i, counts));
 			current_mask_sum += map.mask();
 		}
-		current_ops_sum += std::log(counts.swaps + counts.equals);
+		current_ops_sum += std::log(counts.swaps + counts.equals + counts.hash);
 		++num_usecases;
 
 		// sequential shifted
@@ -511,10 +502,10 @@ void eval(size_t const iters, A const& current_values, size_t& num_usecases, siz
 			map.emplace(std::piecewise_construct, std::forward_as_tuple(i << ROBIN_HOOD_BITNESS / 2, counts), std::forward_as_tuple(i, counts));
 			current_mask_sum += map.mask();
 		}
-		current_ops_sum += std::log(counts.swaps + counts.equals);
+		current_ops_sum += std::log(counts.swaps + counts.equals + counts.hash);
 		++num_usecases;
 	} catch (std::overflow_error const&) {
-		current_mask_sum += (std::numeric_limits<size_t>::max)() / 100;
+		current_mask_sum += (std::numeric_limits<uint64_t>::max)() / 100;
 		current_ops_sum += (std::numeric_limits<double>::max)() / 100;
 		++num_usecases;
 	}
@@ -530,14 +521,14 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 	for (size_t i = 0; i < best_values.size(); ++i) {
 		best_values[i] = factorRng();
 	}
-	size_t best_mask_sum = (std::numeric_limits<size_t>::max)();
+	uint64_t best_mask_sum = (std::numeric_limits<uint64_t>::max)();
 	double best_ops_sum = (std::numeric_limits<double>::max)();
 
 	auto current_values = best_values;
 	while (true) {
 
 		size_t num_usecases = 0;
-		size_t current_mask_sum = 0;
+		uint64_t current_mask_sum = 0;
 		double current_ops_sum = 0;
 #pragma omp parallel for reduction(+ : num_usecases, current_mask_sum, current_ops_sum)
 		for (size_t iters = 0; iters < 12 * 4; ++iters) {

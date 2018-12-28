@@ -50,7 +50,7 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMap, NodeMap, (std::unordere
 	}
 
 	// number generated with std::unordered_map
-	REQUIRE(hash(map) == UINT64_C(0x4a95ae7c2a9e9607));
+	REQUIRE(hash(map) == UINT64_C(0x9376fa0b6ce8e992));
 }
 
 class CtorDtorVerifier {
@@ -287,8 +287,8 @@ TEMPLATE_TEST_CASE("random insert & erase with Verifier", "", FlatMapVerifier, N
 	}
 
 	INFO("map size is " << CtorDtorVerifier::mapSize());
-	REQUIRE(CtorDtorVerifier::mapSize() == 6620);
-	REQUIRE(hash(map) == UINT64_C(0xc01704b919454607));
+	REQUIRE(CtorDtorVerifier::mapSize() == 6572);
+	REQUIRE(hash(map) == UINT64_C(0x8597d8e9afc1259b));
 	map.clear();
 
 	REQUIRE(CtorDtorVerifier::mapSize() == 0);

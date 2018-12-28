@@ -332,12 +332,14 @@ public:
 	}
 };
 
+// specialization used for uint64_t and int64_t. Uses 128bit multiplication
 template <>
 class hash<uint64_t> {
 public:
 	size_t operator()(uint64_t const& obj) const {
 #ifdef __SIZEOF_INT128__
-		static constexpr const auto factor = ((unsigned __int128){0xe02b61472f2e2abf} << 64) | 0x90c9f3e278ea1ac7;
+		// 930566152204 masksum, 322103 geomean for 0xb3e739ce9947bb0d 0xa5f287615c7098e6
+		static constexpr const auto factor = ((unsigned __int128){0xb3e739ce9947bb0d} << 64) | 0xa5f287615c7098e6;
 		return static_cast<size_t>((factor * (unsigned __int128)obj) >> 64);
 #else
 		// murmurhash 3 finalizer
@@ -353,6 +355,14 @@ public:
 };
 
 template <>
+class hash<int64_t> {
+public:
+	size_t operator()(int64_t const& obj) const {
+		return hash<uint64_t>{}(obj);
+	}
+};
+
+template <>
 class hash<uint32_t> {
 public:
 	size_t operator()(uint32_t const& h) const {
@@ -362,6 +372,14 @@ public:
 #else
 		return hash<uint64_t>{}(h);
 #endif
+	}
+};
+
+template <>
+class hash<int32_t> {
+public:
+	size_t operator()(int32_t const& obj) const {
+		return hash<uint32_t>{}(obj);
 	}
 };
 
