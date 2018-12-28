@@ -1,4 +1,4 @@
-BITNESS = -m32
+#BITNESS = -m32
 CXX = ccache g++ ${BITNESS} -std=c++14 -Wall -Werror -fdiagnostics-color -Wconversion
 LD = $(CXX)
 

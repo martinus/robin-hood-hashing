@@ -405,7 +405,7 @@ void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandBool<>& rbool) {
 
 template <typename A>
 void eval(size_t const iters, A const& current_values, size_t& num_usecases, uint64_t& current_mask_sum, double& current_ops_sum) {
-	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash>;
+	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash, std::equal_to<Counter>, 128>;
 	try {
 		Rng rng(iters * 0x135ff36020fe2455);
 		// Rng rng(iters);
@@ -515,7 +515,7 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 	Rng factorRng(std::random_device{}());
 	RandBool<> rbool;
 
-	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash>;
+	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash, std::equal_to<Counter>, 128>;
 	Map startup_map;
 	auto best_values = startup_map.m_values;
 	for (size_t i = 0; i < best_values.size(); ++i) {

@@ -464,11 +464,10 @@ template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std:
 		  // Use direct map only when move does not throw, so swap and resize is possible without copying stuff.
 		  // also make sure data is not too large, then swap might be slow.
 		  bool IsDirect = sizeof(Key) + sizeof(T) <= sizeof(void*) * 3 &&
-						  std::is_nothrow_move_constructible<std::pair<Key, T>>::value&& std::is_nothrow_move_assignable<std::pair<Key, T>>::value>
-
+						  std::is_nothrow_move_constructible<std::pair<Key, T>>::value&& std::is_nothrow_move_assignable<std::pair<Key, T>>::value,
+		  uint8_t MaxLoadFactor128 = 102>
 class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<detail::Pair<Key, T>, 4, 16384, IsDirect> {
 	// configuration defaults
-	static constexpr uint8_t MaxLoadFactor128 = 102; // 1 byte
 	static constexpr size_t InitialNumElements = 4;
 
 	using DataPool = detail::NodeAllocator<detail::Pair<Key, T>, 4, 16384, IsDirect>;
@@ -480,7 +479,7 @@ public:
 	using size_type = size_t;
 	using hasher = Hash;
 	using key_equal = KeyEqual;
-	using Self = unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect>;
+	using Self = unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect, MaxLoadFactor128>;
 
 private:
 	// Primary template for the data node. We have special implementations for small and big objects.
@@ -1397,11 +1396,11 @@ private:
 	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte 40
 };
 
-template <class Key, class T, class Hash = robin_hood::hash<Key>, class KeyEqual = std::equal_to<Key>>
-using flat_map = unordered_map<Key, T, Hash, KeyEqual, true>;
+template <class Key, class T, class Hash = robin_hood::hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor128 = 102>
+using flat_map = unordered_map<Key, T, Hash, KeyEqual, true, MaxLoadFactor128>;
 
-template <class Key, class T, class Hash = robin_hood::hash<Key>, class KeyEqual = std::equal_to<Key>>
-using node_map = unordered_map<Key, T, Hash, KeyEqual, false>;
+template <class Key, class T, class Hash = robin_hood::hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor128 = 102>
+using node_map = unordered_map<Key, T, Hash, KeyEqual, false, MaxLoadFactor128>;
 
 } // namespace robin_hood
 
