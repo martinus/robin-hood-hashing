@@ -3,15 +3,15 @@
 #include <map>
 #include <unordered_map>
 
-TEMPLATE_TEST_CASE("benchmark random insert erase", "[!benchmark]", (robin_hood::flat_map<uint64_t, int>), (robin_hood::node_map<uint64_t, int>),
-				   (std::unordered_map<uint64_t, int>), (std::map<uint64_t, int>)) {
+TEMPLATE_TEST_CASE("benchmark random insert erase", "[!benchmark]", (robin_hood::flat_map<uint64_t, uint64_t>),
+				   (robin_hood::node_map<uint64_t, uint64_t>), (std::unordered_map<uint64_t, uint64_t>), (std::map<uint64_t, uint64_t>)) {
 	Rng rng(123);
 	TestType map;
 
 	static const size_t maxVal = 100000;
 
 	BENCHMARK("Random insert erase") {
-		for (int i = 0; i < 50'000'000; ++i) {
+		for (uint64_t i = 0; i < 50'000'000; ++i) {
 			map[rng(maxVal)] = i;
 			map.erase(rng(maxVal));
 		}

@@ -258,48 +258,49 @@ struct NodeAllocator<T, MinSize, MaxSize, false> : public BulkPoolAllocator<T, M
 // so initial index will be 0 or 1.
 static uint64_t sDummyInfoByte = 0;
 
-template <class First, class Second>
-struct Pair;
+} // namespace detail
 
-// A custom Pair implementation is used in the map because std::pair is not is_trivially_copyable, which means it would  not be allowed to be used
+struct is_transparent_tag {};
+
+// A custom pair implementation is used in the map because std::pair is not is_trivially_copyable, which means it would  not be allowed to be used
 // in std::memcpy. This struct is copyable, which is also tested.
 template <class First, class Second>
-struct Pair {
+struct pair {
 	using first_type = First;
 	using second_type = Second;
 
 	// pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
-	explicit Pair(std::pair<First, Second> const& pair)
+	explicit pair(std::pair<First, Second> const& pair)
 		: first(pair.first)
 		, second(pair.second) {}
 
 	// pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
-	explicit Pair(std::pair<First, Second>&& pair)
+	explicit pair(std::pair<First, Second>&& pair)
 		: first(std::move(pair.first))
 		, second(std::move(pair.second)) {}
 
-	constexpr Pair(const First& firstArg, const Second& secondArg)
+	constexpr pair(const First& firstArg, const Second& secondArg)
 		: first(firstArg)
 		, second(secondArg) {}
 
-	constexpr Pair(First&& firstArg, Second&& secondArg)
+	constexpr pair(First&& firstArg, Second&& secondArg)
 		: first(std::move(firstArg))
 		, second(std::move(secondArg)) {}
 
 	template <typename FirstArg, typename SecondArg>
-	constexpr Pair(FirstArg&& firstArg, SecondArg&& secondArg)
+	constexpr pair(FirstArg&& firstArg, SecondArg&& secondArg)
 		: first(std::forward<FirstArg>(firstArg))
 		, second(std::forward<SecondArg>(secondArg)) {}
 
-	template <class... Args1, class... Args2>
-	Pair(std::piecewise_construct_t, std::tuple<Args1...> firstArgs, std::tuple<Args2...> secondArgs)
-		: Pair(firstArgs, secondArgs, std::index_sequence_for<Args1...>(), std::index_sequence_for<Args2...>()) {}
+	template <typename... Args1, typename... Args2>
+	pair(std::piecewise_construct_t, std::tuple<Args1...> firstArgs, std::tuple<Args2...> secondArgs)
+		: pair(firstArgs, secondArgs, std::index_sequence_for<Args1...>{}, std::index_sequence_for<Args2...>{}) {}
 
 	// constructor called from the std::piecewise_construct_t ctor
-	template <class Tuple1, class Tuple2, size_t... Indexes1, size_t... Indexes2>
-	Pair(Tuple1& val1, Tuple2& val2, std::index_sequence<Indexes1...>, std::index_sequence<Indexes2...>)
-		: first(std::get<Indexes1>(std::move(val1))...)
-		, second(std::get<Indexes2>(std::move(val2))...) {}
+	template <typename... Args1, size_t... Indexes1, typename... Args2, size_t... Indexes2>
+	inline pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2, std::index_sequence<Indexes1...>, std::index_sequence<Indexes2...>)
+		: first(std::forward<Args1>(std::get<Indexes1>(tuple1))...)
+		, second(std::forward<Args2>(std::get<Indexes2>(tuple2))...) {}
 
 	first_type& getFirst() {
 		return first;
@@ -318,10 +319,6 @@ struct Pair {
 	Second second;
 };
 
-} // namespace detail
-
-struct is_transparent_tag {};
-
 // A thin wrapper around std::hash, performing a single multiplication to (hopefully) get nicely randomized upper bits, which are used by the
 // unordered_map.
 template <typename T>
@@ -338,8 +335,8 @@ class hash<uint64_t> {
 public:
 	size_t operator()(uint64_t const& obj) const {
 #ifdef __SIZEOF_INT128__
-		// 930566152204 masksum, 322103 geomean for 0xb3e739ce9947bb0d 0xa5f287615c7098e6
-		static constexpr const auto factor = ((unsigned __int128){0xb3e739ce9947bb0d} << 64) | 0xa5f287615c7098e6;
+		// 40325155704 masksum, 1.57942e+06 geomean for 0xb554b49a442b0238 0x089a67faff6bdc0c
+		static constexpr const auto factor = ((unsigned __int128){0xb554b49a442b0238} << 64) | 0x089a67faff6bdc0c;
 		return static_cast<size_t>((factor * (unsigned __int128)obj) >> 64);
 #else
 		// murmurhash 3 finalizer
@@ -358,7 +355,7 @@ template <>
 class hash<int64_t> {
 public:
 	size_t operator()(int64_t const& obj) const {
-		return hash<uint64_t>{}(obj);
+		return hash<uint64_t>{}(static_cast<uint64_t>(obj));
 	}
 };
 
@@ -367,10 +364,10 @@ class hash<uint32_t> {
 public:
 	size_t operator()(uint32_t const& h) const {
 #if ROBIN_HOOD_BITNESS == 32
-		static constexpr uint64_t factor = 0xe02b61472f2e2abf;
+		static constexpr uint64_t factor = 0xbd7535747a3cf7f2;
 		return static_cast<size_t>((factor * h) >> 32);
 #else
-		return hash<uint64_t>{}(h);
+		return hash<uint64_t>{}(static_cast<uint64_t>(h));
 #endif
 	}
 };
@@ -379,7 +376,7 @@ template <>
 class hash<int32_t> {
 public:
 	size_t operator()(int32_t const& obj) const {
-		return hash<uint32_t>{}(obj);
+		return hash<uint32_t>{}(static_cast<uint32_t>(obj));
 	}
 };
 
@@ -466,16 +463,16 @@ template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std:
 		  bool IsDirect = sizeof(Key) + sizeof(T) <= sizeof(void*) * 3 &&
 						  std::is_nothrow_move_constructible<std::pair<Key, T>>::value&& std::is_nothrow_move_assignable<std::pair<Key, T>>::value,
 		  uint8_t MaxLoadFactor128 = 102>
-class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<detail::Pair<Key, T>, 4, 16384, IsDirect> {
+class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<pair<Key, T>, 4, 16384, IsDirect> {
 	// configuration defaults
 	static constexpr size_t InitialNumElements = 4;
 
-	using DataPool = detail::NodeAllocator<detail::Pair<Key, T>, 4, 16384, IsDirect>;
+	using DataPool = detail::NodeAllocator<pair<Key, T>, 4, 16384, IsDirect>;
 
 public:
 	using key_type = Key;
 	using mapped_type = T;
-	using value_type = detail::Pair<Key, T>;
+	using value_type = pair<Key, T>;
 	using size_type = size_t;
 	using hasher = Hash;
 	using key_equal = KeyEqual;
@@ -1106,7 +1103,7 @@ public:
 
 		// perform backward shift deletion: shift elements to the left
 		// until we find one that is either empty or has zero offset.
-		size_t idx = pos.mKeyVals - mKeyVals;
+		size_t idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
 		size_t nextIdx = (idx + 1) & mMask;
 		while (mInfo[nextIdx] > 1) {
 			mInfo[idx] = (uint8_t)(mInfo[nextIdx] - 1);

@@ -212,12 +212,13 @@ TEMPLATE_TEST_CASE("map ctor & dtor", "[display]", (std::map<Counter, Counter>),
 }
 
 TEMPLATE_TEST_CASE("1 emplace", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
+				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)
 
+) {
 	Counter::Counts counts;
 	{
 		TestType map;
-		map.emplace(std::piecewise_construct, std::forward_as_tuple(1, counts), std::forward_as_tuple(2, counts));
+		map.emplace(std::piecewise_construct, std::forward_as_tuple((size_t)1, counts), std::forward_as_tuple((size_t)2, counts));
 	}
 	counts.printCounts(std::string("1 emplace ") + name(TestType{}));
 	REQUIRE(counts.dtor == counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
@@ -412,7 +413,7 @@ void eval(size_t const iters, A const& current_values, size_t& num_usecases, uin
 
 		Counter::Counts counts;
 
-		uint64_t const num_iters = 70000;
+		uint64_t const num_iters = 33000;
 		Map map;
 		map.m_values = current_values;
 		for (size_t i = 0; i < num_iters; ++i) {
@@ -531,7 +532,7 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 		uint64_t current_mask_sum = 0;
 		double current_ops_sum = 0;
 #pragma omp parallel for reduction(+ : num_usecases, current_mask_sum, current_ops_sum)
-		for (size_t iters = 0; iters < 12 * 4; ++iters) {
+		for (size_t iters = 0; iters < 12; ++iters) {
 			eval(iters, current_values, num_usecases, current_mask_sum, current_ops_sum);
 		}
 		std::cout << ".";

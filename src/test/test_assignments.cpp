@@ -7,7 +7,7 @@ template <class M>
 M createMap(int numElements) {
 	M m;
 	for (int i = 0; i < numElements; ++i) {
-		m[(i + 123) * 7] = i;
+		m[static_cast<typename M::key_type>((i + 123) * 7)] = static_cast<typename M::mapped_type>(i);
 	}
 	return m;
 }

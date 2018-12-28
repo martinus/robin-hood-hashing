@@ -15,12 +15,12 @@ public:
 	void eval_input(uint64_t input, Op const& op) {
 		uint64_t const output = op(input);
 
-		for (int bit = 0; bit < 64; ++bit) {
+		for (size_t bit = 0; bit < 64; ++bit) {
 			auto const input_flipped = input ^ (UINT64_C(1) << (63 - bit));
 
 			// generate output with flipped bit
 			auto has_flipped = op(input_flipped) ^ output;
-			for (int i = 63; i >= 0; --i) {
+			for (size_t i = 63; i >= 0; --i) {
 				if (has_flipped & 1) {
 					++m_flip_count[bit * 64 + i];
 				}
@@ -98,7 +98,7 @@ public:
 				}
 			}
 			for (size_t s = 0; s < scaling; ++s) {
-				fout.write(reinterpret_cast<const char*>(rgb_row.data()), rgb_row.size());
+				fout.write(reinterpret_cast<const char*>(rgb_row.data()), static_cast<std::streamsize>(rgb_row.size()));
 			}
 		}
 	}

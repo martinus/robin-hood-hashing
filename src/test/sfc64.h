@@ -115,13 +115,13 @@ public:
 
 private:
 	template <typename T>
-	T rotl(T const x, int k) {
+	T rotl(T const x, size_t k) {
 		return (x << k) | (x >> (8 * sizeof(T) - k));
 	}
 
-	static constexpr int rotation = 24;
-	static constexpr int right_shift = 11;
-	static constexpr int left_shift = 3;
+	static constexpr size_t rotation = 24;
+	static constexpr size_t right_shift = 11;
+	static constexpr size_t left_shift = 3;
 	uint64_t m_a;
 	uint64_t m_b;
 	uint64_t m_c;

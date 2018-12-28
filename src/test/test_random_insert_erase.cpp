@@ -64,7 +64,7 @@ public:
 	}
 
 	CtorDtorVerifier()
-		: mVal(-1) {
+		: mVal(UINT64_C(-1)) {
 		REQUIRE(mConstructedAddresses.insert(this).second);
 		if (mDoPrintDebugInfo) {
 			std::cout << this << " ctor() " << mConstructedAddresses.size() << std::endl;
@@ -161,7 +161,7 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 
 	Map rhhs;
 	REQUIRE(rhhs.size() == (size_t)0);
-	std::pair<typename Map::iterator, bool> it = rhhs.insert(typename Map::value_type{32145, 123});
+	std::pair<typename Map::iterator, bool> it = rhhs.insert(typename Map::value_type{UINT64_C(32145), UINT64_C(123)});
 	REQUIRE(it.second);
 	REQUIRE(it.first->first.val() == 32145);
 	REQUIRE(it.first->second.val() == 123);
@@ -307,7 +307,7 @@ TEMPLATE_TEST_CASE("collisions", "", (robin_hood::flat_map<CtorDtorVerifier, Cto
 				   (robin_hood::node_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>)) {
 	{
 		TestType m;
-		for (int i = 0; i < 255; ++i) {
+		for (uint64_t i = 0; i < 255; ++i) {
 			m[i];
 		}
 		REQUIRE(m.size() == 255);
@@ -321,11 +321,11 @@ TEMPLATE_TEST_CASE("collisions", "", (robin_hood::flat_map<CtorDtorVerifier, Cto
 
 	{
 		TestType m;
-		for (int i = 0; i < 255; ++i) {
+		for (uint64_t i = 0; i < 255; ++i) {
 			REQUIRE(m.insert(typename TestType::value_type(i, i)).second);
 		}
 		REQUIRE(m.size() == 255);
-		REQUIRE_THROWS_AS(m.insert(typename TestType::value_type(255, 255)), std::overflow_error);
+		REQUIRE_THROWS_AS(m.insert(typename TestType::value_type(UINT64_C(255), UINT64_C(255))), std::overflow_error);
 		REQUIRE(m.size() == 255);
 	}
 	if (0 != CtorDtorVerifier::mapSize()) {
@@ -337,7 +337,7 @@ TEMPLATE_TEST_CASE("collisions", "", (robin_hood::flat_map<CtorDtorVerifier, Cto
 TEMPLATE_TEST_CASE("erase iterator", "", FlatMapVerifier, NodeMapVerifier) {
 	{
 		TestType map;
-		for (int i = 0; i < 100; ++i) {
+		for (uint64_t i = 0; i < 100; ++i) {
 			map[i * 101] = i * 101;
 		}
 
@@ -375,7 +375,7 @@ TEMPLATE_TEST_CASE("test vector", "", FlatMapVerifier, NodeMapVerifier) {
 TEMPLATE_TEST_CASE("maps of maps", "", FlatMapVerifier, NodeMapVerifier) {
 	{
 		robin_hood::unordered_map<CtorDtorVerifier, TestType> maps;
-		for (int i = 0; i < 10; ++i) {
+		for (uint64_t i = 0; i < 10; ++i) {
 			fill(maps[i], 100);
 		}
 
