@@ -212,9 +212,7 @@ TEMPLATE_TEST_CASE("map ctor & dtor", "[display]", (std::map<Counter, Counter>),
 }
 
 TEMPLATE_TEST_CASE("1 emplace", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)
-
-) {
+				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
 	Counter::Counts counts;
 	{
 		TestType map;
@@ -223,26 +221,6 @@ TEMPLATE_TEST_CASE("1 emplace", "[display]", (std::map<Counter, Counter>), (std:
 	counts.printCounts(std::string("1 emplace ") + name(TestType{}));
 	REQUIRE(counts.dtor == counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
-
-#define UNLIKELY(x) __builtin_expect((x), 0)
-
-template <typename U = uint64_t>
-class RandBool {
-public:
-	template <typename Rng>
-	bool operator()(Rng& rng) {
-		if (UNLIKELY(1 == m_rand)) {
-			m_rand = std::uniform_int_distribution<U>{}(rng) | s_mask_left1;
-		}
-		bool const ret = m_rand & 1;
-		m_rand >>= 1;
-		return ret;
-	}
-
-private:
-	static constexpr const U s_mask_left1 = U(1) << (sizeof(U) * 8 - 1);
-	U m_rand = 1;
-};
 
 TEMPLATE_TEST_CASE("10k random insert & erase", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
 				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
@@ -285,7 +263,7 @@ namespace std {
 template <>
 class hash<BigObject> {
 public:
-	size_t operator()(BigObject const& o) const {
+	size_t operator()(BigObject const&) const {
 		return 0;
 	}
 };
@@ -373,26 +351,26 @@ struct ConfigurableCounterHash {
 
 	size_t operator()(Counter const& c) const {
 		size_t const h = c.getForHash();
-#if ROBIN_HOOD_BITNESS == 64
-		unsigned __int128 const factor = (static_cast<unsigned __int128>(m_values[0]) << 64) | m_values[1];
+#if ROBIN_HOOD_HAS_UMULH
+		size_t result = static_cast<size_t>(robin_hood::detail::umulh(m_values[0], h * m_values[1]));
 #else
 		uint64_t const factor = m_values[0];
+		size_t result = static_cast<size_t>((h * factor) >> 32);
 #endif
-		size_t result = static_cast<size_t>((h * factor) >> ROBIN_HOOD_BITNESS);
 		return result;
 	}
 
 #if ROBIN_HOOD_BITNESS == 64
 	std::array<uint64_t, 2> m_values;
-	const std::array<uint64_t, 2> m_max_values = {UINT64_C(-1), UINT64_C(-1)};
+	const std::array<uint64_t, 2> m_max_values = {(uint64_t)(-1), (uint64_t)(-1)};
 #else
 	std::array<uint64_t, 1> m_values;
-	const std::array<uint64_t, 1> m_max_values = {UINT64_C(-1)};
+	const std::array<uint64_t, 1> m_max_values = {(uint64_t)(-1)};
 #endif
 };
 
 template <size_t S>
-void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandBool<>& rbool) {
+void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool<>& rbool) {
 	do {
 		if (rbool(rng)) {
 			auto mask_bits = rng(24) + 1;
@@ -405,10 +383,10 @@ void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandBool<>& rbool) {
 }
 
 template <typename A>
-void eval(size_t const iters, A const& current_values, size_t& num_usecases, uint64_t& current_mask_sum, double& current_ops_sum) {
+void eval(int const iters, A const& current_values, size_t& num_usecases, uint64_t& current_mask_sum, double& current_ops_sum) {
 	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash, std::equal_to<Counter>, 128>;
 	try {
-		Rng rng(iters * 0x135ff36020fe2455);
+		Rng rng(((uint64_t)iters) * 0x135ff36020fe2455);
 		// Rng rng(iters);
 
 		Counter::Counts counts;
@@ -514,7 +492,7 @@ void eval(size_t const iters, A const& current_values, size_t& num_usecases, uin
 
 TEST_CASE("quickmixoptimizer", "[!hide]") {
 	Rng factorRng(std::random_device{}());
-	RandBool<> rbool;
+	RandomBool<> rbool;
 
 	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash, std::equal_to<Counter>, 128>;
 	Map startup_map;
@@ -532,7 +510,7 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 		uint64_t current_mask_sum = 0;
 		double current_ops_sum = 0;
 #pragma omp parallel for reduction(+ : num_usecases, current_mask_sum, current_ops_sum)
-		for (size_t iters = 0; iters < 12; ++iters) {
+		for (int iters = 0; iters < 12; ++iters) {
 			eval(iters, current_values, num_usecases, current_mask_sum, current_ops_sum);
 		}
 		std::cout << ".";

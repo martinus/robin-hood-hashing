@@ -50,15 +50,24 @@
 #endif
 #endif
 
-#if defined(__GNUC__) || defined(__clang__)
-#define ROBIN_HOOD_ATTRIBUTE_MAY_ALIAS __attribute__((__may_alias__))
-#else
-#define ROBIN_HOOD_ATTRIBUTE_MAY_ALIAS
+#if (defined(_WIN32) && ROBIN_HOOD_BITNESS == 64) || defined(__SIZEOF_INT128__)
+#define ROBIN_HOOD_HAS_UMULH 1
+#include <intrin.h> // for __umulh
 #endif
 
 namespace robin_hood {
 
 namespace detail {
+
+#if ROBIN_HOOD_HAS_UMULH
+static uint64_t umulh(uint64_t a, uint64_t b) {
+#if _WIN32
+	return __umulh(a, b);
+#else
+	return static_cast<uint64_t>(((unsigned __int128)a * (unsigned __int128)b) >> 64);
+#endif
+}
+#endif
 
 // make sure this is not inlined as it is slow and dramatically enlarges code, thus making other inlinings more difficult.
 // Throws are also generally the slow path.
@@ -334,10 +343,9 @@ template <>
 class hash<uint64_t> {
 public:
 	size_t operator()(uint64_t const& obj) const {
-#ifdef __SIZEOF_INT128__
-		// 40325155704 masksum, 1.57942e+06 geomean for 0xb554b49a442b0238 0x089a67faff6bdc0c
-		static constexpr const auto factor = ((unsigned __int128){0xb554b49a442b0238} << 64) | 0x089a67faff6bdc0c;
-		return static_cast<size_t>((factor * (unsigned __int128)obj) >> 64);
+#if ROBIN_HOOD_HAS_UMULH
+		// 40325155704 masksum, 2.2945e+06 geomean for 0xeecebb58138fec52 0x0908e6a3639fc7bc
+		return static_cast<size_t>(detail::umulh(UINT64_C(0xeecebb58138fecb4), obj * UINT64_C(0x0908e6a3639fc7bc)));
 #else
 		// murmurhash 3 finalizer
 		uint64_t h = obj;
@@ -551,7 +559,7 @@ private:
 			new (mData) value_type(std::forward<Args>(args)...);
 		}
 
-		DataNode(M& map, DataNode<M, false>&& n)
+		DataNode(M& ROBIN_HOOD_UNUSED(map), DataNode<M, false>&& n)
 			: mData(std::move(n.mData)) {}
 
 		void destroy(M& map) {
@@ -925,7 +933,7 @@ public:
 		}
 
 		// clean up old stuff
-		destroyNodes();
+		destroyNodes<IsDirect && std::is_trivially_destructible<Node>::value>();
 
 		if (mMask != o.mMask) {
 			// no luck: we don't have the same array size allocated, so we need to realloc.
@@ -972,11 +980,12 @@ public:
 			return;
 		}
 
-		destroyNodes();
+		destroyNodes<IsDirect && std::is_trivially_destructible<Node>::value>();
 
 		// clear everything except the sentinel
 		// std::memset(mInfo, 0, sizeof(uint8_t) * (mMask + 1));
-		std::fill(mInfo, mInfo + (sizeof(uint8_t) * (mMask + 1)), 0);
+		uint8_t z = 0;
+		std::fill(mInfo, mInfo + (sizeof(uint8_t) * (mMask + 1)), z);
 	}
 
 	/// Destroys the map and all it's contents.
@@ -1342,12 +1351,17 @@ private:
 
 	// destroys all nodes (without clearing mInfo)
 	// WARNING don't call when empty, because of sentinel.
-	void destroyNodes() {
-		mNumElements = 0;
-		if (IsDirect && std::is_trivially_destructible<Node>::value) {
-			return;
-		}
+	template <bool IsDirectAndTrivial>
+	void destroyNodes();
 
+	template <>
+	void destroyNodes<true>() {
+		mNumElements = 0;
+	}
+
+	template <>
+	void destroyNodes<false>() {
+		mNumElements = 0;
 		// clear also resets mInfo to 0, that's sometimes not necessary.
 		for (size_t idx = 0; idx <= mMask; ++idx) {
 			if (0 != mInfo[idx]) {
@@ -1358,12 +1372,17 @@ private:
 		}
 	}
 
-	void destroyNodesDoNotDeallocate() {
-		mNumElements = 0;
+	template <bool IsDirectAndTrivial>
+	void destroyNodesDoNotDeallocate();
 
-		if (IsDirect && std::is_trivially_destructible<Node>::value) {
-			return;
-		}
+	template <>
+	void destroyNodesDoNotDeallocate<true>() {
+		mNumElements = 0;
+	}
+
+	template <>
+	void destroyNodesDoNotDeallocate<false>() {
+		mNumElements = 0;
 
 		// clear also resets mInfo to 0, that's sometimes not necessary.
 		for (size_t idx = 0; idx <= mMask; ++idx) {
@@ -1381,7 +1400,7 @@ private:
 			return;
 		}
 
-		destroyNodesDoNotDeallocate();
+		destroyNodesDoNotDeallocate<IsDirect && std::is_trivially_destructible<Node>::value>();
 		free(mKeyVals);
 	}
 

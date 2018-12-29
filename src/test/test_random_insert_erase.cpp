@@ -19,8 +19,8 @@ uint64_t hash_combine(uint64_t seed, uint64_t value) {
 }
 
 template <class T>
-inline uint64_t hash_value(const T& value) {
-	return std::hash<typename std::decay<decltype(value)>::type>{}(value);
+inline uint64_t hash_value(T const& value) {
+	return value;
 }
 
 // calculates a hash of any iterable map. Order is irrelevant for the hash's result, as it simply xors the elements together.
@@ -45,12 +45,12 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMap, NodeMap, (std::unordere
 
 	TestType map;
 	for (size_t i = 1; i < 10000; ++i) {
-		map[rng(i)] = rng(i);
+		map[rng(i)] = i;
 		map.erase(rng(i));
 	}
 
 	// number generated with std::unordered_map
-	REQUIRE(hash(map) == UINT64_C(0x9376fa0b6ce8e992));
+	REQUIRE(hash(map) == UINT64_C(0xf081c4121e9cb110));
 }
 
 class CtorDtorVerifier {
@@ -64,7 +64,7 @@ public:
 	}
 
 	CtorDtorVerifier()
-		: mVal(UINT64_C(-1)) {
+		: mVal((uint64_t)-1) {
 		REQUIRE(mConstructedAddresses.insert(this).second);
 		if (mDoPrintDebugInfo) {
 			std::cout << this << " ctor() " << mConstructedAddresses.size() << std::endl;
@@ -138,6 +138,11 @@ private:
 	static bool mDoPrintDebugInfo;
 };
 
+template <>
+inline uint64_t hash_value(CtorDtorVerifier const& value) {
+	return value.val();
+}
+
 std::unordered_set<CtorDtorVerifier const*> CtorDtorVerifier::mConstructedAddresses;
 bool CtorDtorVerifier::mDoPrintDebugInfo = false;
 
@@ -161,19 +166,19 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 
 	Map rhhs;
 	REQUIRE(rhhs.size() == (size_t)0);
-	std::pair<typename Map::iterator, bool> it = rhhs.insert(typename Map::value_type{UINT64_C(32145), UINT64_C(123)});
-	REQUIRE(it.second);
-	REQUIRE(it.first->first.val() == 32145);
-	REQUIRE(it.first->second.val() == 123);
+	std::pair<typename Map::iterator, bool> it_outer = rhhs.insert(typename Map::value_type{UINT64_C(32145), UINT64_C(123)});
+	REQUIRE(it_outer.second);
+	REQUIRE(it_outer.first->first.val() == 32145);
+	REQUIRE(it_outer.first->second.val() == 123);
 	REQUIRE(rhhs.size() == 1);
 
 	const uint64_t times = 10000;
 	for (uint64_t i = 0; i < times; ++i) {
-		std::pair<typename Map::iterator, bool> it = rhhs.insert(typename Map::value_type(i * 4, i));
+		std::pair<typename Map::iterator, bool> it_inner = rhhs.insert(typename Map::value_type(i * 4, i));
 
-		REQUIRE(it.second);
-		REQUIRE(it.first->first.val() == i * 4);
-		REQUIRE(it.first->second.val() == i);
+		REQUIRE(it_inner.second);
+		REQUIRE(it_inner.first->first.val() == i * 4);
+		REQUIRE(it_inner.first->second.val() == i);
 
 		typename Map::iterator found = rhhs.find(i * 4);
 		REQUIRE(rhhs.end() != found);
@@ -288,7 +293,7 @@ TEMPLATE_TEST_CASE("random insert & erase with Verifier", "", FlatMapVerifier, N
 
 	INFO("map size is " << CtorDtorVerifier::mapSize());
 	REQUIRE(CtorDtorVerifier::mapSize() == 6572);
-	REQUIRE(hash(map) == UINT64_C(0x8597d8e9afc1259b));
+	REQUIRE(hash(map) == UINT64_C(0xd665be038c0ed434));
 	map.clear();
 
 	REQUIRE(CtorDtorVerifier::mapSize() == 0);

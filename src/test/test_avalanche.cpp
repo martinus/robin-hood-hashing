@@ -30,15 +30,16 @@ public:
 	}
 
 	template <typename Op>
-	void eval(uint64_t num_iters, Op const& op) {
+	void eval(uint64_t num_iters, Op const&) {
 		for (uint64_t i = 0; i < num_iters; ++i) {
-			eval_input(m_rng(), op);
+			/*
+				eval_input(m_rng(), op);
 			eval_input(m_count, op);
 			eval_input(m_count << sizeof(size_t) * 8 / 2, op);
 			m_count += 3;
+		*/
 		}
 	}
-
 	// calculate current root mean squared error
 	double rms() const {
 		auto const expected_flips = m_count / 2;
@@ -120,26 +121,6 @@ void avalanche(std::string img_filename, size_t num_flips, Op const& op) {
 	}
 }
 #endif
-
-#define UNLIKELY(x) __builtin_expect((x), 0)
-
-template <typename U = uint64_t>
-class RandomBool {
-public:
-	template <typename Rng>
-	bool operator()(Rng& rng) {
-		if (UNLIKELY(1 == m_rand)) {
-			m_rand = std::uniform_int_distribution<U>{}(rng) | s_mask_left1;
-		}
-		bool const ret = m_rand & 1;
-		m_rand >>= 1;
-		return ret;
-	}
-
-private:
-	static constexpr const U s_mask_left1 = U(1) << (sizeof(U) * 8 - 1);
-	U m_rand = 1;
-};
 
 // 0xd555555555bdef77 111.167
 // 0x55555555576f776f 111.14
