@@ -52,6 +52,9 @@
 
 #if (defined(_WIN32) && ROBIN_HOOD_BITNESS == 64) || defined(__SIZEOF_INT128__)
 #define ROBIN_HOOD_HAS_UMULH 1
+#endif
+
+#if defined(_WIN32) && ROBIN_HOOD_HAS_UMULH
 #include <intrin.h> // for __umulh
 #endif
 
@@ -487,6 +490,8 @@ public:
 	using Self = unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect, MaxLoadFactor128>;
 
 private:
+	// DataNode ////////////////////////////////////////////////////////
+
 	// Primary template for the data node. We have special implementations for small and big objects.
 	// For large objects it is assumed that swap() is fairly slow, so we allocate these on the heap
 	// so swap merely swaps a pointer.
@@ -615,6 +620,139 @@ private:
 
 	using Node = DataNode<Self, IsDirect>;
 
+	// Cloner //////////////////////////////////////////////////////////
+
+	template <class M, bool UseMemcpy>
+	struct Cloner;
+
+	// fast path: Just copy data, without allocating anything.
+	template <class M>
+	struct Cloner<M, true> {
+		void operator()(M const& source, M& target) const {
+			// std::memcpy(target.mKeyVals, source.mKeyVals, target.calcNumBytesTotal(target.mMask + 1));
+			auto src = reinterpret_cast<char const*>(source.mKeyVals);
+			auto tgt = reinterpret_cast<char*>(target.mKeyVals);
+			std::copy(src, src + target.calcNumBytesTotal(target.mMask + 1), tgt);
+		}
+	};
+
+	template <class M>
+	struct Cloner<M, false> {
+		void operator()(M const& source, M& target) const {
+			// make sure to copy initialize sentinel as well
+			// std::memcpy(target.mInfo, source.mInfo, target.calcNumBytesInfo(target.mMask + 1));
+			std::copy(source.mInfo, source.mInfo + target.calcNumBytesInfo(target.mMask + 1), target.mInfo);
+
+			for (size_t i = 0; i < target.mMask + 1; ++i) {
+				if (target.mInfo[i]) {
+					new (target.mKeyVals + i) Node(target, *source.mKeyVals[i]);
+				}
+			}
+		}
+	};
+
+	// Destroyer ///////////////////////////////////////////////////////
+
+	template <class M, bool IsDirectAndTrivial>
+	struct Destroyer {};
+
+	template <class M>
+	struct Destroyer<M, true> {
+		void nodes(M& m) const {
+			m.mNumElements = 0;
+		}
+
+		void nodesDoNotDeallocate(M& m) const {
+			m.mNumElements = 0;
+		}
+	};
+
+	template <class M>
+	struct Destroyer<M, false> {
+		void nodes(M& m) const {
+			m.mNumElements = 0;
+			// clear also resets mInfo to 0, that's sometimes not necessary.
+			for (size_t idx = 0; idx <= m.mMask; ++idx) {
+				if (0 != m.mInfo[idx]) {
+					Node& n = m.mKeyVals[idx];
+					n.destroy(m);
+					n.~Node();
+				}
+			}
+		}
+
+		void nodesDoNotDeallocate(M& m) const {
+			m.mNumElements = 0;
+			// clear also resets mInfo to 0, that's sometimes not necessary.
+			for (size_t idx = 0; idx <= m.mMask; ++idx) {
+				if (0 != m.mInfo[idx]) {
+					Node& n = m.mKeyVals[idx];
+					n.destroyDoNotDeallocate();
+					n.~Node();
+				}
+			}
+		}
+	};
+
+	// Iter ////////////////////////////////////////////////////////////
+
+	// generic iterator for both const_iterator and iterator.
+	template <bool IsConst>
+	class Iter {
+	private:
+		using NodePtr = typename std::conditional<IsConst, Node const*, Node*>::type;
+
+	public:
+		using difference_type = std::ptrdiff_t;
+		using value_type = typename Self::value_type;
+		using reference = typename std::conditional<IsConst, value_type const&, value_type&>::type;
+		using pointer = typename std::conditional<IsConst, value_type const*, value_type*>::type;
+		using iterator_category = std::forward_iterator_tag;
+
+		// both const_iterator and iterator can be constructed from a non-const iterator
+		Iter(Iter<false> const& other)
+			: mKeyVals(other.mKeyVals)
+			, mInfo(other.mInfo) {}
+
+		Iter(NodePtr valPtr, uint8_t const* infoPtr)
+			: mKeyVals(valPtr)
+			, mInfo(infoPtr) {}
+
+		// prefix increment. Undefined behavior if we are at end()!
+		Iter& operator++() {
+			do {
+				mKeyVals++;
+				mInfo++;
+			} while (0 == *mInfo);
+			return *this;
+		}
+
+		reference operator*() const {
+			return **mKeyVals;
+		}
+
+		pointer operator->() const {
+			return &**mKeyVals;
+		}
+
+		template <bool O>
+		bool operator==(Iter<O> const& o) const {
+			return mKeyVals == o.mKeyVals;
+		}
+
+		template <bool O>
+		bool operator!=(Iter<O> const& o) const {
+			return mKeyVals != o.mKeyVals;
+		}
+
+	private:
+		friend class unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect>;
+		NodePtr mKeyVals;
+		uint8_t const* mInfo;
+	};
+
+	////////////////////////////////////////////////////////////////////
+
 	size_t calcNumBytesInfo(size_t numElements) const {
 		const size_t s = sizeof(uint8_t) * (numElements + 1);
 		if (s / sizeof(uint8_t) != numElements + 1) {
@@ -698,35 +836,6 @@ private:
 		return mMask + 1;
 	}
 
-	template <class M, bool UseMemcpy>
-	struct Cloner;
-
-	// fast path: Just copy data, without allocating anything.
-	template <class M>
-	struct Cloner<M, true> {
-		void operator()(M const& source, M& target) const {
-			// std::memcpy(target.mKeyVals, source.mKeyVals, target.calcNumBytesTotal(target.mMask + 1));
-			auto src = reinterpret_cast<char const*>(source.mKeyVals);
-			auto tgt = reinterpret_cast<char*>(target.mKeyVals);
-			std::copy(src, src + target.calcNumBytesTotal(target.mMask + 1), tgt);
-		}
-	};
-
-	template <class M>
-	struct Cloner<M, false> {
-		void operator()(M const& source, M& target) const {
-			// make sure to copy initialize sentinel as well
-			// std::memcpy(target.mInfo, source.mInfo, target.calcNumBytesInfo(target.mMask + 1));
-			std::copy(source.mInfo, source.mInfo + target.calcNumBytesInfo(target.mMask + 1), target.mInfo);
-
-			for (size_t i = 0; i < target.mMask + 1; ++i) {
-				if (target.mInfo[i]) {
-					new (target.mKeyVals + i) Node(target, *source.mKeyVals[i]);
-				}
-			}
-		}
-	};
-
 	void cloneData(const unordered_map& o) {
 		Cloner<unordered_map, IsDirect && std::is_trivially_copyable<Node>::value>()(o, *this);
 	}
@@ -771,61 +880,6 @@ private:
 		++mNumElements;
 		return insertion_idx;
 	}
-
-	// generic iterator for both const_iterator and iterator.
-	template <bool IsConst>
-	class Iter {
-	private:
-		using NodePtr = typename std::conditional<IsConst, Node const*, Node*>::type;
-
-	public:
-		using difference_type = std::ptrdiff_t;
-		using value_type = typename Self::value_type;
-		using reference = typename std::conditional<IsConst, value_type const&, value_type&>::type;
-		using pointer = typename std::conditional<IsConst, value_type const*, value_type*>::type;
-		using iterator_category = std::forward_iterator_tag;
-
-		// both const_iterator and iterator can be constructed from a non-const iterator
-		Iter(Iter<false> const& other)
-			: mKeyVals(other.mKeyVals)
-			, mInfo(other.mInfo) {}
-
-		Iter(NodePtr valPtr, uint8_t const* infoPtr)
-			: mKeyVals(valPtr)
-			, mInfo(infoPtr) {}
-
-		// prefix increment. Undefined behavior if we are at end()!
-		Iter& operator++() {
-			do {
-				mKeyVals++;
-				mInfo++;
-			} while (0 == *mInfo);
-			return *this;
-		}
-
-		reference operator*() const {
-			return **mKeyVals;
-		}
-
-		pointer operator->() const {
-			return &**mKeyVals;
-		}
-
-		template <bool O>
-		bool operator==(Iter<O> const& o) const {
-			return mKeyVals == o.mKeyVals;
-		}
-
-		template <bool O>
-		bool operator!=(Iter<O> const& o) const {
-			return mKeyVals != o.mKeyVals;
-		}
-
-	private:
-		friend class unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect>;
-		NodePtr mKeyVals;
-		uint8_t const* mInfo;
-	};
 
 public:
 	using iterator = Iter<false>;
@@ -933,7 +987,7 @@ public:
 		}
 
 		// clean up old stuff
-		destroyNodes<IsDirect && std::is_trivially_destructible<Node>::value>();
+		Destroyer<Self, IsDirect && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
 
 		if (mMask != o.mMask) {
 			// no luck: we don't have the same array size allocated, so we need to realloc.
@@ -980,7 +1034,7 @@ public:
 			return;
 		}
 
-		destroyNodes<IsDirect && std::is_trivially_destructible<Node>::value>();
+		Destroyer<Self, IsDirect && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
 
 		// clear everything except the sentinel
 		// std::memset(mInfo, 0, sizeof(uint8_t) * (mMask + 1));
@@ -1349,58 +1403,13 @@ private:
 		DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElements));
 	}
 
-	// destroys all nodes (without clearing mInfo)
-	// WARNING don't call when empty, because of sentinel.
-	template <bool IsDirectAndTrivial>
-	void destroyNodes();
-
-	template <>
-	void destroyNodes<true>() {
-		mNumElements = 0;
-	}
-
-	template <>
-	void destroyNodes<false>() {
-		mNumElements = 0;
-		// clear also resets mInfo to 0, that's sometimes not necessary.
-		for (size_t idx = 0; idx <= mMask; ++idx) {
-			if (0 != mInfo[idx]) {
-				Node& n = mKeyVals[idx];
-				n.destroy(*this);
-				n.~Node();
-			}
-		}
-	}
-
-	template <bool IsDirectAndTrivial>
-	void destroyNodesDoNotDeallocate();
-
-	template <>
-	void destroyNodesDoNotDeallocate<true>() {
-		mNumElements = 0;
-	}
-
-	template <>
-	void destroyNodesDoNotDeallocate<false>() {
-		mNumElements = 0;
-
-		// clear also resets mInfo to 0, that's sometimes not necessary.
-		for (size_t idx = 0; idx <= mMask; ++idx) {
-			if (0 != mInfo[idx]) {
-				Node& n = mKeyVals[idx];
-				n.destroyDoNotDeallocate();
-				n.~Node();
-			}
-		}
-	}
-
 	void destroy() {
 		if (0 == mMask) {
 			// don't deallocate! we are pointing to sDummyInfoByte.
 			return;
 		}
 
-		destroyNodesDoNotDeallocate<IsDirect && std::is_trivially_destructible<Node>::value>();
+		Destroyer<Self, IsDirect && std::is_trivially_destructible<Node>::value>{}.nodesDoNotDeallocate(*this);
 		free(mKeyVals);
 	}
 
