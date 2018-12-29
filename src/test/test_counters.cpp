@@ -334,8 +334,8 @@ struct ConfigurableCounterHash {
 	// 234679895032 masksum, 1.17938e+06 geomean for 0xbdcbaec81634e906 0xa309d159626eef52
 	ConfigurableCounterHash() {
 #if ROBIN_HOOD_BITNESS == 64
-		m_values[0] = UINT64_C(0xb3e739ce9947bb0d);
-		m_values[1] = UINT64_C(0xa5f287615c7098e6);
+		m_values[0] = UINT64_C(0x0a4f7f5e1a2f6b89);
+		m_values[1] = UINT64_C(0x272dbbcffffa31e7);
 #else
 		m_values[0] = UINT64_C(0xa1ac131cae0b3f71);
 #endif
@@ -374,7 +374,8 @@ void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool<>& rbool) {
 	do {
 		if (rbool(rng)) {
 			auto mask_bits = rng(24) + 1;
-			uint64_t mask = (UINT64_C(1) << mask_bits) - 1;
+			uint64_t mask = rng((UINT64_C(1) << mask_bits) - 1) + 1;
+			//uint64_t mask = (UINT64_C(1) << mask_bits) - 1;
 			vals[rng.uniform<size_t>(vals.size())] ^= mask << rng(64 - mask_bits);
 		} else {
 			vals[rng.uniform<size_t>(vals.size())] = rng();
@@ -386,7 +387,7 @@ template <typename A>
 void eval(int const iters, A const& current_values, size_t& num_usecases, uint64_t& current_mask_sum, double& current_ops_sum) {
 	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash, std::equal_to<Counter>, 128>;
 	try {
-		Rng rng(((uint64_t)iters) * 0x135ff36020fe2455);
+		Rng rng(((uint64_t)iters) * 0x135ff36020fe7455);
 		// Rng rng(iters);
 
 		Counter::Counts counts;
@@ -510,7 +511,7 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 		uint64_t current_mask_sum = 0;
 		double current_ops_sum = 0;
 #pragma omp parallel for reduction(+ : num_usecases, current_mask_sum, current_ops_sum)
-		for (int iters = 0; iters < 12; ++iters) {
+		for (int iters = 0; iters < 12*4; ++iters) {
 			eval(iters, current_values, num_usecases, current_mask_sum, current_ops_sum);
 		}
 		std::cout << ".";

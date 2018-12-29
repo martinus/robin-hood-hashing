@@ -347,8 +347,8 @@ class hash<uint64_t> {
 public:
 	size_t operator()(uint64_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
-		// 40325155704 masksum, 2.2945e+06 geomean for 0xeecebb58138fec52 0x0908e6a3639fc7bc
-		return static_cast<size_t>(detail::umulh(UINT64_C(0xeecebb58138fecb4), obj * UINT64_C(0x0908e6a3639fc7bc)));
+		// 161333319336 masksum, 2.39348e+06 geomean for 0x4d2368371d5e1835 0x9554c4c5cdc7ebb4
+		return static_cast<size_t>(detail::umulh(UINT64_C(0x4d2368371d5e1835), obj * UINT64_C(0x9554c4c5cdc7ebb4)));
 #else
 		// murmurhash 3 finalizer
 		uint64_t h = obj;
@@ -375,8 +375,8 @@ class hash<uint32_t> {
 public:
 	size_t operator()(uint32_t const& h) const {
 #if ROBIN_HOOD_BITNESS == 32
-		static constexpr uint64_t factor = 0xbd7535747a3cf7f2;
-		return static_cast<size_t>((factor * h) >> 32);
+		// 155685944288 masksum, 2.03506e+06 geomean for 0x57578f339c38aee5
+		return static_cast<size_t>((UINT64_C(0x57578f339c38aee5) * (uint64_t)h) >> 32);
 #else
 		return hash<uint64_t>{}(static_cast<uint64_t>(h));
 #endif
@@ -391,62 +391,6 @@ public:
 	}
 };
 
-/*
-// integral types simply used with multiplicative hashing
-template <typename Arg>
-typename std::enable_if_t<std::is_integral<Arg>::value, size_t> doHash(Arg const& obj) const {
-	static constexpr uint64_t ah = 0xe02b61472f2e2abf;
-	static constexpr uint64_t al = 0x90c9f3e278ea1ac7;
-#if ROBIN_HOOD_BITNESS == 64
-	static constexpr const unsigned __int128 factor = (u128{ah} << 64) | al;
-	return (factor * obj) >> 64;
-#else
-	// from https://stackoverflow.com/a/22847373/48181
-	uint64_t bl = obj;
-	uint64_t p0 = al * bl;
-	uint64_t p2 = ah * bl;
-
-	return (p2 >> 32) + (((p0 >> 32) + (uint32_t)p2) >> 32);
-	// can't use 128bit multiplication
-#endif
-}
-
-// non-integral types use std::hash, without any modifications. Hopefully it's good enough.
-template <typename Arg>
-typename std::enable_if_t<!std::is_integral<Arg>::value, size_t> doHash(Arg const& obj) const {
-	return std::hash<Arg>::operator()(obj);
-}
-
-public:
-size_t operator()(T const& obj) const {
-	return doHash<T>(obj);
-}
-}; // namespace robin_hood
-
-// Thin wrapper around std::hash, providing very good mixing of the std::hash function. This uses the MurmurHash3 finalizer, which is quite fast and
-// has extremely good mixing capabilities. Use this if you are unsure of the quality of your hash.
-template <typename T>
-struct hash_safe : public std::hash<T> {
-	size_t operator()(T const& obj) const {
-		// 17196638 swaps, 21068829 equals, capacity=524288
-		size_t h = std::hash<T>::operator()(obj);
-#if ROBIN_HOOD_BITNESS == 64
-		h ^= (h >> 33);
-		h *= UINT64_C(0xff51afd7ed558ccd);
-		h ^= (h >> 33);
-		h *= UINT64_C(0xc4ceb9fe1a85ec53);
-		h ^= (h >> 33);
-#else
-		h ^= h >> 16;
-		h *= 0x85ebca6b;
-		h ^= h >> 13;
-		h *= 0xc2b2ae35;
-		h ^= h >> 16;
-#endif
-		return h;
-	}
-};
-*/
 // A highly optimized hashmap implementation, using the Robin Hood algorithm.
 //
 // In most cases, this map should be usable as a drop-in replacement for std::unordered_map, but be about 2x faster in most cases

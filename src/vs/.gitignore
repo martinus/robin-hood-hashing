@@ -3,3 +3,4 @@ Release
 x64
 *.vcxproj.*
 .vs
+*.vspx
