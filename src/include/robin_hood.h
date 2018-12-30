@@ -327,6 +327,12 @@ struct pair {
 		return second;
 	}
 
+	void swap(pair<First, Second>& o) {
+		using std::swap;
+		swap(first, o.first);
+		swap(second, o.second);
+	}
+
 	First first;
 	Second second;
 };
@@ -347,8 +353,8 @@ class hash<uint64_t> {
 public:
 	size_t operator()(uint64_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
-		// 161333319336 masksum, 2.39348e+06 geomean for 0x4d2368371d5e1835 0x9554c4c5cdc7ebb4
-		return static_cast<size_t>(detail::umulh(UINT64_C(0x4d2368371d5e1835), obj * UINT64_C(0x9554c4c5cdc7ebb4)));
+		// 459972428128 masksum, 3.72779e+06 geomean globalbest: 0x5e1caf9535ce6811 0xbb1039b2f223f0af
+		return static_cast<size_t>(detail::umulh(UINT64_C(0x5e1caf9535ce6811), obj * UINT64_C(0xbb1039b2f223f0af)));
 #else
 		// murmurhash 3 finalizer
 		uint64_t h = obj;
@@ -489,9 +495,7 @@ private:
 		}
 
 		void swap(DataNode<M, true>& o) {
-			using std::swap;
-			swap(mData.first, o.mData.first);
-			swap(mData.second, o.mData.second);
+			mData.swap(o.mData);
 		}
 
 	private:
@@ -721,12 +725,6 @@ private:
 		return s;
 	}
 
-	// Protects against bad hash functions, and makes sure the numbers are reasonably well spread.
-	// I've played around with a few constants. The chosen one seems to work well in my benchmark.
-	// basically any odd random 64bit number should work reasonably well. Also see
-	// https://probablydance.com/2018/06/16/fibonacci-hashing-the-optimization-that-the-world-forgot-or-a-better-alternative-to-integer-modulo/
-	//
-	// Much better avalanching can be achieved with e.g. Murmur3 finalizer, but it is generally much slower.
 	template <typename HashKey>
 	size_t keyToIdx(HashKey&& key) const {
 		return Hash::operator()(key) & mMask;

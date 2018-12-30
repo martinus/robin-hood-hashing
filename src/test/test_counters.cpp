@@ -27,7 +27,7 @@ public:
 		size_t moveCtor{};
 		size_t moveAssign{};
 
-		void printHeader() {
+		static void printHeader() {
 			printf(
 				"    ctor   defctor  cpyctor     dtor   assign    swaps      get  cnstget     hash   equals     less   ctormv assignmv |   total\n");
 		}
@@ -245,7 +245,46 @@ TEMPLATE_TEST_CASE("10k random insert & erase", "[display]", (std::map<Counter, 
 		}
 	}
 
-	// counts.printCounts(std::string("10k random insert & erase - ") + name(TestType{}));
+	counts.printCounts(std::string("10k random insert & erase - ") + name(TestType{}));
+	REQUIRE(counts.dtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
+}
+
+TEMPLATE_TEST_CASE("100k [] and erase", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
+				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
+
+	Counter::Counts counts;
+	Counter::staticDefaultCtor = 0;
+	{
+		static const size_t maxVal = 5000;
+		Rng rng(123);
+		TestType map;
+		for (size_t i = 1; i < 100000; ++i) {
+			map[Counter{rng.uniform<size_t>(maxVal), counts}] = Counter{i, counts};
+			map.erase(Counter{rng.uniform<size_t>(maxVal), counts});
+		}
+	}
+
+	counts.printCounts(std::string("100k [] and erase ") + name(TestType{}));
+	REQUIRE(counts.dtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
+}
+
+TEMPLATE_TEST_CASE("100k emplace and erase", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
+				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
+
+	Counter::Counts counts;
+	Counter::Counts::printHeader();
+	Counter::staticDefaultCtor = 0;
+	{
+		static const size_t maxVal = 5000;
+		Rng rng(123);
+		TestType map;
+		for (size_t i = 1; i < 100000; ++i) {
+			map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(i), counts), std::forward_as_tuple(i, counts));
+			map.erase(Counter{rng.uniform<size_t>(maxVal), counts});
+		}
+	}
+
+	counts.printCounts(std::string("100k emplace and erase ") + name(TestType{}));
 	REQUIRE(counts.dtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
@@ -334,8 +373,8 @@ struct ConfigurableCounterHash {
 	// 234679895032 masksum, 1.17938e+06 geomean for 0xbdcbaec81634e906 0xa309d159626eef52
 	ConfigurableCounterHash() {
 #if ROBIN_HOOD_BITNESS == 64
-		m_values[0] = UINT64_C(0x0a4f7f5e1a2f6b89);
-		m_values[1] = UINT64_C(0x272dbbcffffa31e7);
+		m_values[0] = UINT64_C(0x9f5254069156a770);
+		m_values[1] = UINT64_C(0x743df98676bf087e);
 #else
 		m_values[0] = UINT64_C(0xa1ac131cae0b3f71);
 #endif
@@ -375,7 +414,7 @@ void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool<>& rbool) {
 		if (rbool(rng)) {
 			auto mask_bits = rng(24) + 1;
 			uint64_t mask = rng((UINT64_C(1) << mask_bits) - 1) + 1;
-			//uint64_t mask = (UINT64_C(1) << mask_bits) - 1;
+			// uint64_t mask = (UINT64_C(1) << mask_bits) - 1;
 			vals[rng.uniform<size_t>(vals.size())] ^= mask << rng(64 - mask_bits);
 		} else {
 			vals[rng.uniform<size_t>(vals.size())] = rng();
@@ -419,8 +458,8 @@ void eval(int const iters, A const& current_values, size_t& num_usecases, uint64
 		for (size_t i = 0; i < num_iters; ++i) {
 			map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts),
 						std::forward_as_tuple(i, counts));
-			map.erase(Counter{rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts});
 			current_mask_sum += map.mask();
+			map.erase(Counter{rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts});
 		}
 		current_ops_sum += std::log(counts.swaps + counts.equals + counts.hash);
 		++num_usecases;
@@ -428,34 +467,14 @@ void eval(int const iters, A const& current_values, size_t& num_usecases, uint64
 		// shifted data
 		counts.reset();
 		map = Map{};
-		static const size_t maxVal = 100000;
+		static const size_t maxVal = 100000 / (ROBIN_HOOD_BITNESS - 8);
 		try {
 			for (size_t i = 0; i < num_iters / 8; ++i) {
-				int shift_inc = ROBIN_HOOD_BITNESS / 8;
-				map[Counter{rng.uniform<size_t>(maxVal), counts}] = Counter{i, counts};
-				current_mask_sum += map.mask();
-				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc, counts}] = Counter{i, counts};
-				current_mask_sum += map.mask();
-				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 2, counts}] = Counter{i, counts};
-				current_mask_sum += map.mask();
-				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 3, counts}] = Counter{i, counts};
-				current_mask_sum += map.mask();
-				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 4, counts}] = Counter{i, counts};
-				current_mask_sum += map.mask();
-				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 5, counts}] = Counter{i, counts};
-				current_mask_sum += map.mask();
-				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 6, counts}] = Counter{i, counts};
-				current_mask_sum += map.mask();
-				map[Counter{rng.uniform<size_t>(maxVal) << shift_inc * 7, counts}] = Counter{i, counts};
-				current_mask_sum += map.mask();
-				map.erase(Counter{rng.uniform<size_t>(maxVal), counts});
-				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc, counts});
-				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 2, counts});
-				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 3, counts});
-				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 4, counts});
-				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 5, counts});
-				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 6, counts});
-				map.erase(Counter{rng.uniform<size_t>(maxVal) << shift_inc * 7, counts});
+				for (size_t sh = 0; sh < (ROBIN_HOOD_BITNESS - 8); ++sh) {
+					map[Counter{rng.uniform<size_t>(maxVal) << sh, counts}] = Counter{i, counts};
+					current_mask_sum += map.mask();
+					map.erase(Counter{rng.uniform<size_t>(maxVal) << sh, counts});
+				}
 			}
 		} catch (std::overflow_error const&) {
 			std::cout << "asdf" << std::endl;
@@ -498,41 +517,61 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash, std::equal_to<Counter>, 128>;
 	Map startup_map;
 	auto best_values = startup_map.m_values;
+	auto global_best_values = best_values;
+
 	for (size_t i = 0; i < best_values.size(); ++i) {
 		best_values[i] = factorRng();
 	}
 	uint64_t best_mask_sum = (std::numeric_limits<uint64_t>::max)();
 	double best_ops_sum = (std::numeric_limits<double>::max)();
 
+	uint64_t global_best_mask_sum = best_mask_sum;
+	double global_best_ops_sum = best_ops_sum;
+
 	auto current_values = best_values;
+	int num_unsuccessful_tries = 0;
 	while (true) {
 
 		size_t num_usecases = 0;
 		uint64_t current_mask_sum = 0;
 		double current_ops_sum = 0;
 #pragma omp parallel for reduction(+ : num_usecases, current_mask_sum, current_ops_sum)
-		for (int iters = 0; iters < 12*4; ++iters) {
+		for (int iters = 0; iters < 12 * 4; ++iters) {
 			eval(iters, current_values, num_usecases, current_mask_sum, current_ops_sum);
 		}
 		std::cout << ".";
 		std::cout.flush();
 
-		// also assign when we are equally good, should lead to a bit more exploration
-		if (std::tie(current_mask_sum, current_ops_sum) < std::tie(best_mask_sum, best_ops_sum)) {
-			// if (3 * std::log(current_mask_sum) + std::log(current_ops_sum) < 3 * std::log(best_mask_sum) + std::log(best_ops_sum)) {
-			std::cout << std::endl
-					  << std::dec << current_mask_sum << " masksum, "
-					  << std::exp(static_cast<double>(current_ops_sum) / static_cast<double>(num_usecases)) << " geomean for ";
-			for (auto const x : current_values) {
-				std::cout << hex(64) << x << " ";
-			}
-			std::cout << std::endl;
-		}
+		++num_unsuccessful_tries;
 
-		if (std::tie(current_mask_sum, current_ops_sum) <= std::tie(best_mask_sum, best_ops_sum)) {
+		// also assign when we are equally good, should lead to a bit more exploration
+		if (num_unsuccessful_tries == 1000 || std::tie(current_mask_sum, current_ops_sum) <= std::tie(best_mask_sum, best_ops_sum)) {
 			best_mask_sum = current_mask_sum;
 			best_ops_sum = current_ops_sum;
 			best_values = current_values;
+
+			if (std::tie(best_mask_sum, best_ops_sum) <= std::tie(global_best_mask_sum, global_best_ops_sum)) {
+				global_best_mask_sum = best_mask_sum;
+				global_best_ops_sum = best_ops_sum;
+				global_best_values = best_values;
+			}
+
+			num_unsuccessful_tries = 0;
+
+			std::cout << std::endl
+					  << std::dec << global_best_mask_sum << " masksum, "
+					  << std::exp(static_cast<double>(global_best_ops_sum) / static_cast<double>(num_usecases)) << " geomean globalbest: ";
+			for (auto const x : global_best_values) {
+				std::cout << hex(64) << x << " ";
+			}
+
+			std::cout << "  |  " << std::dec << best_mask_sum << " masksum, "
+					  << std::exp(static_cast<double>(best_ops_sum) / static_cast<double>(num_usecases)) << " geomean current best: ";
+			for (auto const x : best_values) {
+				std::cout << hex(64) << x << " ";
+			}
+
+			std::cout << std::endl;
 		}
 
 		// mutate *after* evaluation & setting best, so initial value is tried too

@@ -56,7 +56,7 @@ public:
 	}
 
 	template <typename T>
-	T uniform(T i) {
+	T uniform(uint64_t i) {
 		return static_cast<T>(operator()(i));
 	}
 
