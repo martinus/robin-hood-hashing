@@ -22,6 +22,24 @@ All benchmarks are lies, but I usually see improvement in the order of
 Of course, your milage may vary. There are an infinite number of use cases, and while I've tested a wide range
 of scenarios you have to do benchmarks with your own workload to be sure this is worth it.
 
+# Good, Bad, Ugly
+
+# The Good
+
+In most cases, you can simply replace `std::unordered_map` with `robin_hood::unordered_map` and enjoy a substantial speedup and less memory. robin-hood map is well optimized for both native types and complex types: It supports two different memory layouts: `flat_map` for fast direct access, and `node_map` which is node based, enjoying stable references while being much more memory efficient than `std::unordered_map`. 
+
+The map defaults to using `robin_hood::hash` which uses a very fast well tuned hash for native types, and uses defaults to `std::hash` for everything else.
+
+# The Bad
+
+The performance of any map depends on how good the hash function is. But even worse for `robin_hood`, for a really bad hash the performance will not only degrade, the map will simply fail with an exception if not even doubling its size helps. So choose your hash well. (Note, that some `std::unordered_map` implementations fail as well with bad hashes).
+
+If the map gets very full but just below it's resizing limit, continuously inserting and removing elements can get quite slow because the map has to shuffle lots of elements around. 
+
+# The Ugly
+
+This map is obviously not as well tested as `std::unorderered_map`. It shoud be very stable for most use cases, but there might still be untested corner cases, where the map simply gives incorrect results! As far as I know, none of these bugs should be left. But I wouldn't bet my house on it.
+
 ## Alternatives
 
 There are lots of `std::unorderd_map` challengers, here are a few interesting ones that I had a look at:
