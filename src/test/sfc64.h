@@ -19,6 +19,20 @@ public:
 	sfc64(sfc64&&) = default;
 	sfc64& operator=(sfc64&&) = default;
 
+	sfc64(std::initializer_list<uint64_t> state) {
+		if (state.size() != 4) {
+			throw std::runtime_error("sfc64: need 4 values for initialization");
+		}
+		auto it = state.begin();
+		m_a = *it;
+		++it;
+		m_b = *it;
+		++it;
+		m_c = *it;
+		++it;
+		m_counter = *it;
+	}
+
 	static constexpr uint64_t(min)() {
 		return (std::numeric_limits<uint64_t>::min)();
 	}

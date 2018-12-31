@@ -49,8 +49,8 @@ TEMPLATE_TEST_CASE("benchmark int", "[!benchmark]", (robin_hood::flat_map<int, i
 	BENCHMARK("Random insert erase") {
 		for (int n = 1; n < 10'000; ++n) {
 			for (int i = 0; i < 10'000; ++i) {
-				map[rng.uniform<int>(n)] = i;
-				verifier += map.erase(rng.uniform<int>(n));
+				map[rng.uniform<int>((uint64_t)n)] = i;
+				verifier += map.erase(rng.uniform<int>((uint64_t)n));
 			}
 		}
 	}

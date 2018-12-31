@@ -353,8 +353,7 @@ class hash<uint64_t> {
 public:
 	size_t operator()(uint64_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
-		// 459972428128 masksum, 3.72779e+06 geomean globalbest: 0x5e1caf9535ce6811 0xbb1039b2f223f0af
-		return static_cast<size_t>(detail::umulh(UINT64_C(0x5e1caf9535ce6811), obj * UINT64_C(0xbb1039b2f223f0af)));
+		return static_cast<size_t>(detail::umulh(UINT64_C(0xdd3e3d4710d29068), obj * UINT64_C(0xd60e5544f19ca599)));
 #else
 		// murmurhash 3 finalizer
 		uint64_t h = obj;
@@ -381,8 +380,7 @@ class hash<uint32_t> {
 public:
 	size_t operator()(uint32_t const& h) const {
 #if ROBIN_HOOD_BITNESS == 32
-		// 155685944288 masksum, 2.03506e+06 geomean for 0x57578f339c38aee5
-		return static_cast<size_t>((UINT64_C(0x57578f339c38aee5) * (uint64_t)h) >> 32);
+		return static_cast<size_t>((UINT64_C(0xca4bcaa75ec3f625) * (uint64_t)h) >> 32);
 #else
 		return hash<uint64_t>{}(static_cast<uint64_t>(h));
 #endif
@@ -743,16 +741,19 @@ private:
 		}
 	}
 
-	void bubbleDown(size_t& idx, size_t const& insertion_idx) {
+	// Shift everything up by one element. Tries to move stuff around.
+	// True if some shifting has occured (entry under idx is a constructed object)
+	// Fals if no shift has occured (entry under idx is unconstructed memory)
+	void shiftUp(size_t idx, size_t const insertion_idx) {
 		while (idx != insertion_idx) {
-			using std::swap;
-
-			size_t const prev_idx = (idx - 1) & mMask;
-			mKeyVals[idx].swap(mKeyVals[prev_idx]);
-			swap(mInfo[idx], mInfo[prev_idx]);
-
-			// increase the shifted up element
-			if (0xFF == ++mInfo[idx]) {
+			size_t prev_idx = (idx - 1) & mMask;
+			if (mInfo[idx]) {
+				mKeyVals[idx] = std::move(mKeyVals[prev_idx]);
+			} else {
+				new (mKeyVals + idx) Node(std::move(mKeyVals[prev_idx]));
+			}
+			mInfo[idx] = (uint8_t)(mInfo[prev_idx] + 1);
+			if (0xFF == mInfo[idx]) {
 				mMaxNumElementsAllowed = 0;
 			}
 			idx = prev_idx;
@@ -812,12 +813,16 @@ private:
 			next(info, idx);
 		}
 
-		// put at empty spot
-		new (mKeyVals + idx) Node(std::move(keyval));
-		mInfo[idx] = insertion_info;
+		auto& l = mKeyVals[insertion_idx];
+		if (idx == insertion_idx) {
+			new (&l) Node(std::move(keyval));
+		} else {
+			shiftUp(idx, insertion_idx);
+			l = std::move(keyval);
+		}
 
-		// bubble down into correct position
-		bubbleDown(idx, insertion_idx);
+		// put at empty spot
+		mInfo[insertion_idx] = insertion_info;
 
 		++mNumElements;
 		return insertion_idx;
@@ -1109,16 +1114,18 @@ public:
 		// perform backward shift deletion: shift elements to the left
 		// until we find one that is either empty or has zero offset.
 		size_t idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
+		mKeyVals[idx].destroy(*this);
 		size_t nextIdx = (idx + 1) & mMask;
 		while (mInfo[nextIdx] > 1) {
 			mInfo[idx] = (uint8_t)(mInfo[nextIdx] - 1);
-			mKeyVals[idx].swap(mKeyVals[nextIdx]);
+			mKeyVals[idx] = std::move(mKeyVals[nextIdx]);
 			idx = nextIdx;
 			nextIdx = (idx + 1) & mMask;
 		}
 
 		mInfo[idx] = 0;
-		mKeyVals[idx].destroy(*this);
+		// don't destroy, we've moved it
+		// mKeyVals[idx].destroy(*this);
 		mKeyVals[idx].~Node();
 		--mNumElements;
 
@@ -1141,17 +1148,20 @@ public:
 		while (info == mInfo[idx]) {
 			if (KeyEqual::operator()(key, mKeyVals[idx]->first)) {
 				// found it! perform backward shift deletion: shift elements to the left
+				mKeyVals[idx].destroy(*this);
+
 				// until we find one that is either empty or has zero offset.
 				size_t nextIdx = (idx + 1) & mMask;
 				while (mInfo[nextIdx] > 1) {
 					mInfo[idx] = (uint8_t)(mInfo[nextIdx] - 1);
-					mKeyVals[idx].swap(mKeyVals[nextIdx]);
+					mKeyVals[idx] = std::move(mKeyVals[nextIdx]);
 					idx = nextIdx;
 					nextIdx = (idx + 1) & mMask;
 				}
 
 				mInfo[idx] = 0;
-				mKeyVals[idx].destroy(*this);
+				// don't destroy, we've moved this
+				// mKeyVals[idx].destroy(*this);
 				mKeyVals[idx].~Node();
 
 				--mNumElements;
@@ -1243,14 +1253,17 @@ private:
 				next(info, idx);
 			}
 
-			// put at empty spot. This forwards all arguments into the node where the object is constructed exactly where it is needed.
-			new (mKeyVals + idx) Node(*this, std::piecewise_construct, std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
+			auto& l = mKeyVals[insertion_idx];
+			if (idx == insertion_idx) {
+				// put at empty spot. This forwards all arguments into the node where the object is constructed exactly where it is needed.
+				new (&l) Node(*this, std::piecewise_construct, std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
+			} else {
+				shiftUp(idx, insertion_idx);
+				l = Node(*this, std::piecewise_construct, std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
+			}
 
 			// mKeyVals[idx]->first = std::move(key);
-			mInfo[idx] = insertion_info;
-
-			// bubble down into correct position
-			bubbleDown(idx, insertion_idx);
+			mInfo[insertion_idx] = insertion_info;
 
 			++mNumElements;
 			return mKeyVals[insertion_idx]->second;
@@ -1294,12 +1307,16 @@ private:
 				next(info, idx);
 			}
 
-			// put at empty spot
-			new (mKeyVals + idx) Node(*this, std::forward<Arg>(keyval));
-			mInfo[idx] = insertion_info;
+			auto& l = mKeyVals[insertion_idx];
+			if (idx == insertion_idx) {
+				new (&l) Node(*this, std::forward<Arg>(keyval));
+			} else {
+				shiftUp(idx, insertion_idx);
+				l = Node(*this, std::forward<Arg>(keyval));
+			}
 
-			// bubble down into correct position
-			bubbleDown(idx, insertion_idx);
+			// put at empty spot
+			mInfo[insertion_idx] = insertion_info;
 
 			++mNumElements;
 			return std::make_pair(iterator(mKeyVals + insertion_idx, mInfo + insertion_idx), true);
