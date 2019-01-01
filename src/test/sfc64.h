@@ -105,15 +105,6 @@ public:
 #else
 		return multhi64(operator()(), boundExcluded);
 #endif
-		/*
-		uint64_t x;
-		uint64_t r;
-		do {
-			x = operator()();
-			r = x % boundExcluded;
-		} while (x - r > 0 - boundExcluded);
-		return r;
-		*/
 	}
 
 	std::array<uint64_t, 4> state() const {

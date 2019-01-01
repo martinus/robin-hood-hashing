@@ -55,7 +55,7 @@ TEMPLATE_TEST_CASE("benchmark int", "[!benchmark]", (robin_hood::flat_map<int, i
 		}
 	}
 
-	REQUIRE(verifier == 993);
+	REQUIRE(verifier == 50024052);
 	BENCHMARK("clear") {
 		map.clear();
 	}

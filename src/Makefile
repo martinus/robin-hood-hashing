@@ -8,11 +8,15 @@ BINARY := $(OBJ_DIR)/robinhood-test
 SRC_FILES := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ_FILES := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRC_FILES))
 
-debug: CXXFLAGS += -ggdb -Wno-unknown-pragmas
+# -fsanitize=undefined
+# -fsanitize=address
+# -fsanitize=safe-stack
+debug: CXXFLAGS += -ggdb -Wno-unknown-pragmas -fno-omit-frame-pointer -fsanitize=safe-stack
+debug: LDFLAGS += -ggdb -fsanitize=safe-stack
 debug: executable
 
-release: CXXFLAGS += -O2 -fopenmp
-release: LDFLAGS += -fopenmp
+release: CXXFLAGS += -ggdb -O2 -fno-omit-frame-pointer -fopenmp
+release: LDFLAGS += -ggdb -fopenmp
 release: executable
 
 executable: $(OBJ_FILES)

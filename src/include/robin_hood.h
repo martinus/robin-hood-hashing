@@ -353,7 +353,8 @@ class hash<uint64_t> {
 public:
 	size_t operator()(uint64_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
-		return static_cast<size_t>(detail::umulh(UINT64_C(0xdd3e3d4710d29068), obj * UINT64_C(0xd60e5544f19ca599)));
+		// 464880543600 masksum, 4.49451e+06 geomean globalbest: 0x8f51e0541f93532e 0xd9f6699f11462b6d
+		return static_cast<size_t>(detail::umulh(UINT64_C(0x8f51e0541f93532e), obj * UINT64_C(0xd9f6699f11462b6d)));
 #else
 		// murmurhash 3 finalizer
 		uint64_t h = obj;

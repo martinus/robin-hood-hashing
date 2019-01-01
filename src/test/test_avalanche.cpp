@@ -33,11 +33,11 @@ public:
 	void eval(uint64_t num_iters, Op const&) {
 		for (uint64_t i = 0; i < num_iters; ++i) {
 			/*
-				eval_input(m_rng(), op);
+			eval_input(m_rng(), op);
 			eval_input(m_count, op);
 			eval_input(m_count << sizeof(size_t) * 8 / 2, op);
 			m_count += 3;
-		*/
+			*/
 		}
 	}
 	// calculate current root mean squared error
@@ -109,18 +109,6 @@ private:
 	Rng m_rng{};
 	size_t m_count{};
 };
-
-#if 0
-template <typename Op>
-void avalanche(std::string img_filename, size_t num_flips, Op const& op) {
-	for (size_t y = 0; y < 64; ++y) {
-		for (size_t x = 0; x < 64; ++x) {
-			std::cout << std::dec << std::setfill(' ') << std::setw(3) << (data[y * 64 + x] * 100 / num_flips);
-		}
-		std::cout << std::endl;
-	}
-}
-#endif
 
 // 0xd555555555bdef77 111.167
 // 0x55555555576f776f 111.14
