@@ -40,6 +40,24 @@ TEMPLATE_TEST_CASE("benchmark random insert erase", "[!benchmark]", (robin_hood:
 	}
 }
 
+TEMPLATE_TEST_CASE("benchmark hashing", "[!benchmark]", (std::hash<std::string>), (robin_hood::hash<std::string>)) {
+	size_t h = 0;
+	Rng rng(123);
+	auto hasher = TestType{};
+	for (size_t s : {8, 11, 100, 1024}) {
+		std::string str(s, 'x');
+		for (size_t i = 0; i < str.size(); ++i) {
+			str[i] = rng.uniform<unsigned char>();
+		}
+		BENCHMARK("std::string length " + std::to_string(str.size())) {
+			for (size_t i = 0; i < 10000000000 / s; ++i) {
+				h += hasher(str);
+			}
+		}
+	}
+	std::cout << h << std::endl;
+}
+
 TEMPLATE_TEST_CASE("benchmark int", "[!benchmark]", (robin_hood::flat_map<int, int>), (robin_hood::node_map<int, int>),
 				   (std::unordered_map<int, int>), (std::map<int, int>)) {
 	Rng rng(123);

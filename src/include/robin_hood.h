@@ -1,6 +1,17 @@
-// MIT License
+//                 ______  _____                 ______                _________
+//  ______________ ___  /_ ___(_)_______         ___  /_ ______ ______ ______  /
+//  __  ___/_  __ \__  __ \__  / __  __ \        __  __ \_  __ \_  __ \_  __  /
+//  _  /    / /_/ /_  /_/ /_  /  _  / / /        _  / / // /_/ // /_/ // /_/ /
+//  /_/     \____/ /_.___/ /_/   /_/ /_/ ________/_/ /_/ \____/ \____/ \__,_/
+//                                      _/_____/
 //
-// Copyright (c) 2018 Martin Ankerl
+// robin_hood::unordered_map for C++14
+// version 1.0.0
+// https://github.com/martinus/robin-hood-hashing
+//
+// Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2018-2019 Martin Ankerl <http://martin.ankerl.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +35,7 @@
 #define ROBIN_HOOD_MAP_H_INCLUDED
 
 #include <algorithm>
+#include <cstring>
 #include <functional>
 #include <utility>
 
@@ -344,6 +356,64 @@ class hash : public std::hash<T> {
 public:
 	size_t operator()(T const& obj) const {
 		return std::hash<T>::operator()(obj);
+	}
+};
+
+// Murmur2 hash without caring about big endianness. Generally much faster than the standard std::hash for std::string,
+// and the code is quite simple.
+template <>
+class hash<std::string> {
+public:
+	size_t operator()(std::string const& str) const {
+		static constexpr uint64_t const m = UINT64_C(0xc6a4a7935bd1e995);
+		static constexpr uint64_t const seed = UINT64_C(0xe17a1465);
+		static constexpr int const r = 47;
+
+		size_t const len = str.size();
+		auto const data64 = reinterpret_cast<uint64_t const*>(str.data());
+		uint64_t h = seed ^ (len * m);
+
+		size_t const n_blocks = len / 8;
+		for (size_t i = 0; i < n_blocks; ++i) {
+			uint64_t k;
+			// using memcpy so we don't get into unaligned load problems.
+			// compiler optimizes this very well anyways.
+			//
+			// we don't care about big endianness.
+			std::memcpy(&k, data64 + i, 8);
+
+			k *= m;
+			k ^= k >> 47;
+			k *= m;
+
+			h ^= k;
+			h *= m;
+		}
+
+		auto const data8 = reinterpret_cast<uint8_t const*>(data64 + n_blocks);
+		switch (len & 7) {
+		case 7:
+			h ^= static_cast<uint64_t>(data8[6]) << 48;
+		case 6:
+			h ^= static_cast<uint64_t>(data8[5]) << 40;
+		case 5:
+			h ^= static_cast<uint64_t>(data8[4]) << 32;
+		case 4:
+			h ^= static_cast<uint64_t>(data8[3]) << 24;
+		case 3:
+			h ^= static_cast<uint64_t>(data8[2]) << 16;
+		case 2:
+			h ^= static_cast<uint64_t>(data8[1]) << 8;
+		case 1:
+			h ^= static_cast<uint64_t>(data8[0]);
+			h *= m;
+		};
+
+		h ^= h >> r;
+		h *= m;
+		h ^= h >> r;
+
+		return h;
 	}
 };
 
