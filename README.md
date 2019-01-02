@@ -6,21 +6,30 @@ Hashtable based on Robin Hood Hashing. In general, this map is both faster and u
 
 ## Installation & Usage
 
-1. Add `robin_hood.h` to your C++ project.
+1. Add [`robin_hood.h`](https://github.com/martinus/robin-hood-hashing/blob/master/src/include/robin_hood.h) to your C++ project.
 1. Use `robin_hood::unordered_map` instead of `std::unordered_map`.
 
-That's it! Enjoy less memory usage and more performance.
+## Design Goals
+
+`robin_hood::unordered_map` should be a platform independent replacement for `std::unordered::map` while being faster and more memory efficient for real-world use cases.
+
+## Features
+
+- **Two memory layouts**. Data is either stored in a flat map where references are not stable, or node based with stable references. The choice is yours through `robin_hood::flat_map` or `robin_hood::node_map`, or let `robin_hood::unordered_map` will chose for you.
+
+- **Custom allocator**. Node based representation has a custom bulk allocator that tries to make few memory allocations. All allocated memory is reused, so there won't be any allocation spikes. It's very fast as well.
+
+- **Optimized hash**. `robin_hood::hash` has custom implementations for integer types and for `std::string`, and falls back to `std::hash` for everything else.
 
 ## Benchmarks
 
-All benchmarks are lies, but I usually see improvement in the order of
+Take all benchmarks with a grain of salt, as it highly depends on the usage pattern. I usually see improvement in the order of
 
 * 3 times faster insertion than `std::unordered_map`
 * 2 times faster lookup than `std::unordered_map`
 * 2 - 3 times less memory usage than `std::unordered_map`
 
-Of course, your milage may vary. There are an infinite number of use cases, and while I've tested a wide range
-of scenarios you have to do benchmarks with your own workload to be sure this is worth it.
+Of course, your milage may vary. There are an infinite number of use cases, and while I've tested a wide range of scenarios you have to do benchmarks with your own workload to be sure this is worth it.
 
 ## Good, Bad, Ugly
 
