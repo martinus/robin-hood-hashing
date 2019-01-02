@@ -58,8 +58,31 @@ TEMPLATE_TEST_CASE("benchmark hashing", "[!benchmark]", (std::hash<std::string>)
 	std::cout << h << std::endl;
 }
 
+// dummy map for overhead calculation. Makes use of key so it can't be optimized away.
+template <typename Key, typename Val>
+class DummyMapForOverheadCalculation {
+public:
+	DummyMapForOverheadCalculation()
+		: m_val{} {}
+
+	Val& operator[](Key const& key) {
+		return m_val[key & 1];
+	}
+
+	size_t erase(Key const& key) {
+		auto r = m_val[key & 1];
+		m_val[key & 1] = 0;
+		return r;
+	}
+
+	void clear() {}
+
+private:
+	Val m_val[2];
+};
+
 TEMPLATE_TEST_CASE("benchmark int", "[!benchmark]", (robin_hood::flat_map<int, int>), (robin_hood::node_map<int, int>),
-				   (std::unordered_map<int, int>), (std::map<int, int>)) {
+				   (std::unordered_map<int, int>)) {
 	Rng rng(123);
 	TestType map;
 
@@ -74,7 +97,32 @@ TEMPLATE_TEST_CASE("benchmark int", "[!benchmark]", (robin_hood::flat_map<int, i
 	}
 
 	REQUIRE(verifier == 50024052);
+
 	BENCHMARK("clear") {
 		map.clear();
 	}
+}
+
+// benchmark adapted from https://github.com/attractivechaos/udb2
+// this implementation should have less overhead, because sfc64 and it's uniform() is extremely fast.
+TEMPLATE_TEST_CASE("25% distinct", "[!benchmark]", (robin_hood::unordered_map<int, int>), (std::unordered_map<int, int>)) {
+	Rng rng(123);
+
+	int checksum = 0;
+	size_t const upper = 50'000'000;
+	size_t const lower = 10'000'000;
+	size_t const num_steps = 5;
+	size_t const step_width = (upper - lower) / num_steps;
+
+	for (size_t n = lower; n <= upper; n += step_width) {
+		size_t const max_rng = n / 4;
+		BENCHMARK(std::to_string(n) + " ") {
+			TestType map;
+			for (size_t i = 0; i < n; ++i) {
+				checksum += ++map[rng.uniform<int>(max_rng)];
+			}
+		}
+	}
+
+	REQUIRE(checksum == 539967125);
 }
