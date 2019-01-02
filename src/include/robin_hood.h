@@ -43,8 +43,6 @@
 #include <functional>
 #include <utility>
 
-#include <iostream>
-
 // mark unused members with this macro
 #define ROBIN_HOOD_UNUSED(identifier)
 
