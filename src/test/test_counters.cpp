@@ -1,7 +1,7 @@
+#include "avalanche.h"
 #include "test_base.h"
 
 #include <bitset>
-#include <iomanip>
 #include <list>
 #include <map>
 #include <tuple>
@@ -316,6 +316,83 @@ TEMPLATE_TEST_CASE("100k emplace and erase", "[display]", (std::map<Counter, Cou
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
+TEMPLATE_TEST_CASE("eval stats", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+				   (robin_hood::node_map<Counter, Counter>)) {
+	using Map = TestType;
+	Counter::Counts counts;
+	Counter::staticDefaultCtor = 0;
+	Counter::staticDtor = 0;
+
+	Rng rng(123);
+	size_t const num_iters = 1000000;
+	for (size_t i = 0; i < 1; ++i) {
+		BENCHMARK("small entries") {
+			// this tends to be very slow because of lots of shifts
+			Map map;
+			for (size_t n = 1; n < 10000; n += (500 * 10000 / num_iters)) {
+				for (size_t i = 0; i < 500; ++i) {
+					map[Counter{rng.uniform<size_t>(n), counts}] = Counter{i, counts};
+					map.erase(Counter{rng.uniform<size_t>(n), counts});
+				}
+			}
+		}
+
+		BENCHMARK("random i") {
+			Map map;
+			for (size_t i = 0; i < num_iters; ++i) {
+				map[Counter{rng.uniform<size_t>(i + 1), counts}] = Counter{rng.uniform<size_t>(i + 1), counts};
+				map.erase(Counter{rng.uniform<size_t>(i + 1), counts});
+			}
+		}
+
+		BENCHMARK("emplace") {
+			Map map;
+			for (size_t i = 0; i < num_iters; ++i) {
+				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts), std::forward_as_tuple(i, counts));
+			}
+		}
+
+		BENCHMARK("emplace & erase") {
+			Map map;
+			for (size_t i = 0; i < num_iters; ++i) {
+				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts),
+							std::forward_as_tuple(i, counts));
+				map.erase(Counter{rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts});
+			}
+		}
+
+		BENCHMARK("shifted") {
+			Map map;
+			static const size_t maxVal = 100000 / (ROBIN_HOOD_BITNESS - 8);
+			for (size_t i = 0; i < num_iters / 8; ++i) {
+				for (size_t sh = 0; sh < (ROBIN_HOOD_BITNESS - 8); ++sh) {
+					map[Counter{rng.uniform<size_t>(maxVal) << sh, counts}] = Counter{i, counts};
+					map.erase(Counter{rng.uniform<size_t>(maxVal) << sh, counts});
+				}
+			}
+		}
+
+		BENCHMARK("sequential insert") {
+			// just sequential insertion
+			Map map;
+			for (size_t i = 0; i < num_iters; ++i) {
+				map.emplace(std::piecewise_construct, std::forward_as_tuple(i, counts), std::forward_as_tuple(i, counts));
+			}
+		}
+
+		BENCHMARK("sequential shifted") {
+			// sequential shifted
+			Map map;
+			for (size_t i = 0; i < num_iters; ++i) {
+				map.emplace(std::piecewise_construct, std::forward_as_tuple(i << ROBIN_HOOD_BITNESS / 2, counts), std::forward_as_tuple(i, counts));
+			}
+		}
+	}
+
+	// counts.printCounts(std::string("eval stats ") + name(TestType{}));
+	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
+}
+
 #define PRINT_SIZEOF(x, A, B) std::cout << sizeof(x<A, B>) << " bytes for " #x "<" #A ", " #B ">" << std::endl
 
 struct BigObject {
@@ -356,18 +433,6 @@ TEST_CASE("show datastructure sizes") {
 	PRINT_SIZEOF(robin_hood::unordered_map, BigObject, int);
 	PRINT_SIZEOF(std::map, BigObject, int);
 	PRINT_SIZEOF(std::unordered_map, BigObject, int);
-}
-
-struct hex {
-	hex(int bits)
-		: bits(bits) {}
-
-	int const bits;
-};
-
-std::ostream& operator<<(std::ostream& os, hex const& h) {
-	os << "0x" << std::setfill('0') << std::setw(h.bits * 2 / 8) << std::hex;
-	return os;
 }
 
 void showHash(size_t val) {
@@ -436,135 +501,99 @@ struct ConfigurableCounterHash {
 #endif
 };
 
-template <size_t S>
-void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool<>& rbool) {
-	do {
-		if (rbool(rng)) {
-			auto mask_bits = rng(24) + 1;
-			uint64_t mask = rng((UINT64_C(1) << mask_bits) - 1) + 1;
-			// uint64_t mask = (UINT64_C(1) << mask_bits) - 1;
-			vals[rng.uniform<size_t>(vals.size())] ^= mask << rng(64 - mask_bits);
-		} else {
-			vals[rng.uniform<size_t>(vals.size())] = rng();
-		}
-	} while (rbool(rng));
-}
-
 template <typename A>
-void eval(int const iters, A const& current_values, size_t& num_usecases, uint64_t& current_mask_sum, double& current_ops_sum) {
-	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash, std::equal_to<Counter>, 128>;
+void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, uint64_t& current_ops_sum) {
+	using Map = robin_hood::flat_map<Counter, uint64_t, ConfigurableCounterHash, std::equal_to<Counter>, 120>;
 	try {
 		Rng rng(((uint64_t)iters) * 0x135ff36020fe7455);
 		Counter::Counts counts;
 		size_t const num_iters = 33000;
-
 		{
 			// this tends to be very slow because of lots of shifts
-			counts.reset();
 			Map map;
 			map.m_values = current_values;
 
 			for (size_t n = 1; n < 10000; n += (500 * 10000 / num_iters)) {
 				for (size_t i = 0; i < 500; ++i) {
-					map[Counter{rng.uniform<size_t>(n), counts}] = Counter{i, counts};
+					map[Counter{rng.uniform<size_t>(n), counts}] = i;
 					current_mask_sum += map.mask();
 					map.erase(Counter{rng.uniform<size_t>(n), counts});
 				}
 			}
 		}
-		current_ops_sum += std::log(counts.moveAssign + counts.moveCtor + counts.equals + counts.hash);
-		++num_usecases;
 
 		{
-			counts.reset();
 			Map map;
 			map.m_values = current_values;
 
 			for (size_t i = 0; i < num_iters; ++i) {
-				map[Counter{rng.uniform<size_t>(i + 1), counts}] = Counter{rng.uniform<size_t>(i + 1), counts};
+				map[Counter{rng.uniform<size_t>(i + 1), counts}] = i;
+				current_mask_sum += map.mask();
 				map.erase(Counter{rng.uniform<size_t>(i + 1), counts});
-				current_mask_sum += map.mask();
 			}
 		}
-		current_ops_sum += std::log(counts.moveAssign + counts.moveCtor + counts.equals + counts.hash);
-		++num_usecases;
 
 		{
-			counts.reset();
 			Map map;
 			map.m_values = current_values;
 
 			for (size_t i = 0; i < num_iters; ++i) {
-				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts), std::forward_as_tuple(i, counts));
+				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts), std::forward_as_tuple(i));
 				current_mask_sum += map.mask();
 			}
 		}
-		current_ops_sum += std::log(counts.moveAssign + counts.moveCtor + counts.equals + counts.hash);
-		++num_usecases;
 
 		{
-			counts.reset();
 			Map map;
 			map.m_values = current_values;
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts),
-							std::forward_as_tuple(i, counts));
+							std::forward_as_tuple(i));
 				current_mask_sum += map.mask();
 				map.erase(Counter{rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts});
 			}
 		}
-		current_ops_sum += std::log(counts.moveAssign + counts.moveCtor + counts.equals + counts.hash);
-		++num_usecases;
-
 		{
-			counts.reset();
 			Map map;
 			map.m_values = current_values;
 
-			static const size_t maxVal = 100000 / (ROBIN_HOOD_BITNESS - 8);
-			for (size_t i = 0; i < num_iters / 8; ++i) {
-				for (size_t sh = 0; sh < (ROBIN_HOOD_BITNESS - 8); ++sh) {
-					map[Counter{rng.uniform<size_t>(maxVal) << sh, counts}] = Counter{i, counts};
+			static size_t const max_shift = ROBIN_HOOD_BITNESS - 8;
+			static size_t const min_shift = 1;
+			static size_t const actual_iters = num_iters / (max_shift - min_shift);
+			for (size_t i = 0; i < actual_iters; ++i) {
+				for (size_t sh = 1; sh < max_shift; ++sh) {
+					map[Counter{rng.uniform<size_t>(100000) << sh, counts}] = i;
 					current_mask_sum += map.mask();
-					map.erase(Counter{rng.uniform<size_t>(maxVal) << sh, counts});
+					map.erase(Counter{rng.uniform<size_t>(100000) << sh, counts});
 				}
 			}
 		}
-		current_ops_sum += std::log(counts.moveAssign + counts.moveCtor + counts.equals + counts.hash);
-		++num_usecases;
-
-		// just sequential insertion
 		{
-			counts.reset();
+			// just sequential insertion
 			Map map;
 			map.m_values = current_values;
 
 			for (size_t i = 0; i < num_iters; ++i) {
-				map.emplace(std::piecewise_construct, std::forward_as_tuple(i, counts), std::forward_as_tuple(i, counts));
+				map.emplace(std::piecewise_construct, std::forward_as_tuple(i, counts), std::forward_as_tuple(i));
 				current_mask_sum += map.mask();
 			}
 		}
-		current_ops_sum += std::log(counts.moveAssign + counts.moveCtor + counts.equals + counts.hash);
-		++num_usecases;
 
-		// sequential shifted
 		{
-			counts.reset();
+			// sequential shifted
 			Map map;
 			map.m_values = current_values;
 
 			for (size_t i = 0; i < num_iters; ++i) {
-				map.emplace(std::piecewise_construct, std::forward_as_tuple(i << ROBIN_HOOD_BITNESS / 2, counts), std::forward_as_tuple(i, counts));
+				map.emplace(std::piecewise_construct, std::forward_as_tuple(i << ROBIN_HOOD_BITNESS / 2, counts), std::forward_as_tuple(i));
 				current_mask_sum += map.mask();
 			}
 		}
-		current_ops_sum += std::log(counts.moveAssign + counts.moveCtor + counts.equals + counts.hash);
-		++num_usecases;
+		current_ops_sum += counts.moveAssign + counts.moveCtor + counts.equals + counts.hash;
 	} catch (std::overflow_error const&) {
-		current_mask_sum += (std::numeric_limits<uint64_t>::max)() / 100;
-		current_ops_sum += (std::numeric_limits<double>::max)() / 100;
-		++num_usecases;
+		current_mask_sum += (std::numeric_limits<uint64_t>::max)() / 1000;
+		current_ops_sum += (std::numeric_limits<uint64_t>::max)() / 1000;
 	}
 }
 
@@ -583,29 +612,27 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 	}
 
 	uint64_t best_mask_sum = (std::numeric_limits<uint64_t>::max)();
-	double best_ops_sum = (std::numeric_limits<double>::max)();
+	uint64_t best_ops_sum = (std::numeric_limits<uint64_t>::max)();
 
 	uint64_t global_best_mask_sum = best_mask_sum;
-	double global_best_ops_sum = best_ops_sum;
+	uint64_t global_best_ops_sum = best_ops_sum;
 
 	auto current_values = best_values;
 	int num_unsuccessful_tries = 0;
 	while (true) {
-
-		size_t num_usecases = 0;
 		uint64_t current_mask_sum = 0;
-		double current_ops_sum = 0;
-#pragma omp parallel for reduction(+ : num_usecases, current_mask_sum, current_ops_sum)
-		for (int iters = 0; iters < 12 * 4; ++iters) {
-			eval(iters, current_values, num_usecases, current_mask_sum, current_ops_sum);
+		uint64_t current_ops_sum = 0;
+#pragma omp parallel for reduction(+ : current_mask_sum, current_ops_sum)
+		for (int iters = 0; iters < 12 * 2; ++iters) {
+			eval(iters, current_values, current_mask_sum, current_ops_sum);
 		}
-		std::cout << ".";
-		std::cout.flush();
+		// std::cout << ".";
+		// std::cout.flush();
 
 		++num_unsuccessful_tries;
 
 		// also assign when we are equally good, should lead to a bit more exploration
-		if (num_unsuccessful_tries == 1000 || std::tie(current_mask_sum, current_ops_sum) <= std::tie(best_mask_sum, best_ops_sum)) {
+		if (num_unsuccessful_tries == 2000 || std::tie(current_mask_sum, current_ops_sum) <= std::tie(best_mask_sum, best_ops_sum)) {
 			best_mask_sum = current_mask_sum;
 			best_ops_sum = current_ops_sum;
 			best_values = current_values;
@@ -614,19 +641,22 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 				global_best_mask_sum = best_mask_sum;
 				global_best_ops_sum = best_ops_sum;
 				global_best_values = best_values;
+
+				Avalanche a;
+				a.eval(100, [&global_best_values](uint64_t h) {
+					return static_cast<size_t>(robin_hood::detail::umulh(global_best_values[0], h * global_best_values[1]));
+				});
+				a.save("quickmixoptimizer.ppm");
 			}
 
 			num_unsuccessful_tries = 0;
 
-			std::cout << std::endl
-					  << std::dec << global_best_mask_sum << " masksum, "
-					  << std::exp(static_cast<double>(global_best_ops_sum) / static_cast<double>(num_usecases)) << " geomean globalbest: ";
+			std::cout << std::endl << std::dec << global_best_mask_sum << " masksum, " << global_best_ops_sum << " ops best: ";
 			for (auto const x : global_best_values) {
 				std::cout << hex(64) << x << " ";
 			}
 
-			std::cout << "  |  " << std::dec << best_mask_sum << " masksum, "
-					  << std::exp(static_cast<double>(best_ops_sum) / static_cast<double>(num_usecases)) << " geomean current best: ";
+			std::cout << "  |  " << std::dec << best_mask_sum << " masksum, " << best_ops_sum << " ops current: ";
 			for (auto const x : best_values) {
 				std::cout << hex(64) << x << " ";
 			}

@@ -11,8 +11,8 @@ OBJ_FILES := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRC_FILES))
 # -fsanitize=undefined
 # -fsanitize=address
 # -fsanitize=safe-stack
-debug: CXXFLAGS += -ggdb -Wno-unknown-pragmas -fno-omit-frame-pointer -fsanitize=safe-stack
-debug: LDFLAGS += -ggdb -fsanitize=safe-stack
+debug: CXXFLAGS += -ggdb -Wno-unknown-pragmas -fno-omit-frame-pointer 
+debug: LDFLAGS += -ggdb
 debug: executable
 
 release: CXXFLAGS += -ggdb -O2 -fno-omit-frame-pointer -fopenmp
