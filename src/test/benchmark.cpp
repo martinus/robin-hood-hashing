@@ -50,7 +50,9 @@ TEMPLATE_TEST_CASE("benchmark hashing", "[!benchmark]", (std::hash<std::string>)
 			str[i] = rng.uniform<unsigned char>();
 		}
 		BENCHMARK("std::string length " + std::to_string(str.size())) {
-			for (size_t i = 0; i < 10000000000 / s; ++i) {
+			for (size_t i = 0; i < 1000000000 / s; ++i) {
+				// modify string to prevent optimization
+				str[0] = (char)i;
 				h += hasher(str);
 			}
 		}

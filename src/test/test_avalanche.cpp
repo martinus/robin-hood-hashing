@@ -19,6 +19,7 @@ TEST_CASE("avalanche hash", "[!hide]") {
 	a.save("robin_hood_hash_uint64_t.ppm");
 }
 
+#if ROBIN_HOOD_HAS_UMULH
 TEST_CASE("avalanche optimizer", "[!hide]") {
 	Rng rng(std::random_device{}());
 	RandomBool<> rbool;
@@ -42,3 +43,4 @@ TEST_CASE("avalanche optimizer", "[!hide]") {
 		mutate(factors, rng, rbool);
 	}
 }
+#endif

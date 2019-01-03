@@ -415,7 +415,7 @@ public:
 		h *= m;
 		h ^= h >> r;
 
-		return h;
+		return static_cast<size_t>(h);
 	}
 };
 

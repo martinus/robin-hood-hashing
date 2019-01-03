@@ -316,7 +316,7 @@ TEMPLATE_TEST_CASE("100k emplace and erase", "[display]", (std::map<Counter, Cou
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
-TEMPLATE_TEST_CASE("eval stats", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+TEMPLATE_TEST_CASE("eval stats", "[display][!benchmark]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
 				   (robin_hood::node_map<Counter, Counter>)) {
 	using Map = TestType;
 	Counter::Counts counts;
@@ -325,7 +325,7 @@ TEMPLATE_TEST_CASE("eval stats", "[display]", (std::unordered_map<Counter, Count
 
 	Rng rng(123);
 	size_t const num_iters = 1000000;
-	for (size_t i = 0; i < 1; ++i) {
+	for (size_t bench_iters = 0; bench_iters < 1; ++bench_iters) {
 		BENCHMARK("small entries") {
 			// this tends to be very slow because of lots of shifts
 			Map map;
@@ -597,6 +597,8 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 	}
 }
 
+#if ROBIN_HOOD_HAS_UMULH
+
 TEST_CASE("quickmixoptimizer", "[!hide]") {
 	Rng factorRng(std::random_device{}());
 	RandomBool<> rbool;
@@ -669,3 +671,5 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 		mutate(current_values, factorRng, rbool);
 	}
 }
+
+#endif
