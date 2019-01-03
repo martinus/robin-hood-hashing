@@ -11,11 +11,11 @@ Hashtable based on Robin Hood Hashing. In general, this map is both faster and u
 
 ## Design Goals
 
-`robin_hood::unordered_map` should be a platform independent replacement for `std::unordered::map` while being faster and more memory efficient for real-world use cases.
+`robin_hood::unordered_map` should be a platform independent replacement for `std::unordered_map` while being faster and more memory efficient for real-world use cases.
 
 ## Features
 
-- **Two memory layouts**. Data is either stored in a flat map where references are not stable, or node based with stable references. The choice is yours through `robin_hood::flat_map` or `robin_hood::node_map`, or let `robin_hood::unordered_map` will chose for you.
+- **Two memory layouts**. Data is either stored in a flat map, or node based. Flat map's access is extremely fast due to no indirection, but references to elements are not stable. It also causes allocation spikes when resizing will need more memory for large objects. Node based map has stable references but is a bit slower due to indirection. The choice is yours; you can either use `robin_hood::flat_map` or `robin_hood::node_map` directly. If you use `robin_hood::unordered_map` It tries to choose the layout that seems appropriate for your data.
 
 - **Custom allocator**. Node based representation has a custom bulk allocator that tries to make few memory allocations. All allocated memory is reused, so there won't be any allocation spikes. It's very fast as well.
 
