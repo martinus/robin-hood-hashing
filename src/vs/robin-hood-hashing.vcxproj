@@ -27,10 +27,10 @@
   <ItemGroup>
     <ClCompile Include="..\test\benchmark.cpp" />
     <ClCompile Include="..\test\test.cpp" />
-    <ClCompile Include="..\test\test_api.cpp" />
     <ClCompile Include="..\test\test_assignments.cpp" />
     <ClCompile Include="..\test\test_avalanche.cpp" />
     <ClCompile Include="..\test\test_counters.cpp" />
+    <ClCompile Include="..\test\test_demo.cpp" />
     <ClCompile Include="..\test\test_empty.cpp" />
     <ClCompile Include="..\test\test_iterators.cpp" />
     <ClCompile Include="..\test\test_random_insert_erase.cpp" />
@@ -127,6 +127,8 @@
       <LanguageStandard>stdcpp14</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <OpenMPSupport>true</OpenMPSupport>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -146,6 +148,8 @@
       <LanguageStandard>stdcpp14</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <OpenMPSupport>true</OpenMPSupport>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
