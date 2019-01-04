@@ -34,9 +34,10 @@
 #ifndef ROBIN_HOOD_H_INCLUDED
 #define ROBIN_HOOD_H_INCLUDED
 
-#define ROBIN_HOOD_VERSION_MAJOR 1
-#define ROBIN_HOOD_VERSION_MINOR 0
-#define ROBIN_HOOD_VERSION_PATCH 2
+// see https://semver.org/
+#define ROBIN_HOOD_VERSION_MAJOR 2 // for incompatible API changes
+#define ROBIN_HOOD_VERSION_MINOR 0 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstring>
@@ -492,7 +493,7 @@ template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std:
 		  // also make sure data is not too large, then swap might be slow.
 		  bool IsDirect = sizeof(Key) + sizeof(T) <= sizeof(void*) * 3 &&
 						  std::is_nothrow_move_constructible<std::pair<Key, T>>::value&& std::is_nothrow_move_assignable<std::pair<Key, T>>::value,
-		  uint8_t MaxLoadFactor128 = 102>
+		  size_t MaxLoadFactor100 = 80>
 class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<pair<Key, T>, 4, 16384, IsDirect> {
 	// configuration defaults
 	static constexpr size_t InitialNumElements = 4;
@@ -506,7 +507,7 @@ public:
 	using size_type = size_t;
 	using hasher = Hash;
 	using key_equal = KeyEqual;
-	using Self = unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect, MaxLoadFactor128>;
+	using Self = unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect, MaxLoadFactor100>;
 
 private:
 	// DataNode ////////////////////////////////////////////////////////
@@ -763,7 +764,7 @@ private:
 		}
 
 	private:
-		friend class unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect, MaxLoadFactor128>;
+		friend class unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect, MaxLoadFactor100>;
 		NodePtr mKeyVals;
 		uint8_t const* mInfo;
 	};
@@ -1185,6 +1186,7 @@ public:
 
 		// perform backward shift deletion: shift elements to the left
 		// until we find one that is either empty or has zero offset.
+		// TODO we don't need to move everything, just the last one for the same bucket.
 		auto idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
 		mKeyVals[idx].destroy(*this);
 		size_t nextIdx = (idx + 1) & mMask;
@@ -1259,7 +1261,7 @@ public:
 	}
 
 	float max_load_factor() const {
-		return MaxLoadFactor128 / 128.0f;
+		return MaxLoadFactor100 / 100.0f;
 	}
 
 	// Average number of elements per bucket. Since we allow only 1 per bucket
@@ -1279,7 +1281,7 @@ private:
 	void init_data(size_t max_elements) {
 		mNumElements = 0;
 		mMask = max_elements - 1;
-		mMaxNumElementsAllowed = calcMaxNumElementsAllowed128(max_elements, MaxLoadFactor128);
+		mMaxNumElementsAllowed = calcMaxNumElementsAllowed(max_elements);
 
 		// calloc also zeroes everything
 		mKeyVals = reinterpret_cast<Node*>(detail::assertNotNull<std::bad_alloc>(calloc(1, calcNumBytesTotal(max_elements))));
@@ -1395,10 +1397,16 @@ private:
 		}
 	}
 
-	size_t calcMaxNumElementsAllowed128(size_t maxElements, uint8_t maxLoadFactor128) {
-		// make sure we can't get an overflow, use floatingpoint arithmetic if necessary.
-		return (maxElements > static_cast<size_t>(-1) / 128) ? static_cast<size_t>((static_cast<double>(maxElements) * maxLoadFactor128) / 128.0)
-															 : (maxElements * maxLoadFactor128) / 128;
+	size_t calcMaxNumElementsAllowed(size_t maxElements) {
+		static const size_t overflowLimit = (std::numeric_limits<size_t>::max)() / 100;
+		static const double factor = MaxLoadFactor100 / 100.0;
+
+		// make sure we can't get an overflow; use floatingpoint arithmetic if necessary.
+		if (maxElements > overflowLimit) {
+			return static_cast<size_t>(static_cast<double>(maxElements) * factor);
+		} else {
+			return (maxElements * MaxLoadFactor100) / 100;
+		}
 	}
 
 	void increase_size() {
@@ -1409,7 +1417,7 @@ private:
 		}
 
 		// it seems we have a really bad hash function! don't try to resize again
-		if (mNumElements * 2 < calcMaxNumElementsAllowed128(mMask + 1, MaxLoadFactor128)) {
+		if (mNumElements * 2 < calcMaxNumElementsAllowed(mMask + 1)) {
 			throwOverflowError();
 		}
 
@@ -1452,11 +1460,11 @@ private:
 	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte 40
 };
 
-template <class Key, class T, class Hash = hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor128 = 102>
-using flat_map = unordered_map<Key, T, Hash, KeyEqual, true, MaxLoadFactor128>;
+template <class Key, class T, class Hash = hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor100 = 80>
+using flat_map = unordered_map<Key, T, Hash, KeyEqual, true, MaxLoadFactor100>;
 
-template <class Key, class T, class Hash = hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor128 = 102>
-using node_map = unordered_map<Key, T, Hash, KeyEqual, false, MaxLoadFactor128>;
+template <class Key, class T, class Hash = hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor100 = 80>
+using node_map = unordered_map<Key, T, Hash, KeyEqual, false, MaxLoadFactor100>;
 
 } // namespace robin_hood
 
