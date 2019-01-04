@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SFC64_H
+#define SFC64_H
 
 #include <array>
 #include <cstdint>
@@ -12,12 +13,27 @@ class sfc64 {
 public:
 	using result_type = uint64_t;
 
+	sfc64()
+		: sfc64(UINT64_C(0x853c49e6748fea9b)) {}
+
+	explicit sfc64(uint64_t seed)
+		: m_a(seed)
+		, m_b(seed)
+		, m_c(seed)
+		, m_counter(1) {
+		for (int i = 0; i < 12; ++i) {
+			operator()();
+		}
+	}
+
 	// no copy ctors so we don't accidentally get the same random again
 	sfc64(sfc64 const&) = delete;
 	sfc64& operator=(sfc64 const&) = delete;
 
 	sfc64(sfc64&&) = default;
 	sfc64& operator=(sfc64&&) = default;
+
+	~sfc64() = default;
 
 	sfc64(std::initializer_list<uint64_t> state) {
 		if (state.size() != 4) {
@@ -38,19 +54,6 @@ public:
 	}
 	static constexpr uint64_t(max)() {
 		return (std::numeric_limits<uint64_t>::max)();
-	}
-
-	sfc64()
-		: sfc64(UINT64_C(0x853c49e6748fea9b)) {}
-
-	sfc64(uint64_t seed)
-		: m_a(seed)
-		, m_b(seed)
-		, m_c(seed)
-		, m_counter(1) {
-		for (int i = 0; i < 12; ++i) {
-			operator()();
-		}
 	}
 
 	void seed() {
@@ -80,19 +83,21 @@ public:
 	}
 
 	uint64_t multhi64(uint64_t const a, uint64_t const b) {
-		uint64_t a_lo = (uint32_t)a;
-		uint64_t a_hi = a >> 32;
-		uint64_t b_lo = (uint32_t)b;
-		uint64_t b_hi = b >> 32;
+		uint64_t a_lo = static_cast<uint32_t>(a);
+		uint64_t a_hi = a >> 32u;
+		uint64_t b_lo = static_cast<uint32_t>(b);
+		uint64_t b_hi = b >> 32u;
 
 		uint64_t a_x_b_hi = a_hi * b_hi;
 		uint64_t a_x_b_mid = a_hi * b_lo;
 		uint64_t b_x_a_mid = b_hi * a_lo;
 		uint64_t a_x_b_lo = a_lo * b_lo;
 
-		uint64_t carry_bit = ((uint64_t)(uint32_t)a_x_b_mid + (uint64_t)(uint32_t)b_x_a_mid + (a_x_b_lo >> 32)) >> 32;
+		uint64_t carry_bit =
+			(static_cast<uint64_t>(static_cast<uint32_t>(a_x_b_mid)) + static_cast<uint64_t>(static_cast<uint32_t>(b_x_a_mid)) + (a_x_b_lo >> 32u)) >>
+			32u;
 
-		uint64_t multhi = a_x_b_hi + (a_x_b_mid >> 32) + (b_x_a_mid >> 32) + carry_bit;
+		uint64_t multhi = a_x_b_hi + (a_x_b_mid >> 32u) + (b_x_a_mid >> 32u) + carry_bit;
 
 		return multhi;
 	}
@@ -101,7 +106,7 @@ public:
 	// 32bit and 64 bit.
 	uint64_t operator()(uint64_t boundExcluded) noexcept {
 #ifdef __SIZEOF_INT128__
-		return (uint64_t)(((unsigned __int128)operator()() * (unsigned __int128)boundExcluded) >> 64);
+		return static_cast<uint64_t>((static_cast<unsigned __int128>(operator()()) * static_cast<unsigned __int128>(boundExcluded)) >> 64u);
 #else
 		return multhi64(operator()(), boundExcluded);
 #endif
@@ -150,3 +155,5 @@ private:
 	static constexpr const U s_mask_left1 = U(1) << (sizeof(U) * 8 - 1);
 	U m_rand = 1;
 };
+
+#endif
