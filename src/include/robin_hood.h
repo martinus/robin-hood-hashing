@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 1.0.1
+// version 1.0.2
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -36,7 +36,7 @@
 
 #define ROBIN_HOOD_VERSION_MAJOR 1
 #define ROBIN_HOOD_VERSION_MINOR 0
-#define ROBIN_HOOD_VERSION_PATCH 1
+#define ROBIN_HOOD_VERSION_PATCH 2
 
 #include <algorithm>
 #include <cstring>
@@ -763,7 +763,7 @@ private:
 		}
 
 	private:
-		friend class unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect>;
+		friend class unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect, MaxLoadFactor128>;
 		NodePtr mKeyVals;
 		uint8_t const* mInfo;
 	};
