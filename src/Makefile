@@ -1,5 +1,5 @@
 #BITNESS = -m32
-CXX = ccache g++-8 ${BITNESS} -std=c++14 -Wall -Werror -fdiagnostics-color -Wconversion
+CXX = ccache g++ ${BITNESS} -std=c++14 -Wall -Werror -fdiagnostics-color -Wconversion
 LD = $(CXX)
 
 SRC_DIR := test
