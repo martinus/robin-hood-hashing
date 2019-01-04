@@ -10,31 +10,29 @@ struct NullHash {
 };
 
 TEMPLATE_TEST_CASE("benchmark random insert erase", "[!benchmark]", (robin_hood::flat_map<uint64_t, uint64_t>),
-				   (robin_hood::node_map<uint64_t, uint64_t>), (std::unordered_map<uint64_t, uint64_t>), (std::map<uint64_t, uint64_t>)) {
+				   (robin_hood::node_map<uint64_t, uint64_t>), (std::unordered_map<uint64_t, uint64_t>)) {
 	Rng rng(123);
 	TestType map;
 
-	static const size_t maxVal = 2000;
+	static const size_t maxVal = 200000;
 
 	BENCHMARK("Random insert erase") {
-		for (uint64_t i = 0; i < 100'000'000; ++i) {
-			map[rng(maxVal)] = i;
+		for (uint64_t i = 0; i < 10'000'000; ++i) {
+			++map[rng(maxVal)];
 			map.erase(rng(maxVal));
 		}
 	}
 
-	uint64_t sum_key = 0;
-	uint64_t sum_val = 0;
+	uint64_t sum = 0;
 	BENCHMARK("iterating") {
-		for (int i = 0; i < 1000; ++i) {
+		for (int i = 0; i < 2000; ++i) {
 			for (auto const& kv : map) {
-				sum_key += kv.first;
-				sum_val += kv.second;
+				sum += kv.second;
 			}
 		}
 	}
-	REQUIRE(map.size() == 993);
-	REQUIRE(sum_key + sum_val == 0x5a5017eef9c8);
+	REQUIRE(map.size() == 99917);
+	REQUIRE(sum == 399116000);
 	BENCHMARK("clear") {
 		map.clear();
 	}
@@ -44,13 +42,13 @@ TEMPLATE_TEST_CASE("benchmark hashing", "[!benchmark]", (std::hash<std::string>)
 	size_t h = 0;
 	Rng rng(123);
 	auto hasher = TestType{};
-	for (size_t s : {8, 11, 100, 1024}) {
-		std::string str(s, 'x');
+	for (const int s : {8, 11, 100, 1024}) {
+		std::string str((size_t)s, 'x');
 		for (size_t i = 0; i < str.size(); ++i) {
-			str[i] = rng.uniform<unsigned char>();
+			str[i] = rng.uniform<char>();
 		}
 		BENCHMARK("std::string length " + std::to_string(str.size())) {
-			for (size_t i = 0; i < 1000000000 / s; ++i) {
+			for (size_t i = 0; i < 1000000000u / static_cast<size_t>(s); ++i) {
 				// modify string to prevent optimization
 				str[0] = (char)i;
 				h += hasher(str);
@@ -127,4 +125,37 @@ TEMPLATE_TEST_CASE("25% distinct", "[!benchmark]", (robin_hood::unordered_map<in
 	}
 
 	REQUIRE(checksum == 539967125);
+}
+
+TEMPLATE_TEST_CASE("random find 50% existing", "[!benchmark]", (robin_hood::unordered_map<uint64_t, int>), (std::unordered_map<uint64_t, int>)) {
+	Rng rng(777);
+
+	TestType map;
+	size_t found = 0;
+	BENCHMARK("random find 50% existing") {
+		for (size_t iters = 0; iters < 20; ++iters) {
+			auto before_insert_rng_state = rng.state();
+			for (int j = 0; j < 100'000; ++j) {
+				map[rng()];
+				// skip one rng number
+				rng();
+			}
+			auto const final_rng = rng();
+
+			// the search a few times
+			for (size_t num_searches = 0; num_searches < 10; ++num_searches) {
+				rng.state(before_insert_rng_state);
+				uint64_t search_val = 0;
+				do {
+					search_val = rng();
+					auto it = map.find(search_val);
+					if (it != map.end()) {
+						++found;
+					}
+				} while (search_val != final_rng);
+			}
+		}
+	}
+
+	REQUIRE(found == 20 * 100000 * 10);
 }
