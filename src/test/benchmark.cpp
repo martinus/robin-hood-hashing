@@ -7,20 +7,21 @@ TEMPLATE_TEST_CASE("hash std::string", "[!benchmark]", (robin_hood::hash<std::st
 	size_t h = 0;
 	Rng rng(123);
 	auto hasher = TestType{};
-	for (const int s : {8, 11, 100, 1024}) {
+	for (const int s : {8, 11, 100, 256}) {
 		std::string str((size_t)s, 'x');
 		for (size_t i = 0; i < str.size(); ++i) {
 			str[i] = rng.uniform<char>();
 		}
 		BENCHMARK("std::string length " + std::to_string(str.size())) {
-			for (size_t i = 0; i < 1000000000u / static_cast<size_t>(s); ++i) {
+			for (size_t i = 0; i < 100000000u; ++i) {
 				// modify string to prevent optimization
-				str[0] = (char)i;
+				*reinterpret_cast<uint64_t*>(&str[0]) = rng();
 				h += hasher(str);
 			}
 		}
 	}
-	std::cout << h << std::endl;
+	// prevent optimization
+	INFO(h);
 }
 
 // dummy map for overhead calculation. Makes use of key so it can't be optimized away.
@@ -93,6 +94,7 @@ TEMPLATE_TEST_CASE("random find 50% existing", "[!benchmark]", (robin_hood::unor
 
 	TestType map;
 	size_t found = 0;
+	size_t not_found = 0;
 	BENCHMARK("random find 50% existing") {
 		for (size_t iters = 0; iters < 20; ++iters) {
 			auto before_insert_rng_state = rng.state();
@@ -112,11 +114,15 @@ TEMPLATE_TEST_CASE("random find 50% existing", "[!benchmark]", (robin_hood::unor
 					auto it = map.find(search_val);
 					if (it != map.end()) {
 						++found;
+					} else {
+						++not_found;
 					}
+
 				} while (search_val != final_rng);
 			}
 		}
 	}
 
-	REQUIRE(found == 20 * 100000 * 10);
+	REQUIRE(found == 20000000);
+	REQUIRE(not_found == 20000200);
 }
