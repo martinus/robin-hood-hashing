@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 1.0.0
+// version 1.0.1
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -36,7 +36,7 @@
 
 #define ROBIN_HOOD_VERSION_MAJOR 1
 #define ROBIN_HOOD_VERSION_MINOR 0
-#define ROBIN_HOOD_VERSION_PATCH 0
+#define ROBIN_HOOD_VERSION_PATCH 1
 
 #include <algorithm>
 #include <cstring>
@@ -81,7 +81,7 @@ static uint64_t umulh(uint64_t a, uint64_t b) {
 #if _WIN32
 	return __umulh(a, b);
 #else
-	return static_cast<uint64_t>(((unsigned __int128)a * (unsigned __int128)b) >> 64);
+	return static_cast<uint64_t>((static_cast<unsigned __int128>(a) * static_cast<unsigned __int128>(b)) >> 64u);
 #endif
 }
 #endif
@@ -101,41 +101,37 @@ static T* assertNotNull(T* t, Args&&... args) {
 	return t;
 }
 
-static inline uint64_t ror64(uint64_t v, int r) {
-	return (v >> r) | (v << (64 - r));
-}
-
 // Allocates bulks of memory for objects of type T. This deallocates the memory in the destructor, and keeps a linked list of the allocated memory
 // around. Overhead per allocation is the size of a pointer.
 template <class T, size_t MinNumAllocs = 4, size_t MaxNumAllocs = 256>
 class BulkPoolAllocator {
 public:
 	BulkPoolAllocator()
-		: mHead(0)
-		, mListForFree(0) {}
+		: mHead(nullptr)
+		, mListForFree(nullptr) {}
 
 	// does not copy anything, just creates a new allocator.
-	BulkPoolAllocator(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o))
-		: mHead(0)
-		, mListForFree(0) {}
+	BulkPoolAllocator(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/)
+		: mHead(nullptr)
+		, mListForFree(nullptr) {}
 
 	BulkPoolAllocator(BulkPoolAllocator&& o)
 		: mHead(o.mHead)
 		, mListForFree(o.mListForFree) {
-		o.mListForFree = 0;
-		o.mHead = 0;
+		o.mListForFree = nullptr;
+		o.mHead = nullptr;
 	}
 
 	BulkPoolAllocator& operator=(BulkPoolAllocator&& o) {
 		reset();
 		mHead = o.mHead;
 		mListForFree = o.mListForFree;
-		o.mListForFree = 0;
-		o.mHead = 0;
+		o.mListForFree = nullptr;
+		o.mHead = nullptr;
 		return *this;
 	}
 
-	BulkPoolAllocator& operator=(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o)) {
+	BulkPoolAllocator& operator=(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/) {
 		// does not do anything
 		return *this;
 	}
@@ -151,7 +147,7 @@ public:
 			free(mListForFree);
 			mListForFree = reinterpret_cast<T**>(tmp);
 		}
-		mHead = 0;
+		mHead = nullptr;
 	}
 
 	// allocates, but does NOT initialize. Use in-place new constructor, e.g.
@@ -214,16 +210,16 @@ private:
 	void add(void* ptr, const size_t numBytes) {
 		const size_t numElements = (numBytes - ALIGNMENT) / ALIGNED_SIZE;
 
-		T** data = reinterpret_cast<T**>(ptr);
+		auto data = reinterpret_cast<T**>(ptr);
 
 		// link free list
 		*reinterpret_cast<T***>(data) = mListForFree;
 		mListForFree = data;
 
 		// create linked list for newly allocated data
-		T* const headT = reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) + ALIGNMENT);
+		auto const headT = reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) + ALIGNMENT);
 
-		char* const head = reinterpret_cast<char*>(headT);
+		auto const head = reinterpret_cast<char*>(headT);
 
 		// Visual Studio compiler automatically unrolls this loop, which is pretty cool
 		for (size_t i = 0; i < numElements; ++i) {
@@ -248,7 +244,8 @@ private:
 	}
 
 	// enforce byte alignment of the T's
-	static const size_t ALIGNMENT = (std::max)(std::alignment_of<T>::value, std::alignment_of<T*>::value);
+	static const size_t ALIGNMENT =
+		std::alignment_of<T>::value > std::alignment_of<T*>::value ? std::alignment_of<T>::value : std::alignment_of<T*>::value;
 	static const size_t ALIGNED_SIZE = ((sizeof(T) - 1) / ALIGNMENT + 1) * ALIGNMENT;
 
 	static_assert(MinNumAllocs >= 1, "MinNumAllocs");
@@ -269,7 +266,7 @@ template <class T, size_t MinSize, size_t MaxSize>
 struct NodeAllocator<T, MinSize, MaxSize, true> {
 
 	// we are not using the data, so just free it.
-	void addOrFree(void* ptr, size_t ROBIN_HOOD_UNUSED(numBytes)) {
+	void addOrFree(void* ptr, size_t ROBIN_HOOD_UNUSED(numBytes) /*unused*/) {
 		free(ptr);
 	}
 };
@@ -319,12 +316,13 @@ struct pair {
 		, second(std::forward<SecondArg>(secondArg)) {}
 
 	template <typename... Args1, typename... Args2>
-	pair(std::piecewise_construct_t, std::tuple<Args1...> firstArgs, std::tuple<Args2...> secondArgs)
+	pair(std::piecewise_construct_t /*unused*/, std::tuple<Args1...> firstArgs, std::tuple<Args2...> secondArgs)
 		: pair(firstArgs, secondArgs, std::index_sequence_for<Args1...>{}, std::index_sequence_for<Args2...>{}) {}
 
 	// constructor called from the std::piecewise_construct_t ctor
 	template <typename... Args1, size_t... Indexes1, typename... Args2, size_t... Indexes2>
-	inline pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2, std::index_sequence<Indexes1...>, std::index_sequence<Indexes2...>)
+	inline pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2, std::index_sequence<Indexes1...> /*unused*/,
+				std::index_sequence<Indexes2...> /*unused*/)
 		: first(std::forward<Args1>(std::get<Indexes1>(tuple1))...)
 		, second(std::forward<Args2>(std::get<Indexes2>(tuple2))...) {}
 
@@ -369,7 +367,7 @@ public:
 	size_t operator()(std::string const& str) const {
 		static constexpr uint64_t const m = UINT64_C(0xc6a4a7935bd1e995);
 		static constexpr uint64_t const seed = UINT64_C(0xe17a1465);
-		static constexpr int const r = 47;
+		static constexpr unsigned int const r = 47;
 
 		size_t const len = str.size();
 		auto const data64 = reinterpret_cast<uint64_t const*>(str.data());
@@ -385,7 +383,7 @@ public:
 			std::memcpy(&k, data64 + i, 8);
 
 			k *= m;
-			k ^= k >> 47;
+			k ^= k >> r;
 			k *= m;
 
 			h ^= k;
@@ -393,19 +391,19 @@ public:
 		}
 
 		auto const data8 = reinterpret_cast<uint8_t const*>(data64 + n_blocks);
-		switch (len & 7) {
+		switch (len & 7u) {
 		case 7:
-			h ^= static_cast<uint64_t>(data8[6]) << 48;
+			h ^= static_cast<uint64_t>(data8[6]) << 48u;
 		case 6:
-			h ^= static_cast<uint64_t>(data8[5]) << 40;
+			h ^= static_cast<uint64_t>(data8[5]) << 40u;
 		case 5:
-			h ^= static_cast<uint64_t>(data8[4]) << 32;
+			h ^= static_cast<uint64_t>(data8[4]) << 32u;
 		case 4:
-			h ^= static_cast<uint64_t>(data8[3]) << 24;
+			h ^= static_cast<uint64_t>(data8[3]) << 24u;
 		case 3:
-			h ^= static_cast<uint64_t>(data8[2]) << 16;
+			h ^= static_cast<uint64_t>(data8[2]) << 16u;
 		case 2:
-			h ^= static_cast<uint64_t>(data8[1]) << 8;
+			h ^= static_cast<uint64_t>(data8[1]) << 8u;
 		case 1:
 			h ^= static_cast<uint64_t>(data8[0]);
 			h *= m;
@@ -524,14 +522,14 @@ private:
 	class DataNode<M, true> {
 	public:
 		template <class... Args>
-		DataNode(M& ROBIN_HOOD_UNUSED(map), Args&&... args)
+		explicit DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, Args&&... args)
 			: mData(std::forward<Args>(args)...) {}
 
-		DataNode(M& ROBIN_HOOD_UNUSED(map), DataNode<M, true>&& n)
+		DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, DataNode<M, true>&& n)
 			: mData(std::move(n.mData)) {}
 
 		// doesn't do anything
-		void destroy(M& ROBIN_HOOD_UNUSED(map)) {}
+		void destroy(M& ROBIN_HOOD_UNUSED(map) /*unused*/) {}
 		void destroyDoNotDeallocate() {}
 
 		value_type const* operator->() const {
@@ -578,12 +576,12 @@ private:
 	class DataNode<M, false> {
 	public:
 		template <class... Args>
-		DataNode(M& map, Args&&... args)
+		explicit DataNode(M& map, Args&&... args)
 			: mData(map.allocate()) {
 			new (mData) value_type(std::forward<Args>(args)...);
 		}
 
-		DataNode(M& ROBIN_HOOD_UNUSED(map), DataNode<M, false>&& n)
+		DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, DataNode<M, false>&& n)
 			: mData(std::move(n.mData)) {}
 
 		void destroy(M& map) {
@@ -802,14 +800,14 @@ private:
 	}
 
 	// forwards the index by one, wrapping around at the end
-	void next(int& info, size_t& idx) const {
-		idx = (idx + 1) & mMask;
-		++info;
+	void next(int* info, size_t* idx) const {
+		*idx = (*idx + 1) & mMask;
+		++*info;
 	}
 
-	void nextWhileLess(int& info, size_t& idx) const {
+	void nextWhileLess(int* info, size_t* idx) const {
 		// unrolling this by hand did not bring any speedups.
-		while (info < mInfo[idx]) {
+		while (*info < mInfo[*idx]) {
 			next(info, idx);
 		}
 	}
@@ -825,7 +823,7 @@ private:
 			} else {
 				new (mKeyVals + idx) Node(std::move(mKeyVals[prev_idx]));
 			}
-			mInfo[idx] = (uint8_t)(mInfo[prev_idx] + 1);
+			mInfo[idx] = static_cast<uint8_t>(mInfo[prev_idx] + 1);
 			if (0xFF == mInfo[idx]) {
 				mMaxNumElementsAllowed = 0;
 			}
@@ -838,14 +836,14 @@ private:
 	size_t findIdx(const Other& key) const {
 		size_t idx = keyToIdx(key);
 		int info = 1;
-		nextWhileLess(info, idx);
+		nextWhileLess(&info, &idx);
 
 		// check while info matches with the source idx
 		while (info == mInfo[idx]) {
 			if (KeyEqual::operator()(key, mKeyVals[idx]->first)) {
 				return idx;
 			}
-			next(info, idx);
+			next(&info, &idx);
 		}
 
 		// nothing found!
@@ -875,15 +873,15 @@ private:
 		}
 
 		// key not found, so we are now exactly where we want to insert it.
-		const size_t insertion_idx = idx;
-		uint8_t insertion_info = static_cast<uint8_t>(info);
+		auto const insertion_idx = idx;
+		auto insertion_info = static_cast<uint8_t>(info);
 		if (0xFF == insertion_info) {
 			mMaxNumElementsAllowed = 0;
 		}
 
 		// find an empty spot
 		while (0 != mInfo[idx]) {
-			next(info, idx);
+			next(&info, &idx);
 		}
 
 		auto& l = mKeyVals[insertion_idx];
@@ -910,18 +908,19 @@ public:
 	/// penalty is payed at the first insert, and not before. Lookup of this empty map works
 	/// because everybody points to sDummyInfoByte.
 	/// parameter bucket_count is dictated by the standard, but we can ignore it.
-	explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) = 0, const Hash& hash = Hash(), const KeyEqual& equal = KeyEqual())
+	explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& hash = Hash(), const KeyEqual& equal = KeyEqual())
 		: Hash(hash)
 		, KeyEqual(equal) {}
 
 	template <class Iter>
-	unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) = 0, const Hash& hash = Hash(), const KeyEqual& equal = KeyEqual())
+	unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& hash = Hash(),
+				  const KeyEqual& equal = KeyEqual())
 		: Hash(hash)
 		, KeyEqual(equal) {
 		insert(first, last);
 	}
 
-	unordered_map(std::initializer_list<value_type> init, size_t ROBIN_HOOD_UNUSED(bucket_count) = 0, const Hash& hash = Hash(),
+	unordered_map(std::initializer_list<value_type> init, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& hash = Hash(),
 				  const KeyEqual& equal = KeyEqual())
 		: Hash(hash)
 		, KeyEqual(equal) {
@@ -1132,7 +1131,7 @@ public:
 	}
 
 	template <class OtherKey>
-	const_iterator find(const OtherKey& key, is_transparent_tag) const {
+	const_iterator find(const OtherKey& key, is_transparent_tag /*unused*/) const {
 		const size_t idx = findIdx(key);
 		return const_iterator(mKeyVals + idx, mInfo + idx);
 	}
@@ -1143,7 +1142,7 @@ public:
 	}
 
 	template <class OtherKey>
-	iterator find(const OtherKey& key, is_transparent_tag) {
+	iterator find(const OtherKey& key, is_transparent_tag /*unused*/) {
 		const size_t idx = findIdx(key);
 		return iterator(mKeyVals + idx, mInfo + idx);
 	}
@@ -1186,11 +1185,11 @@ public:
 
 		// perform backward shift deletion: shift elements to the left
 		// until we find one that is either empty or has zero offset.
-		size_t idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
+		auto idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
 		mKeyVals[idx].destroy(*this);
 		size_t nextIdx = (idx + 1) & mMask;
 		while (mInfo[nextIdx] > 1) {
-			mInfo[idx] = (uint8_t)(mInfo[nextIdx] - 1);
+			mInfo[idx] = static_cast<uint8_t>(mInfo[nextIdx] - 1);
 			mKeyVals[idx] = std::move(mKeyVals[nextIdx]);
 			idx = nextIdx;
 			nextIdx = (idx + 1) & mMask;
@@ -1215,7 +1214,7 @@ public:
 		size_t idx = keyToIdx(key);
 
 		int info = 1;
-		nextWhileLess(info, idx);
+		nextWhileLess(&info, &idx);
 
 		// check while info matches with the source idx
 		while (info == mInfo[idx]) {
@@ -1226,7 +1225,7 @@ public:
 				// until we find one that is either empty or has zero offset.
 				size_t nextIdx = (idx + 1) & mMask;
 				while (mInfo[nextIdx] > 1) {
-					mInfo[idx] = (uint8_t)(mInfo[nextIdx] - 1);
+					mInfo[idx] = static_cast<uint8_t>(mInfo[nextIdx] - 1);
 					mKeyVals[idx] = std::move(mKeyVals[nextIdx]);
 					idx = nextIdx;
 					nextIdx = (idx + 1) & mMask;
@@ -1240,7 +1239,7 @@ public:
 				--mNumElements;
 				return 1;
 			}
-			next(info, idx);
+			next(&info, &idx);
 		}
 
 		// nothing found to delete
@@ -1296,7 +1295,7 @@ private:
 			size_t idx = keyToIdx(key);
 
 			int info = 1;
-			nextWhileLess(info, idx);
+			nextWhileLess(&info, &idx);
 
 			// while we potentially have a match
 			while (info == mInfo[idx]) {
@@ -1304,7 +1303,7 @@ private:
 					// key already exists, do not insert.
 					return mKeyVals[idx]->second;
 				}
-				next(info, idx);
+				next(&info, &idx);
 			}
 
 			// unlikely that this evaluates to true
@@ -1314,8 +1313,8 @@ private:
 			}
 
 			// key not found, so we are now exactly where we want to insert it.
-			size_t const insertion_idx = idx;
-			uint8_t const insertion_info = static_cast<uint8_t>(info);
+			auto const insertion_idx = idx;
+			auto const insertion_info = static_cast<uint8_t>(info);
 			if (0xFF == insertion_info) {
 				// might overflow next time, set to 0 so we increase size next time
 				mMaxNumElementsAllowed = 0;
@@ -1323,7 +1322,7 @@ private:
 
 			// find an empty spot
 			while (0 != mInfo[idx]) {
-				next(info, idx);
+				next(&info, &idx);
 			}
 
 			auto& l = mKeyVals[insertion_idx];
@@ -1350,7 +1349,7 @@ private:
 			size_t idx = keyToIdx(keyval.getFirst());
 
 			int info = 1;
-			nextWhileLess(info, idx);
+			nextWhileLess(&info, &idx);
 
 			// while we potentially have a match
 			while (info == mInfo[idx]) {
@@ -1359,7 +1358,7 @@ private:
 					// see http://en.cppreference.com/w/cpp/container/unordered_map/insert
 					return std::make_pair<iterator, bool>(iterator(mKeyVals + idx, mInfo + idx), false);
 				}
-				next(info, idx);
+				next(&info, &idx);
 			}
 
 			// unlikely that this evaluates to true
@@ -1370,14 +1369,14 @@ private:
 
 			// key not found, so we are now exactly where we want to insert it.
 			const size_t insertion_idx = idx;
-			uint8_t insertion_info = static_cast<uint8_t>(info);
+			auto insertion_info = static_cast<uint8_t>(info);
 			if (0xFF == insertion_info) {
 				mMaxNumElementsAllowed = 0;
 			}
 
 			// find an empty spot
 			while (0 != mInfo[idx]) {
-				next(info, idx);
+				next(&info, &idx);
 			}
 
 			auto& l = mKeyVals[insertion_idx];
@@ -1424,7 +1423,7 @@ private:
 		init_data(oldMaxElements * 2);
 
 		for (size_t i = 0; i < oldMaxElements; ++i) {
-			if (oldInfo[i]) {
+			if (oldInfo[i] != 0) {
 				insert_move(std::move(oldKeyVals[i]));
 				// destroy the node but DON'T destroy the data.
 				oldKeyVals[i].~Node();
@@ -1453,10 +1452,10 @@ private:
 	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte 40
 };
 
-template <class Key, class T, class Hash = robin_hood::hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor128 = 102>
+template <class Key, class T, class Hash = hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor128 = 102>
 using flat_map = unordered_map<Key, T, Hash, KeyEqual, true, MaxLoadFactor128>;
 
-template <class Key, class T, class Hash = robin_hood::hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor128 = 102>
+template <class Key, class T, class Hash = hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor128 = 102>
 using node_map = unordered_map<Key, T, Hash, KeyEqual, false, MaxLoadFactor128>;
 
 } // namespace robin_hood
