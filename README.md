@@ -1,6 +1,9 @@
 robin-hood-hashing
 ==================
 
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/martinus/robin-hood-hashing.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/martinus/robin-hood-hashing/alerts/)
+
+
 Hashtable based on Robin Hood Hashing. In general, this map is both faster and uses less memory than
 `std::unordered_map` implementations.
 
