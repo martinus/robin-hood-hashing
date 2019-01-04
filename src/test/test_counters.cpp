@@ -295,8 +295,8 @@ TEMPLATE_TEST_CASE("100k [] and erase", "[display]", (std::unordered_map<Counter
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
-TEMPLATE_TEST_CASE("100k emplace and erase", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
+TEMPLATE_TEST_CASE("100k emplace and erase", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+				   (robin_hood::node_map<Counter, Counter>)) {
 
 	Counter::Counts counts;
 	// Counter::Counts::printHeader();
@@ -416,7 +416,7 @@ public:
 	std::cout << sizeof(x<A, A>) << " " << sizeof(x<A, B>) << " " << sizeof(x<B, A>) << " " << sizeof(x<B, B>)                                       \
 			  << " bytes for " #x "<" #A ", " #A ">, <" #A ", " #B ">, <" #B ", " #A ">, <" #B ", " #B ">" << std::endl
 
-TEST_CASE("show datastructure sizes") {
+TEST_CASE("show datastructure sizes", "[display]") {
 	PRINT_SIZEOF(std::unordered_map, int, BigObject);
 	PRINT_SIZEOF(robin_hood::unordered_map, int, BigObject);
 	PRINT_SIZEOF(std::map, int, BigObject);
@@ -428,7 +428,7 @@ void showHash(size_t val) {
 	std::cout << hex(ROBIN_HOOD_BITNESS) << val << " ->  " << hex(ROBIN_HOOD_BITNESS) << sh << "   " << hex(ROBIN_HOOD_BITNESS) << rh << std::endl;
 }
 
-TEST_CASE("show hash distribution") {
+TEST_CASE("show hash distribution", "[display]") {
 	std::cout << "input                  std::hash            robin_hood::hash" << std::endl;
 	for (size_t i = 0; i < 16; ++i) {
 		showHash(i);

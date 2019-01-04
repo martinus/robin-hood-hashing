@@ -24,6 +24,26 @@ TEMPLATE_TEST_CASE("hash std::string", "[!benchmark]", (robin_hood::hash<std::st
 	INFO(h);
 }
 
+TEMPLATE_TEST_CASE("hash integers", "[!benchmark]", (robin_hood::hash<uint64_t>), (robin_hood::hash<int32_t>), (std::hash<uint64_t>),
+				   (std::hash<int32_t>)) {
+	size_t a = 0;
+	size_t b = 0;
+	size_t c = 0;
+	size_t d = 0;
+	TestType hasher;
+	Rng rng(123);
+	BENCHMARK("hash integer") {
+		for (int i = 0; i < 1000000000; i += 4) {
+			a += hasher(i);
+			b += hasher(i + 1);
+			c += hasher(i + 2);
+			d += hasher(i + 3);
+		}
+	}
+	std::cout << a + b + c + d << std::endl;
+	INFO(a + b + c + d);
+}
+
 // dummy map for overhead calculation. Makes use of key so it can't be optimized away.
 template <typename Key, typename Val>
 class DummyMapForOverheadCalculation {
