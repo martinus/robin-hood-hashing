@@ -12,7 +12,6 @@ T rotl(T const x, int k) {
 
 TEST_CASE("avalanche hash", "[!hide]") {
 	Rng rng(std::random_device{}());
-	RandomBool<> rbool;
 
 	Avalanche a;
 	a.eval(1000, [](uint64_t h) { return robin_hood::hash<uint64_t>{}(h); });

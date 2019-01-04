@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TEST_BASE_H
+#define TEST_BASE_H
 
 #include "catch.hpp"
 #include "robin_hood.h"
@@ -12,7 +13,7 @@ using NodeMap = robin_hood::node_map<uint64_t, uint64_t>;
 using Rng = sfc64;
 
 struct hex {
-	hex(int bits)
+	explicit hex(int bits)
 		: bits(bits) {}
 
 	int const bits;
@@ -37,3 +38,5 @@ void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool<>& rbool) {
 		}
 	} while (rbool(rng));
 }
+
+#endif
