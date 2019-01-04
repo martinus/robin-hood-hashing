@@ -1,5 +1,5 @@
 #BITNESS = -m32
-CXX = ccache g++ ${BITNESS} -std=c++14 -Wall -Werror -fdiagnostics-color -Wconversion
+CXX = ccache g++-8 ${BITNESS} -std=c++14 -Wall -Werror -fdiagnostics-color -Wconversion
 LD = $(CXX)
 
 SRC_DIR := test
@@ -15,8 +15,8 @@ debug: CXXFLAGS += -ggdb -Wno-unknown-pragmas -fno-omit-frame-pointer
 debug: LDFLAGS += -ggdb
 debug: executable
 
-release: CXXFLAGS += -ggdb -O2 -fno-omit-frame-pointer -fopenmp
-release: LDFLAGS += -ggdb -fopenmp
+release: CXXFLAGS += -O2 -fopenmp
+release: LDFLAGS += -fopenmp
 release: executable
 
 executable: $(OBJ_FILES)

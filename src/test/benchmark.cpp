@@ -3,42 +3,7 @@
 #include <map>
 #include <unordered_map>
 
-struct NullHash {
-	size_t operator()(uint64_t val) const {
-		return static_cast<size_t>(val);
-	}
-};
-
-TEMPLATE_TEST_CASE("benchmark random insert erase", "[!benchmark]", (robin_hood::flat_map<uint64_t, uint64_t>),
-				   (robin_hood::node_map<uint64_t, uint64_t>), (std::unordered_map<uint64_t, uint64_t>)) {
-	Rng rng(123);
-	TestType map;
-
-	static const size_t maxVal = 200000;
-
-	BENCHMARK("Random insert erase") {
-		for (uint64_t i = 0; i < 10'000'000; ++i) {
-			++map[rng(maxVal)];
-			map.erase(rng(maxVal));
-		}
-	}
-
-	uint64_t sum = 0;
-	BENCHMARK("iterating") {
-		for (int i = 0; i < 2000; ++i) {
-			for (auto const& kv : map) {
-				sum += kv.second;
-			}
-		}
-	}
-	REQUIRE(map.size() == 99917);
-	REQUIRE(sum == 399116000);
-	BENCHMARK("clear") {
-		map.clear();
-	}
-}
-
-TEMPLATE_TEST_CASE("benchmark hashing", "[!benchmark]", (std::hash<std::string>), (robin_hood::hash<std::string>)) {
+TEMPLATE_TEST_CASE("hash std::string", "[!benchmark]", (robin_hood::hash<std::string>), (std::hash<std::string>)) {
 	size_t h = 0;
 	Rng rng(123);
 	auto hasher = TestType{};
@@ -81,13 +46,13 @@ private:
 	Val m_val[2];
 };
 
-TEMPLATE_TEST_CASE("benchmark int", "[!benchmark]", (robin_hood::flat_map<int, int>), (robin_hood::node_map<int, int>),
+TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark]", (robin_hood::flat_map<int, int>), (robin_hood::node_map<int, int>),
 				   (std::unordered_map<int, int>)) {
 	Rng rng(123);
-	TestType map;
 
 	uint64_t verifier = 0;
 	BENCHMARK("Random insert erase") {
+		TestType map;
 		for (int n = 1; n < 10'000; ++n) {
 			for (int i = 0; i < 10'000; ++i) {
 				map[rng.uniform<int>((uint64_t)n)] = i;
@@ -97,10 +62,6 @@ TEMPLATE_TEST_CASE("benchmark int", "[!benchmark]", (robin_hood::flat_map<int, i
 	}
 
 	REQUIRE(verifier == 50024052);
-
-	BENCHMARK("clear") {
-		map.clear();
-	}
 }
 
 // benchmark adapted from https://github.com/attractivechaos/udb2

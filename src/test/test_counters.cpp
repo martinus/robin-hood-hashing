@@ -207,8 +207,8 @@ TEST_CASE("prefix", "[display]") {
 	Counter::Counts::printHeader();
 }
 
-TEMPLATE_TEST_CASE("map ctor & dtor", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
+TEMPLATE_TEST_CASE("map ctor & dtor", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+				   (robin_hood::node_map<Counter, Counter>)) {
 
 	Counter::Counts counts;
 	// counts.printHeader();
@@ -218,8 +218,8 @@ TEMPLATE_TEST_CASE("map ctor & dtor", "[display]", (std::map<Counter, Counter>),
 	REQUIRE(counts.dtor == 0);
 }
 
-TEMPLATE_TEST_CASE("1 emplace", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
+TEMPLATE_TEST_CASE("1 emplace", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+				   (robin_hood::node_map<Counter, Counter>)) {
 	Counter::Counts counts;
 	{
 		TestType map;
@@ -229,8 +229,8 @@ TEMPLATE_TEST_CASE("1 emplace", "[display]", (std::map<Counter, Counter>), (std:
 	REQUIRE(counts.dtor == counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
-TEMPLATE_TEST_CASE("10k random insert & erase", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
+TEMPLATE_TEST_CASE("10k random insert & erase", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+				   (robin_hood::node_map<Counter, Counter>)) {
 
 	Counter::Counts counts;
 	Counter::staticDefaultCtor = 0;
@@ -275,8 +275,8 @@ TEMPLATE_TEST_CASE("10 insert erase", "[display]", (robin_hood::node_map<Counter
 	}
 }
 
-TEMPLATE_TEST_CASE("100k [] and erase", "[display]", (std::map<Counter, Counter>), (std::unordered_map<Counter, Counter>),
-				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
+TEMPLATE_TEST_CASE("100k [] and erase", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+				   (robin_hood::node_map<Counter, Counter>)) {
 
 	Counter::Counts counts;
 	Counter::staticDefaultCtor = 0;
@@ -316,7 +316,7 @@ TEMPLATE_TEST_CASE("100k emplace and erase", "[display]", (std::map<Counter, Cou
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
-TEMPLATE_TEST_CASE("eval stats", "[display][!benchmark]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+TEMPLATE_TEST_CASE("eval stats", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
 				   (robin_hood::node_map<Counter, Counter>)) {
 	using Map = TestType;
 	Counter::Counts counts;
@@ -324,9 +324,9 @@ TEMPLATE_TEST_CASE("eval stats", "[display][!benchmark]", (std::unordered_map<Co
 	Counter::staticDtor = 0;
 
 	Rng rng(123);
-	size_t const num_iters = 1000000;
+	size_t const num_iters = 100000;
 	for (size_t bench_iters = 0; bench_iters < 1; ++bench_iters) {
-		BENCHMARK("small entries") {
+		{
 			// this tends to be very slow because of lots of shifts
 			Map map;
 			for (size_t n = 1; n < 10000; n += (500 * 10000 / num_iters)) {
@@ -337,7 +337,7 @@ TEMPLATE_TEST_CASE("eval stats", "[display][!benchmark]", (std::unordered_map<Co
 			}
 		}
 
-		BENCHMARK("random i") {
+		{
 			Map map;
 			for (size_t i = 0; i < num_iters; ++i) {
 				map[Counter{rng.uniform<size_t>(i + 1), counts}] = Counter{rng.uniform<size_t>(i + 1), counts};
@@ -345,14 +345,14 @@ TEMPLATE_TEST_CASE("eval stats", "[display][!benchmark]", (std::unordered_map<Co
 			}
 		}
 
-		BENCHMARK("emplace") {
+		{
 			Map map;
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts), std::forward_as_tuple(i, counts));
 			}
 		}
 
-		BENCHMARK("emplace & erase") {
+		{
 			Map map;
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts),
@@ -361,7 +361,7 @@ TEMPLATE_TEST_CASE("eval stats", "[display][!benchmark]", (std::unordered_map<Co
 			}
 		}
 
-		BENCHMARK("shifted") {
+		{
 			Map map;
 			static const size_t maxVal = 100000 / (ROBIN_HOOD_BITNESS - 8);
 			for (size_t i = 0; i < num_iters / 8; ++i) {
@@ -372,7 +372,7 @@ TEMPLATE_TEST_CASE("eval stats", "[display][!benchmark]", (std::unordered_map<Co
 			}
 		}
 
-		BENCHMARK("sequential insert") {
+		{
 			// just sequential insertion
 			Map map;
 			for (size_t i = 0; i < num_iters; ++i) {
@@ -380,7 +380,7 @@ TEMPLATE_TEST_CASE("eval stats", "[display][!benchmark]", (std::unordered_map<Co
 			}
 		}
 
-		BENCHMARK("sequential shifted") {
+		{
 			// sequential shifted
 			Map map;
 			for (size_t i = 0; i < num_iters; ++i) {
@@ -389,11 +389,9 @@ TEMPLATE_TEST_CASE("eval stats", "[display][!benchmark]", (std::unordered_map<Co
 		}
 	}
 
-	// counts.printCounts(std::string("eval stats ") + name(TestType{}));
+	counts.printCounts(std::string("eval stats ") + name(TestType{}));
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
-
-#define PRINT_SIZEOF(x, A, B) std::cout << sizeof(x<A, B>) << " bytes for " #x "<" #A ", " #B ">" << std::endl
 
 struct BigObject {
 	std::string str;
@@ -414,25 +412,14 @@ public:
 
 } // namespace std
 
-TEST_CASE("show datastructure sizes") {
-	PRINT_SIZEOF(robin_hood::unordered_map, int, int);
-	PRINT_SIZEOF(std::map, int, int);
-	PRINT_SIZEOF(std::unordered_map, int, int);
-	std::cout << std::endl;
+#define PRINT_SIZEOF(x, A, B)                                                                                                                        \
+	std::cout << sizeof(x<A, A>) << " " << sizeof(x<A, B>) << " " << sizeof(x<B, A>) << " " << sizeof(x<B, B>)                                       \
+			  << " bytes for " #x "<" #A ", " #A ">, <" #A ", " #B ">, <" #B ", " #A ">, <" #B ", " #B ">" << std::endl
 
+TEST_CASE("show datastructure sizes") {
+	PRINT_SIZEOF(std::unordered_map, int, BigObject);
 	PRINT_SIZEOF(robin_hood::unordered_map, int, BigObject);
 	PRINT_SIZEOF(std::map, int, BigObject);
-	PRINT_SIZEOF(std::unordered_map, int, BigObject);
-	std::cout << std::endl;
-
-	PRINT_SIZEOF(robin_hood::unordered_map, BigObject, BigObject);
-	PRINT_SIZEOF(std::map, BigObject, BigObject);
-	PRINT_SIZEOF(std::unordered_map, BigObject, BigObject);
-	std::cout << std::endl;
-
-	PRINT_SIZEOF(robin_hood::unordered_map, BigObject, int);
-	PRINT_SIZEOF(std::map, BigObject, int);
-	PRINT_SIZEOF(std::unordered_map, BigObject, int);
 }
 
 void showHash(size_t val) {
@@ -442,7 +429,7 @@ void showHash(size_t val) {
 }
 
 TEST_CASE("show hash distribution") {
-	std::cout << "input                 std::hash            robin_hood::hash" << std::endl;
+	std::cout << "input                  std::hash            robin_hood::hash" << std::endl;
 	for (size_t i = 0; i < 16; ++i) {
 		showHash(i);
 	}
@@ -462,7 +449,6 @@ TEST_CASE("show hash distribution") {
 }
 
 struct ConfigurableCounterHash {
-
 	// 234679895032 masksum, 1.17938e+06 geomean for 0xbdcbaec81634e906 0xa309d159626eef52
 	ConfigurableCounterHash() {
 #if ROBIN_HOOD_BITNESS == 64
