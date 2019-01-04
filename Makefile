@@ -2,7 +2,7 @@
 # make CXX='ccache g++' -j
 # to build with ccache
 
-CXX = g++
+CXX = g++	
 LD = $(CXX)
 
 #BITNESS = -m32
@@ -33,3 +33,6 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 
 clean:
 	rm -f $(OBJ_DIR)/*.o $(BINARY)
+
+cppcheck:
+	cppcheck --enable=warning --inconclusive --force --std=c++14 src/include/robin_hood.h --error-exitcode=1

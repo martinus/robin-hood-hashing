@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 1.0.2
+// version 2.0.1
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 2 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 0 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstring>
@@ -245,8 +245,9 @@ private:
 	}
 
 	// enforce byte alignment of the T's
-	static const size_t ALIGNMENT =
-		std::alignment_of<T>::value > std::alignment_of<T*>::value ? std::alignment_of<T>::value : std::alignment_of<T*>::value;
+	static const size_t ALIGNMENT = (std::alignment_of<T>::value > std::alignment_of<T*>::value)
+										? std::alignment_of<T>::value
+										: std::alignment_of<T*>::value; // lgtm [cpp/comparison-of-identical-expressions]
 	static const size_t ALIGNED_SIZE = ((sizeof(T) - 1) / ALIGNMENT + 1) * ALIGNMENT;
 
 	static_assert(MinNumAllocs >= 1, "MinNumAllocs");
@@ -996,7 +997,7 @@ public:
 			// not empty: destroy what we have there
 			// clear also resets mInfo to 0, that's sometimes not necessary.
 			destroy();
-			mKeyVals = reinterpret_cast<Node*>(&detail::sDummyInfoByte) - 1;
+			mKeyVals = reinterpret_cast<Node*>(&detail::sDummyInfoByte) - 1; // lgtm [cpp/suspicious-pointer-scaling]
 			mInfo = reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte);
 			Hash::operator=(static_cast<const Hash&>(o));
 			KeyEqual::operator=(static_cast<const KeyEqual&>(o));
