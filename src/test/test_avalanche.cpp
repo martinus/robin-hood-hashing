@@ -5,11 +5,6 @@
 #include <fstream>
 #include <iomanip>
 
-template <typename T>
-T rotl(T const x, int k) {
-	return (x << k) | (x >> (8 * sizeof(T) - k));
-}
-
 TEST_CASE("avalanche hash", "[!hide]") {
 	Rng rng(std::random_device{}());
 
