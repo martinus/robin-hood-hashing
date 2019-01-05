@@ -2,9 +2,6 @@
 # make CXX='ccache g++' -j
 # to build with ccache
 
-CXX = g++	
-LD = $(CXX)
-
 #BITNESS = -m32
 CXXFLAGS += ${BITNESS} -std=c++14 -Wall -Werror -fdiagnostics-color -Wconversion
 
@@ -26,7 +23,7 @@ release: LDFLAGS += -fopenmp
 release: executable
 
 executable: $(OBJ_FILES)
-	$(LD) $(LDFLAGS) -o $(BINARY) $^
+	$(CXX) -o $(BINARY) $(LDFLAGS) $^
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -Isrc/include -Isrc/test -c -o $@ $<
@@ -36,3 +33,5 @@ clean:
 
 cppcheck:
 	cppcheck --enable=warning --inconclusive --force --std=c++14 src/include/robin_hood.h --error-exitcode=1
+
+.PHONY: debug release executable clean cppcheck
