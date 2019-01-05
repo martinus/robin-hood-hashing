@@ -1,5 +1,15 @@
 image:
 - Visual Studio 2017
-- Ubuntu
+#- Ubuntu
 
 version: '{build}'
+
+platform:
+- x86
+- x64
+
+configuration:
+- Release
+
+test_script:
+- src\vs\x64\Release\robin-hood-hashing.exe
