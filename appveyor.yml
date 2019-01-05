@@ -1,0 +1,2 @@
+version: '{build}'
+image: ubuntu
