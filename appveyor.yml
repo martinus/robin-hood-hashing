@@ -1,2 +1,5 @@
+image:
+- Visual Studio 2017
+- Ubuntu
+
 version: '{build}'
-image: ubuntu
