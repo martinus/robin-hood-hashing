@@ -1,56 +1,35 @@
 language: cpp
 
-compiler:
-- clang
-- gcc
-
 matrix:
   include:
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-4.9
-      env:
-         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+  - os: linux
+    compiler: gcc
+    env: compiler=g++-4.8
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-4.8']
 
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-5
-      env:
-         - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+  - os: linux
+    compiler: gcc
+    env:
+    - COMPILER=g++-8
+    - CXXFLAGS=-std=c++17
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-8']
 
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-6
-      env:
-        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
+script:
+# make sure CXX is correctly set
+- if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
 
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-7
-      env:
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+# show OS/compiler version
+- uname -a
+- $CXX --version
 
-before_install:
-  - eval "${MATRIX_EVAL}"
+# build
+make -j4 release
 
-script: make release
+# run test
+./build/robin-hood-test
