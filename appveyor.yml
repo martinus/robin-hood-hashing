@@ -12,4 +12,4 @@ configuration:
 - Release
 
 test_script:
-- src\vs\x64\Release\robin-hood-hashing.exe
+- src\vs\%PLATFORM%\%CONFIGURATION%\robin-hood-hashing.exe "exclude:[display] exclude:[!hide] exclude:[!benchmark]" -r junit
