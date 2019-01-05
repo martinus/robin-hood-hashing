@@ -4,7 +4,7 @@ matrix:
   include:
   - os: linux
     compiler: gcc
-    env: compiler=g++-4.8
+    env: COMPILER=g++-4.8
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -21,15 +21,15 @@ matrix:
         packages: ['g++-8']
 
 script:
-# make sure CXX is correctly set
-- if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
+  # make sure CXX is correctly set
+  - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
 
-# show OS/compiler version
-- uname -a
-- $CXX --version
+  # show OS/compiler version
+  - uname -a
+  - $CXX --version
 
-# build
-make -j4 release
+  # build
+  - make -j4 release
 
-# run test
-./build/robin-hood-test
+  # run test
+  - ./build/robin-hood-test
