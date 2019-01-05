@@ -12,8 +12,4 @@ configuration:
 - Release
 
 test_script:
-- src\vs\%PLATFORM%\%CONFIGURATION%\robin-hood-hashing.exe "exclude:[display] exclude:[!hide] exclude:[!benchmark]" -r junit >results.xml
-
-on_finish:
-  - sh: |
-      find "$APPVEYOR_BUILD_FOLDER" -type f -name 'results.xml' -print0 | xargs -0 -I '{}' curl -F 'file=@{}' "https://ci.appveyor.com/api/testresults/junit/$APPVEYOR_JOB_ID"
+- src\vs\%PLATFORM%\%CONFIGURATION%\robin-hood-hashing.exe
