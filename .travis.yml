@@ -4,17 +4,8 @@ matrix:
   include:
   - os: linux
     compiler: gcc
-    env: COMPILER=g++-4.8
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-4.8']
-
-  - os: linux
-    compiler: gcc
     env:
     - COMPILER=g++-8
-    - CXXFLAGS=-std=c++17
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -32,4 +23,4 @@ script:
   - make -j4 release
 
   # run test
-  - ./build/robin-hood-test
+  - ./build/robinhood-test
