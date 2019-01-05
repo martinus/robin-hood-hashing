@@ -997,6 +997,7 @@ public:
 			// not empty: destroy what we have there
 			// clear also resets mInfo to 0, that's sometimes not necessary.
 			destroy();
+			// we assign an invalid pointer, but this is ok because we never dereference it.
 			mKeyVals = reinterpret_cast<Node*>(&detail::sDummyInfoByte) - 1; // lgtm [cpp/suspicious-pointer-scaling]
 			mInfo = reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte);
 			Hash::operator=(static_cast<const Hash&>(o));
