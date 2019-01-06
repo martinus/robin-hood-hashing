@@ -7,6 +7,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
+    - CXXFLAGS="-Wno-unknown-pragmas -O2"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -16,10 +17,11 @@ matrix:
     compiler: clang
     env:
     - COMPILER=clang++-6.0
+    - CXXFLAGS="-Wno-unknown-pragmas -O2"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
-        packages: ['g++-6', 'clang-6.0', 'libomp-dev']
+        packages: ['g++-6', 'clang-6.0',]
 
 script:
   # make sure CXX is correctly set

@@ -22,6 +22,8 @@ release: CXXFLAGS += -O2 -fopenmp
 release: LDFLAGS += -fopenmp
 release: executable
 
+all: executable
+
 executable: $(OBJ_FILES)
 	$(CXX) -o $(BINARY) $(LDFLAGS) $^
 
@@ -34,4 +36,4 @@ clean:
 cppcheck:
 	cppcheck --enable=warning --inconclusive --force --std=c++14 src/include/robin_hood.h --error-exitcode=1
 
-.PHONY: debug release executable clean cppcheck
+.PHONY: debug release executable all clean cppcheck
