@@ -3,12 +3,9 @@ robin-hood-hashing
 
 [![Release](https://img.shields.io/github/release/martinus/robin-hood-hashing.svg)](https://github.com/martinus/robin-hood-hashing/releases)
 [![GitHub license](https://img.shields.io/github/license/martinus/robin-hood-hashing.svg)](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/LICENSE)
-[![HitCount](http://hits.dwyl.io/martinus/robin-hood-hashing.svg)](http://hits.dwyl.io/martinus/robin-hood-hashing)
 [![GitHub Issues](https://img.shields.io/github/issues/martinus/robin-hood-hashing.svg)](http://github.com/martinus/robin-hood-hashing/issues)
-
 [![Build Status](https://travis-ci.com/martinus/robin-hood-hashing.svg?branch=master)](https://travis-ci.com/martinus/robin-hood-hashing)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/martinus/robin-hood-hashing.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/martinus/robin-hood-hashing/alerts/)
-[![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/martinus/robin-hood-hashing.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/martinus/robin-hood-hashing/context:cpp)
 
 Hashtable based on Robin Hood Hashing. In general, this map is both faster and uses less memory than
 `std::unordered_map` implementations.
