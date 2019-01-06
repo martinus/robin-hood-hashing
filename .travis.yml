@@ -17,7 +17,7 @@ matrix:
     compiler: clang
     env:
     - COMPILER=clang++-6.0
-    - CXXFLAGS="-fopenmp=libiomp5 -O2"
+    - CXXFLAGS="-O2"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
