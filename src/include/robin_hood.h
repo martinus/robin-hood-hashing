@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 2.0.1
+// version 2.0.2
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,11 +37,12 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 2 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 0 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 2 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstring>
 #include <functional>
+#include <type_traits>
 #include <utility>
 
 // mark unused members with this macro
