@@ -82,7 +82,8 @@ static uint64_t umulh(uint64_t a, uint64_t b) {
 #if _WIN32
 	return __umulh(a, b);
 #else
-	return static_cast<uint64_t>((static_cast<unsigned __int128>(a) * static_cast<unsigned __int128>(b)) >> 64u);
+	using uint128 = unsigned __int128;
+	return static_cast<uint64_t>((static_cast<uint128>(a) * static_cast<uint128>(b)) >> 64u);
 #endif
 }
 #endif
@@ -245,9 +246,9 @@ private:
 	}
 
 	// enforce byte alignment of the T's
-	static const size_t ALIGNMENT = (std::alignment_of<T>::value > std::alignment_of<T*>::value)
+	static const size_t ALIGNMENT = (std::alignment_of<T>::value > std::alignment_of<T*>::value) // lgtm [cpp/comparison-of-identical-expressions]
 										? std::alignment_of<T>::value
-										: std::alignment_of<T*>::value; // lgtm [cpp/comparison-of-identical-expressions]
+										: std::alignment_of<T*>::value;
 	static const size_t ALIGNED_SIZE = ((sizeof(T) - 1) / ALIGNMENT + 1) * ALIGNMENT;
 
 	static_assert(MinNumAllocs >= 1, "MinNumAllocs");
