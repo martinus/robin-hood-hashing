@@ -19,7 +19,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
-        packages: ['g++-6', 'clang-6.0']
+        packages: ['g++-6', 'clang-6.0', 'libomp-dev']
 
 script:
   # make sure CXX is correctly set
