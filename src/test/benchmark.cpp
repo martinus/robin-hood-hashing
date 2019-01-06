@@ -33,22 +33,22 @@ TEMPLATE_TEST_CASE("hash integers", "[!benchmark]", uint8_t, int8_t, uint16_t, i
 	Rng rng(123);
 	BENCHMARK("robin_hood::hash") {
 		robin_hood::hash<TestType> hasher;
-		for (TestType i = 0; i < static_cast<TestType>(1000000000); i = static_cast<TestType>(i + static_cast<TestType>(4))) {
-			a += hasher(i);
-			b += hasher(static_cast<TestType>(i + static_cast<TestType>(1)));
-			c += hasher(static_cast<TestType>(i + static_cast<TestType>(2)));
-			d += hasher(static_cast<TestType>(i + static_cast<TestType>(3)));
+		for (int i = 0; i < 1000000000; i += 4) {
+			a += hasher(static_cast<TestType>(i));
+			b += hasher(static_cast<TestType>(i + 1));
+			c += hasher(static_cast<TestType>(i + 2));
+			d += hasher(static_cast<TestType>(i + 3));
 		}
 	}
 	INFO(a + b + c + d);
 
 	BENCHMARK("std::hash") {
 		std::hash<TestType> hasher;
-		for (TestType i = 0; i < static_cast<TestType>(1000000000); i = static_cast<TestType>(i + static_cast<TestType>(4))) {
-			a += hasher(i);
-			b += hasher(static_cast<TestType>(i + static_cast<TestType>(1)));
-			c += hasher(static_cast<TestType>(i + static_cast<TestType>(2)));
-			d += hasher(static_cast<TestType>(i + static_cast<TestType>(3)));
+		for (int i = 0; i < 1000000000; i += 4) {
+			a += hasher(static_cast<TestType>(i));
+			b += hasher(static_cast<TestType>(i + 1));
+			c += hasher(static_cast<TestType>(i + 2));
+			d += hasher(static_cast<TestType>(i + 3));
 		}
 	}
 	INFO(a + b + c + d);
