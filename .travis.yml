@@ -7,7 +7,18 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CXXFLAGS="-O2"
+    - CXXFLAGS="-Werror=unknown-pragmas -O2"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-8']
+
+  include:
+  - os: linux
+    compiler: gcc
+    env:
+    - COMPILER=g++-8
+    - CXXFLAGS="-Werror=unknown-pragmas -O2 -std=c++17"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
