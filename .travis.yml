@@ -1,5 +1,6 @@
 language: cpp
 
+# see https://github.com/nlohmann/json/blob/develop/.travis.yml
 matrix:
   include:
   - os: linux
@@ -10,6 +11,15 @@ matrix:
       apt:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-8']
+
+  - os: linux
+    compiler: clang
+    env:
+    - COMPILER=clang++-6.0
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+        packages: ['clang-6.0']
 
 script:
   # make sure CXX is correctly set
