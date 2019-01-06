@@ -7,7 +7,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CXXFLAGS="-Werror=unknown-pragmas -O2"
+    - CXXFLAGS="-Wno-unknown-pragmas -O2"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -18,7 +18,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CXXFLAGS="-Werror=unknown-pragmas -O2 -std=c++17"
+    - CXXFLAGS="-Wno-unknown-pragmas -O2 -std=c++17"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -28,7 +28,7 @@ matrix:
     compiler: clang
     env:
     - COMPILER=clang++-6.0
-    - CXXFLAGS="-O2"
+    - CXXFLAGS="-Wno-unknown-pragmas -O2"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
