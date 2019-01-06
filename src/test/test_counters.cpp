@@ -174,8 +174,7 @@ void swap(Counter& a, Counter& b) {
 namespace std {
 
 template <>
-class hash<Counter> {
-public:
+struct hash<Counter> {
 	size_t operator()(const Counter& c) const {
 		return robin_hood::hash<uint64_t>{}(c.getForHash());
 	}
@@ -403,8 +402,7 @@ struct BigObject {
 namespace std {
 
 template <>
-class hash<BigObject> {
-public:
+struct hash<BigObject> {
 	size_t operator()(BigObject const&) const {
 		return 0;
 	}

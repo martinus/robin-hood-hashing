@@ -91,12 +91,12 @@ static uint64_t umulh(uint64_t a, uint64_t b) {
 
 // make sure this is not inlined as it is slow and dramatically enlarges code, thus making other inlinings more difficult.
 // Throws are also generally the slow path.
-template <class E, class... Args>
+template <typename E, typename... Args>
 static ROBIN_HOOD_NOINLINE void doThrow(Args&&... args) {
 	throw E(std::forward<Args>(args)...);
 }
 
-template <class E, class T, class... Args>
+template <typename E, typename T, typename... Args>
 static T* assertNotNull(T* t, Args&&... args) {
 	if (nullptr == t) {
 		doThrow<E>(std::forward<Args>(args)...);
@@ -106,7 +106,7 @@ static T* assertNotNull(T* t, Args&&... args) {
 
 // Allocates bulks of memory for objects of type T. This deallocates the memory in the destructor, and keeps a linked list of the allocated memory
 // around. Overhead per allocation is the size of a pointer.
-template <class T, size_t MinNumAllocs = 4, size_t MaxNumAllocs = 256>
+template <typename T, size_t MinNumAllocs = 4, size_t MaxNumAllocs = 256>
 class BulkPoolAllocator {
 public:
 	BulkPoolAllocator()
@@ -262,11 +262,11 @@ private:
 	T** mListForFree;
 };
 
-template <class T, size_t MinSize, size_t MaxSize, bool IsDirect>
+template <typename T, size_t MinSize, size_t MaxSize, bool IsDirect>
 struct NodeAllocator;
 
 // dummy allocator that does nothing
-template <class T, size_t MinSize, size_t MaxSize>
+template <typename T, size_t MinSize, size_t MaxSize>
 struct NodeAllocator<T, MinSize, MaxSize, true> {
 
 	// we are not using the data, so just free it.
@@ -275,7 +275,7 @@ struct NodeAllocator<T, MinSize, MaxSize, true> {
 	}
 };
 
-template <class T, size_t MinSize, size_t MaxSize>
+template <typename T, size_t MinSize, size_t MaxSize>
 struct NodeAllocator<T, MinSize, MaxSize, false> : public BulkPoolAllocator<T, MinSize, MaxSize> {};
 
 // All empty maps initial mInfo point to this infobyte. That way lookup in an empty map
@@ -291,7 +291,7 @@ struct is_transparent_tag {};
 
 // A custom pair implementation is used in the map because std::pair is not is_trivially_copyable, which means it would  not be allowed to be used
 // in std::memcpy. This struct is copyable, which is also tested.
-template <class First, class Second>
+template <typename First, typename Second>
 struct pair {
 	using first_type = First;
 	using second_type = Second;
@@ -356,8 +356,7 @@ struct pair {
 // A thin wrapper around std::hash, performing a single multiplication to (hopefully) get nicely randomized upper bits, which are used by the
 // unordered_map.
 template <typename T>
-class hash : public std::hash<T> {
-public:
+struct hash : public std::hash<T> {
 	size_t operator()(T const& obj) const {
 		return std::hash<T>::operator()(obj);
 	}
@@ -366,8 +365,7 @@ public:
 // Murmur2 hash without caring about big endianness. Generally much faster than the standard std::hash for std::string,
 // and the code is quite simple.
 template <>
-class hash<std::string> {
-public:
+struct hash<std::string> {
 	size_t operator()(std::string const& str) const {
 		static constexpr uint64_t const m = UINT64_C(0xc6a4a7935bd1e995);
 		static constexpr uint64_t const seed = UINT64_C(0xe17a1465);
@@ -429,8 +427,7 @@ public:
 
 // specialization used for uint64_t and int64_t. Uses 128bit multiplication
 template <>
-class hash<uint64_t> {
-public:
+struct hash<uint64_t> {
 	size_t operator()(uint64_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
 		// 91887258544 masksum, 59652600 ops best: 0x735760375fa9a109 0xd889d8a073587867
@@ -449,16 +446,14 @@ public:
 };
 
 template <>
-class hash<int64_t> {
-public:
+struct hash<int64_t> {
 	size_t operator()(int64_t const& obj) const {
 		return hash<uint64_t>{}(static_cast<uint64_t>(obj));
 	}
 };
 
 template <>
-class hash<uint32_t> {
-public:
+struct hash<uint32_t> {
 	size_t operator()(uint32_t const& h) const {
 #if ROBIN_HOOD_BITNESS == 32
 		return static_cast<size_t>((UINT64_C(0xca4bcaa75ec3f625) * (uint64_t)h) >> 32);
@@ -469,8 +464,7 @@ public:
 };
 
 template <>
-class hash<int32_t> {
-public:
+struct hash<int32_t> {
 	size_t operator()(int32_t const& obj) const {
 		return hash<uint32_t>{}(static_cast<uint32_t>(obj));
 	}
@@ -497,7 +491,7 @@ public:
 //
 // * infoSentinel: Sentinel byte set to 1, so that iterator's ++ can stop at end() without the need for a idx
 //   variable.
-template <class Key, class T, class Hash = std::hash<Key>, class KeyEqual = std::equal_to<Key>,
+template <typename Key, typename T, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>,
 		  // Use direct map only when move does not throw, so swap and resize is possible without copying stuff.
 		  // also make sure data is not too large, then swap might be slow.
 		  bool IsDirect = sizeof(Key) + sizeof(T) <= sizeof(void*) * 3 &&
@@ -524,14 +518,14 @@ private:
 	// Primary template for the data node. We have special implementations for small and big objects.
 	// For large objects it is assumed that swap() is fairly slow, so we allocate these on the heap
 	// so swap merely swaps a pointer.
-	template <class M, bool>
+	template <typename M, bool>
 	class DataNode {};
 
 	// Small: just allocate on the stack.
-	template <class M>
+	template <typename M>
 	class DataNode<M, true> {
 	public:
-		template <class... Args>
+		template <typename... Args>
 		explicit DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, Args&&... args)
 			: mData(std::forward<Args>(args)...) {}
 
@@ -582,10 +576,10 @@ private:
 	};
 
 	// big object: allocate on heap.
-	template <class M>
+	template <typename M>
 	class DataNode<M, false> {
 	public:
-		template <class... Args>
+		template <typename... Args>
 		explicit DataNode(M& map, Args&&... args)
 			: mData(map.allocate()) {
 			new (mData) value_type(std::forward<Args>(args)...);
@@ -649,11 +643,11 @@ private:
 
 	// Cloner //////////////////////////////////////////////////////////
 
-	template <class M, bool UseMemcpy>
+	template <typename M, bool UseMemcpy>
 	struct Cloner;
 
 	// fast path: Just copy data, without allocating anything.
-	template <class M>
+	template <typename M>
 	struct Cloner<M, true> {
 		void operator()(M const& source, M& target) const {
 			// std::memcpy(target.mKeyVals, source.mKeyVals, target.calcNumBytesTotal(target.mMask + 1));
@@ -663,7 +657,7 @@ private:
 		}
 	};
 
-	template <class M>
+	template <typename M>
 	struct Cloner<M, false> {
 		void operator()(M const& source, M& target) const {
 			// make sure to copy initialize sentinel as well
@@ -680,10 +674,10 @@ private:
 
 	// Destroyer ///////////////////////////////////////////////////////
 
-	template <class M, bool IsDirectAndTrivial>
+	template <typename M, bool IsDirectAndTrivial>
 	struct Destroyer {};
 
-	template <class M>
+	template <typename M>
 	struct Destroyer<M, true> {
 		void nodes(M& m) const {
 			m.mNumElements = 0;
@@ -694,7 +688,7 @@ private:
 		}
 	};
 
-	template <class M>
+	template <typename M>
 	struct Destroyer<M, false> {
 		void nodes(M& m) const {
 			m.mNumElements = 0;
@@ -842,7 +836,7 @@ private:
 	}
 
 	// copy of find(), except that it returns iterator instead of const_iterator.
-	template <class Other>
+	template <typename Other>
 	size_t findIdx(const Other& key) const {
 		size_t idx = keyToIdx(key);
 		int info = 1;
@@ -922,7 +916,7 @@ public:
 		: Hash(hash)
 		, KeyEqual(equal) {}
 
-	template <class Iter>
+	template <typename Iter>
 	unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& hash = Hash(),
 				  const KeyEqual& equal = KeyEqual())
 		: Hash(hash)
@@ -1105,7 +1099,7 @@ public:
 		return doCreateByKey(std::move(key));
 	}
 
-	template <class Iter>
+	template <typename Iter>
 	void insert(Iter first, Iter last) {
 		for (; first != last; ++first) {
 			// value_type ctor needed because this might be called with std::pair's
@@ -1113,7 +1107,7 @@ public:
 		}
 	}
 
-	template <class... Args>
+	template <typename... Args>
 	std::pair<iterator, bool> emplace(Args&&... args) {
 		Node n{*this, std::forward<Args>(args)...};
 		auto r = doInsert(std::move(n));
@@ -1141,7 +1135,7 @@ public:
 		return const_iterator(mKeyVals + idx, mInfo + idx);
 	}
 
-	template <class OtherKey>
+	template <typename OtherKey>
 	const_iterator find(const OtherKey& key, is_transparent_tag /*unused*/) const {
 		const size_t idx = findIdx(key);
 		return const_iterator(mKeyVals + idx, mInfo + idx);
@@ -1152,7 +1146,7 @@ public:
 		return iterator(mKeyVals + idx, mInfo + idx);
 	}
 
-	template <class OtherKey>
+	template <typename OtherKey>
 	iterator find(const OtherKey& key, is_transparent_tag /*unused*/) {
 		const size_t idx = findIdx(key);
 		return iterator(mKeyVals + idx, mInfo + idx);
@@ -1301,7 +1295,7 @@ private:
 		mInfo[max_elements] = 1;
 	}
 
-	template <class Arg>
+	template <typename Arg>
 	mapped_type& doCreateByKey(Arg&& key) {
 		while (true) {
 			size_t idx = keyToIdx(key);
@@ -1355,7 +1349,7 @@ private:
 	}
 
 	// This is exactly the same code as operator[], except for the return values
-	template <class Arg>
+	template <typename Arg>
 	std::pair<iterator, bool> doInsert(Arg&& keyval) {
 		while (true) {
 			size_t idx = keyToIdx(keyval.getFirst());
@@ -1470,10 +1464,10 @@ private:
 	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte 40
 };
 
-template <class Key, class T, class Hash = hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor100 = 80>
+template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
 using flat_map = unordered_map<Key, T, Hash, KeyEqual, true, MaxLoadFactor100>;
 
-template <class Key, class T, class Hash = hash<Key>, class KeyEqual = std::equal_to<Key>, uint8_t MaxLoadFactor100 = 80>
+template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
 using node_map = unordered_map<Key, T, Hash, KeyEqual, false, MaxLoadFactor100>;
 
 } // namespace robin_hood
