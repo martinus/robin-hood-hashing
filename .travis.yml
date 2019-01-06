@@ -32,7 +32,7 @@ script:
   - $CXX --version
 
   # build
-  - make -j4 release
+  - make -j4 all
 
   # run test
   - ./build/robinhood-test
