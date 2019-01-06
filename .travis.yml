@@ -37,18 +37,6 @@ matrix:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-8']
 
-  # -fsanitize=safe-stack
-  - os: linux
-    compiler: gcc
-    env:
-    - COMPILER=g++-8
-    - CXXFLAGS="-Wno-unknown-pragmas -O2 -fsanitize=safe-stack"
-    - LDFLAGS="-fuse-ld=gold -fsanitize=safe-stack"
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8']
-
   # -fsanitize=address with additional checks
   - os: linux
     compiler: gcc
