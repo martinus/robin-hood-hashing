@@ -7,7 +7,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CXXFLAGS="-Wno-unknown-pragmas -O2"
+    - CXXFLAGS="-O2"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -17,7 +17,7 @@ matrix:
     compiler: clang
     env:
     - COMPILER=clang++-6.0
-    - CXXFLAGS="-Wno-unknown-pragmas -O2"
+    - CXXFLAGS="-fopenmp=libiomp5 -O2"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
