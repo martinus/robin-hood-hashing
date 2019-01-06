@@ -397,16 +397,22 @@ public:
 		switch (len & 7u) {
 		case 7:
 			h ^= static_cast<uint64_t>(data8[6]) << 48u;
+			// fallthrough
 		case 6:
 			h ^= static_cast<uint64_t>(data8[5]) << 40u;
+			// fallthrough
 		case 5:
 			h ^= static_cast<uint64_t>(data8[4]) << 32u;
+			// fallthrough
 		case 4:
 			h ^= static_cast<uint64_t>(data8[3]) << 24u;
+			// fallthrough
 		case 3:
 			h ^= static_cast<uint64_t>(data8[2]) << 16u;
+			// fallthrough
 		case 2:
 			h ^= static_cast<uint64_t>(data8[1]) << 8u;
+			// fallthrough
 		case 1:
 			h ^= static_cast<uint64_t>(data8[0]);
 			h *= m;

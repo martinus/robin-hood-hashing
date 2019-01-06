@@ -450,13 +450,14 @@ TEST_CASE("show hash distribution", "[display]") {
 
 struct ConfigurableCounterHash {
 	// 234679895032 masksum, 1.17938e+06 geomean for 0xbdcbaec81634e906 0xa309d159626eef52
-	ConfigurableCounterHash() {
+	ConfigurableCounterHash()
+		: m_values(
 #if ROBIN_HOOD_BITNESS == 64
-		m_values[0] = UINT64_C(0x5e1caf9535ce6811);
-		m_values[1] = UINT64_C(0xbb1039b2f223f0af);
+			  { UINT64_C(0x5e1caf9535ce6811), UINT64_C(0xbb1039b2f223f0af) }
 #else
-		m_values[0] = UINT64_C(0xa1ac131cae0b3f71);
+			  { UINT64_C(0xa1ac131cae0b3f71) }
 #endif
+		  ) {
 	}
 
 	ConfigurableCounterHash(ConfigurableCounterHash&& o) = default;
