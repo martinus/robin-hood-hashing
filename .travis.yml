@@ -15,7 +15,6 @@ matrix:
         packages: ['g++-8']
 
   # build for c++17
-  include:
   - os: linux
     compiler: gcc
     env:
@@ -27,39 +26,36 @@ matrix:
         packages: ['g++-8']
 
   # -fsanitize=undefined
-  include:
   - os: linux
     compiler: gcc
     env:
     - COMPILER=g++-8
     - CXXFLAGS="-Wno-unknown-pragmas -O2 -fsanitize=undefined"
-    - LDFLAGS="-fsanitize=undefined"
+    - LDFLAGS="-fuse-ld=gold -fsanitize=undefined"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-8']
 
   # -fsanitize=safe-stack
-  include:
   - os: linux
     compiler: gcc
     env:
     - COMPILER=g++-8
     - CXXFLAGS="-Wno-unknown-pragmas -O2 -fsanitize=safe-stack"
-    - LDFLAGS="-fsanitize=safe-stack"
+    - LDFLAGS="-fuse-ld=gold -fsanitize=safe-stack"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-8']
 
   # -fsanitize=address with additional checks
-  include:
   - os: linux
     compiler: gcc
     env:
     - COMPILER=g++-8
     - CXXFLAGS="-Wno-unknown-pragmas -O2 -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=address"
-    - LDFLAGS="-fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=address"
+    - LDFLAGS="-fuse-ld=gold -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=address"
     - ASAN_OPTIONS=verbosity=1:detect_invalid_pointer_pairs=2
     addons:
       apt:
