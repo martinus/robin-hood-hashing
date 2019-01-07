@@ -3,7 +3,7 @@
 # to build with ccache
 
 #BITNESS = -m32
-CXXFLAGS := $(BITNESS) -std=c++14 -Wall -Werror -Wextra -Weffc++ -fdiagnostics-color -Wconversion $(CXXFLAGS)
+CXXFLAGS := $(BITNESS) -fdiagnostics-color -std=c++14 -Werror -Wall -Wextra -Weffc++ -Wconversion -Wunreachable-code -Wuninitialized -Wshadow -Wfloat-equal $(CXXFLAGS)
 
 SRC_DIR := src/test
 OBJ_DIR := build

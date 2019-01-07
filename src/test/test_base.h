@@ -13,8 +13,8 @@ using NodeMap = robin_hood::node_map<uint64_t, uint64_t>;
 using Rng = sfc64;
 
 struct hex {
-	explicit hex(int bits)
-		: bits(bits) {}
+	explicit hex(int b)
+		: bits(b) {}
 
 	int const bits;
 };

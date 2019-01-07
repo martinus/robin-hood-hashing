@@ -297,38 +297,38 @@ struct pair {
 	using second_type = Second;
 
 	// pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
-	explicit pair(std::pair<First, Second> const& pair)
-		: first(pair.first)
-		, second(pair.second) {}
+	explicit pair(std::pair<First, Second> const& o)
+		: first{o.first}
+		, second{o.second} {}
 
 	// pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
-	explicit pair(std::pair<First, Second>&& pair)
-		: first(std::move(pair.first))
-		, second(std::move(pair.second)) {}
+	explicit pair(std::pair<First, Second>&& o)
+		: first{std::move(o.first)}
+		, second{std::move(o.second)} {}
 
 	constexpr pair(const First& firstArg, const Second& secondArg)
-		: first(firstArg)
-		, second(secondArg) {}
+		: first{firstArg}
+		, second{secondArg} {}
 
 	constexpr pair(First&& firstArg, Second&& secondArg)
-		: first(std::move(firstArg))
-		, second(std::move(secondArg)) {}
+		: first{std::move(firstArg)}
+		, second{std::move(secondArg)} {}
 
 	template <typename FirstArg, typename SecondArg>
 	constexpr pair(FirstArg&& firstArg, SecondArg&& secondArg)
-		: first(std::forward<FirstArg>(firstArg))
-		, second(std::forward<SecondArg>(secondArg)) {}
+		: first{std::forward<FirstArg>(firstArg)}
+		, second{std::forward<SecondArg>(secondArg)} {}
 
 	template <typename... Args1, typename... Args2>
 	pair(std::piecewise_construct_t /*unused*/, std::tuple<Args1...> firstArgs, std::tuple<Args2...> secondArgs)
-		: pair(firstArgs, secondArgs, std::index_sequence_for<Args1...>{}, std::index_sequence_for<Args2...>{}) {}
+		: pair{firstArgs, secondArgs, std::index_sequence_for<Args1...>{}, std::index_sequence_for<Args2...>{}} {}
 
 	// constructor called from the std::piecewise_construct_t ctor
 	template <typename... Args1, size_t... Indexes1, typename... Args2, size_t... Indexes2>
 	inline pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2, std::index_sequence<Indexes1...> /*unused*/,
 				std::index_sequence<Indexes2...> /*unused*/)
-		: first(std::forward<Args1>(std::get<Indexes1>(tuple1))...)
-		, second(std::forward<Args2>(std::get<Indexes2>(tuple2))...) {}
+		: first{std::forward<Args1>(std::get<Indexes1>(tuple1))...}
+		, second{std::forward<Args2>(std::get<Indexes2>(tuple2))...} {}
 
 	first_type& getFirst() {
 		return first;
@@ -912,22 +912,22 @@ public:
 	/// penalty is payed at the first insert, and not before. Lookup of this empty map works
 	/// because everybody points to sDummyInfoByte.
 	/// parameter bucket_count is dictated by the standard, but we can ignore it.
-	explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& hash = Hash(), const KeyEqual& equal = KeyEqual())
-		: Hash(hash)
-		, KeyEqual(equal) {}
+	explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
+		: Hash{h}
+		, KeyEqual{equal} {}
 
 	template <typename Iter>
-	unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& hash = Hash(),
-				  const KeyEqual& equal = KeyEqual())
-		: Hash(hash)
-		, KeyEqual(equal) {
+	unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
+				  const KeyEqual& equal = KeyEqual{})
+		: Hash{h}
+		, KeyEqual{equal} {
 		insert(first, last);
 	}
 
-	unordered_map(std::initializer_list<value_type> init, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& hash = Hash(),
-				  const KeyEqual& equal = KeyEqual())
-		: Hash(hash)
-		, KeyEqual(equal) {
+	unordered_map(std::initializer_list<value_type> init, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
+				  const KeyEqual& equal = KeyEqual{})
+		: Hash{h}
+		, KeyEqual{equal} {
 		insert(init.begin(), init.end());
 	}
 
