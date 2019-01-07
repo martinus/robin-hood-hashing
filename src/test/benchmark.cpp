@@ -8,7 +8,7 @@ TEMPLATE_TEST_CASE("hash std::string", "[!benchmark]", (robin_hood::hash<std::st
 	Rng rng(123);
 	auto hasher = TestType{};
 	for (const int s : {8, 11, 100, 256}) {
-		std::string str((size_t)s, 'x');
+		std::string str(static_cast<size_t>(s), 'x');
 		for (size_t i = 0; i < str.size(); ++i) {
 			str[i] = rng.uniform<char>();
 		}
@@ -86,8 +86,8 @@ TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark]", (robin_hood::flat_m
 		TestType map;
 		for (int n = 1; n < 10'000; ++n) {
 			for (int i = 0; i < 10'000; ++i) {
-				map[rng.uniform<int>((uint64_t)n)] = i;
-				verifier += map.erase(rng.uniform<int>((uint64_t)n));
+				map[rng.uniform<int>(static_cast<uint64_t>(n))] = i;
+				verifier += map.erase(rng.uniform<int>(static_cast<uint64_t>(n)));
 			}
 		}
 	}

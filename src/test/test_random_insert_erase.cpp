@@ -4,7 +4,7 @@
 #include <unordered_set>
 
 // final step from MurmurHash3
-uint64_t fmix64(uint64_t k) {
+inline uint64_t fmix64(uint64_t k) {
 	k ^= k >> 33;
 	k *= 0xff51afd7ed558ccdULL;
 	k ^= k >> 33;
@@ -14,7 +14,7 @@ uint64_t fmix64(uint64_t k) {
 }
 
 // from boost::hash_combine, with additional fmix64 of value
-uint64_t hash_combine(uint64_t seed, uint64_t value) {
+inline uint64_t hash_combine(uint64_t seed, uint64_t value) {
 	return seed ^ (fmix64(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }
 
@@ -64,7 +64,7 @@ public:
 	}
 
 	CtorDtorVerifier()
-		: mVal((uint64_t)-1) {
+		: mVal(static_cast<uint64_t>(-1)) {
 		REQUIRE(mConstructedAddresses.insert(this).second);
 		if (mDoPrintDebugInfo) {
 			std::cout << this << " ctor() " << mConstructedAddresses.size() << std::endl;
@@ -151,7 +151,7 @@ template <>
 struct hash<CtorDtorVerifier> {
 	std::size_t operator()(const CtorDtorVerifier& t) const {
 		// hash is bad on purpose
-		const size_t bitmaskWithoutLastBits = ~(size_t)5;
+		const size_t bitmaskWithoutLastBits = ~static_cast<size_t>(5);
 		return static_cast<size_t>(t.val()) & bitmaskWithoutLastBits;
 	}
 };
@@ -165,7 +165,7 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 	using Map = TestType;
 
 	Map rhhs;
-	REQUIRE(rhhs.size() == (size_t)0);
+	REQUIRE(rhhs.size() == static_cast<size_t>(0));
 	std::pair<typename Map::iterator, bool> it_outer = rhhs.insert(typename Map::value_type{UINT64_C(32145), UINT64_C(123)});
 	REQUIRE(it_outer.second);
 	REQUIRE(it_outer.first->first.val() == 32145);
@@ -183,7 +183,7 @@ TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier
 		typename Map::iterator found = rhhs.find(i * 4);
 		REQUIRE(rhhs.end() != found);
 		REQUIRE(found->second.val() == i);
-		REQUIRE(rhhs.size() == (size_t)(2 + i));
+		REQUIRE(rhhs.size() == static_cast<size_t>(2 + i));
 	}
 
 	// check if everything can be found
@@ -360,9 +360,9 @@ TEMPLATE_TEST_CASE("erase iterator", "", FlatMapVerifier, NodeMapVerifier) {
 			currentSize--;
 			REQUIRE(map.size() == currentSize);
 		}
-		REQUIRE(map.size() == (size_t)0);
+		REQUIRE(map.size() == static_cast<size_t>(0));
 	}
-	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
+	REQUIRE(CtorDtorVerifier::mapSize() == static_cast<size_t>(0));
 }
 
 TEMPLATE_TEST_CASE("test vector", "", FlatMapVerifier, NodeMapVerifier) {
@@ -374,7 +374,7 @@ TEMPLATE_TEST_CASE("test vector", "", FlatMapVerifier, NodeMapVerifier) {
 			maps.push_back(m);
 		}
 	}
-	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
+	REQUIRE(CtorDtorVerifier::mapSize() == static_cast<size_t>(0));
 }
 
 TEMPLATE_TEST_CASE("maps of maps", "", FlatMapVerifier, NodeMapVerifier) {
@@ -388,5 +388,5 @@ TEMPLATE_TEST_CASE("maps of maps", "", FlatMapVerifier, NodeMapVerifier) {
 		maps2 = maps;
 		REQUIRE(maps2 == maps);
 	}
-	REQUIRE(CtorDtorVerifier::mapSize() == (size_t)0);
+	REQUIRE(CtorDtorVerifier::mapSize() == static_cast<size_t>(0));
 }

@@ -80,7 +80,7 @@ namespace detail {
 
 #if ROBIN_HOOD_HAS_UMULH
 static uint64_t umulh(uint64_t a, uint64_t b) {
-#if _WIN32
+#if (defined(_WIN32))
 	return __umulh(a, b);
 #else
 	using uint128 = unsigned __int128;
@@ -198,11 +198,12 @@ private:
 	// Recalculating this each time saves us a size_t member.
 	// This ignores the fact that memory blocks might have been added manually with addOrFree. In practice, this should not matter much.
 	size_t calcNumElementsToAlloc() const {
-		T** tmp = mListForFree;
+		auto tmp = mListForFree;
 		size_t numAllocs = MinNumAllocs;
 
 		while (numAllocs * 2 <= MaxNumAllocs && tmp) {
-			tmp = *reinterpret_cast<T***>(tmp);
+			auto x = reinterpret_cast<T***>(tmp);
+			tmp = *x;
 			numAllocs *= 2;
 		}
 
@@ -216,7 +217,8 @@ private:
 		auto data = reinterpret_cast<T**>(ptr);
 
 		// link free list
-		*reinterpret_cast<T***>(data) = mListForFree;
+		auto x = reinterpret_cast<T***>(data);
+		*x = mListForFree;
 		mListForFree = data;
 
 		// create linked list for newly allocated data
@@ -1170,18 +1172,18 @@ public:
 
 	iterator end() {
 		// no need to supply valid info pointer: end() must not be dereferenced, and only node pointer is compared.
-		return iterator(reinterpret_cast<Node*>(mInfo), 0);
+		return iterator{reinterpret_cast<Node*>(mInfo), nullptr};
 	}
 	const_iterator end() const {
 		return cend();
 	}
 	const_iterator cend() const {
-		return const_iterator(reinterpret_cast<Node*>(mInfo), 0);
+		return const_iterator{reinterpret_cast<Node*>(mInfo), nullptr};
 	}
 
 	iterator erase(const_iterator pos) {
 		// its safe to perform const cast here
-		return erase(iterator(const_cast<Node*>(pos.mKeyVals), const_cast<uint8_t*>(pos.mInfo)));
+		return erase(iterator{const_cast<Node*>(pos.mKeyVals), const_cast<uint8_t*>(pos.mInfo)});
 	}
 
 	// Erases element at pos, returns iterator to the next element.

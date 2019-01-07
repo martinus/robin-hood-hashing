@@ -1,3 +1,6 @@
+#ifndef AVALANCHE_H
+#define AVALANCHE_H
+
 #include "sfc64.h"
 
 #include <algorithm>
@@ -135,3 +138,5 @@ private:
 	sfc64 m_rng{};
 	size_t m_count{};
 };
+
+#endif

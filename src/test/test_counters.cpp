@@ -167,7 +167,7 @@ private:
 size_t Counter::staticDefaultCtor = 0;
 size_t Counter::staticDtor = 0;
 
-void swap(Counter& a, Counter& b) {
+inline void swap(Counter& a, Counter& b) {
 	a.swap(b);
 }
 
@@ -222,7 +222,8 @@ TEMPLATE_TEST_CASE("1 emplace", "[display]", (std::unordered_map<Counter, Counte
 	Counter::Counts counts;
 	{
 		TestType map;
-		map.emplace(std::piecewise_construct, std::forward_as_tuple((size_t)1, counts), std::forward_as_tuple((size_t)2, counts));
+		map.emplace(std::piecewise_construct, std::forward_as_tuple(static_cast<size_t>(1), counts),
+					std::forward_as_tuple(static_cast<size_t>(2), counts));
 	}
 	counts.printCounts(std::string("1 emplace ") + name(TestType{}));
 	REQUIRE(counts.dtor == counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
@@ -433,12 +434,12 @@ TEST_CASE("show hash distribution", "[display]") {
 	}
 
 	for (size_t i = 0; i < 10; ++i) {
-		size_t s = ((0x23d7 + i) << (ROBIN_HOOD_BITNESS / 2)) + (size_t)63;
+		size_t s = ((0x23d7 + i) << (ROBIN_HOOD_BITNESS / 2)) + static_cast<size_t>(63);
 		showHash(s);
 	}
 
 	for (size_t i = 1; i < 8; ++i) {
-		showHash(i * ((size_t)1 << (ROBIN_HOOD_BITNESS - 4)));
+		showHash(i * (static_cast<size_t>(1) << (ROBIN_HOOD_BITNESS - 4)));
 	}
 
 	for (size_t i = 1; i != 0; i *= 2) {
@@ -479,7 +480,7 @@ struct ConfigurableCounterHash {
 
 #if ROBIN_HOOD_BITNESS == 64
 	std::array<uint64_t, 2> m_values;
-	const std::array<uint64_t, 2> m_max_values = {(uint64_t)(-1), (uint64_t)(-1)};
+	const std::array<uint64_t, 2> m_max_values = {static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
 #else
 	std::array<uint64_t, 1> m_values;
 	const std::array<uint64_t, 1> m_max_values = {(uint64_t)(-1)};
@@ -490,7 +491,7 @@ template <typename A>
 void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, uint64_t& current_ops_sum) {
 	using Map = robin_hood::flat_map<Counter, uint64_t, ConfigurableCounterHash, std::equal_to<Counter>, 120>;
 	try {
-		Rng rng(((uint64_t)iters) * 0x135ff36020fe7455);
+		Rng rng(static_cast<uint64_t>(iters) * 0x135ff36020fe7455);
 		Counter::Counts counts;
 		size_t const num_iters = 33000;
 		{
