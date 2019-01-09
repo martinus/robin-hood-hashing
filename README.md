@@ -1,3 +1,4 @@
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/f8c51f3fd46e4928802fadbbb0b1dbae)](https://app.codacy.com/app/martinus/robin-hood-hashing?utm_source=github.com&utm_medium=referral&utm_content=martinus/robin-hood-hashing&utm_campaign=Badge_Grade_Settings)
 robin-hood-hashing [![Release](https://img.shields.io/github/release/martinus/robin-hood-hashing.svg)](https://github.com/martinus/robin-hood-hashing/releases) [![GitHub license](https://img.shields.io/github/license/martinus/robin-hood-hashing.svg)](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/LICENSE)
 ==================
 
