@@ -202,11 +202,11 @@ const char* name(robin_hood::node_map<K, V> const&) {
 	return "robin_hood::node_map";
 }
 
-TEST_CASE("prefix", "[display]") {
+TEST_CASE("prefix", "[display][counter]") {
 	Counter::Counts::printHeader();
 }
 
-TEMPLATE_TEST_CASE("map ctor & dtor", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+TEMPLATE_TEST_CASE("map ctor & dtor", "[display][counter]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
 				   (robin_hood::node_map<Counter, Counter>)) {
 
 	Counter::Counts counts;
@@ -229,8 +229,8 @@ TEMPLATE_TEST_CASE("1 emplace", "[display]", (std::unordered_map<Counter, Counte
 	REQUIRE(counts.dtor == counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
-TEMPLATE_TEST_CASE("10k random insert & erase", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
-				   (robin_hood::node_map<Counter, Counter>)) {
+TEMPLATE_TEST_CASE("10k random insert & erase", "[display][counter]", (std::unordered_map<Counter, Counter>),
+				   (robin_hood::flat_map<Counter, Counter>), (robin_hood::node_map<Counter, Counter>)) {
 
 	Counter::Counts counts;
 	Counter::staticDefaultCtor = 0;
@@ -256,7 +256,7 @@ TEMPLATE_TEST_CASE("10k random insert & erase", "[display]", (std::unordered_map
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
-TEMPLATE_TEST_CASE("10 insert erase", "[display]", (robin_hood::node_map<Counter, Counter>)) {
+TEMPLATE_TEST_CASE("10 insert erase", "[display][counter]", (robin_hood::node_map<Counter, Counter>)) {
 	for (size_t i = 23; i < 25; ++i) {
 		Rng rng(12);
 		Counter::Counts counts;
@@ -275,7 +275,7 @@ TEMPLATE_TEST_CASE("10 insert erase", "[display]", (robin_hood::node_map<Counter
 	}
 }
 
-TEMPLATE_TEST_CASE("100k [] and erase", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+TEMPLATE_TEST_CASE("100k [] and erase", "[display][counter]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
 				   (robin_hood::node_map<Counter, Counter>)) {
 
 	Counter::Counts counts;
@@ -295,7 +295,7 @@ TEMPLATE_TEST_CASE("100k [] and erase", "[display]", (std::unordered_map<Counter
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
-TEMPLATE_TEST_CASE("100k emplace and erase", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+TEMPLATE_TEST_CASE("100k emplace and erase", "[display][counter]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
 				   (robin_hood::node_map<Counter, Counter>)) {
 
 	Counter::Counts counts;
@@ -316,7 +316,7 @@ TEMPLATE_TEST_CASE("100k emplace and erase", "[display]", (std::unordered_map<Co
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
-TEMPLATE_TEST_CASE("eval stats", "[display]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
+TEMPLATE_TEST_CASE("eval stats", "[display][counter]", (std::unordered_map<Counter, Counter>), (robin_hood::flat_map<Counter, Counter>),
 				   (robin_hood::node_map<Counter, Counter>)) {
 	using Map = TestType;
 	Counter::Counts counts;
