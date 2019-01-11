@@ -837,6 +837,26 @@ private:
 		}
 	}
 
+	void shiftDown(size_t idx) {
+		// until we find one that is either empty or has zero offset.
+		// TODO we don't need to move everything, just the last one for the same bucket.
+		mKeyVals[idx].destroy(*this);
+
+		// until we find one that is either empty or has zero offset.
+		size_t nextIdx = (idx + 1) & mMask;
+		while (mInfo[nextIdx] > 1) {
+			mInfo[idx] = static_cast<uint8_t>(mInfo[nextIdx] - 1);
+			mKeyVals[idx] = std::move(mKeyVals[nextIdx]);
+			idx = nextIdx;
+			nextIdx = (idx + 1) & mMask;
+		}
+
+		mInfo[idx] = 0;
+		// don't destroy, we've moved it
+		// mKeyVals[idx].destroy(*this);
+		mKeyVals[idx].~Node();
+	}
+
 	// copy of find(), except that it returns iterator instead of const_iterator.
 	template <typename Other>
 	size_t findIdx(const Other& key) const {
@@ -1189,24 +1209,9 @@ public:
 	// Erases element at pos, returns iterator to the next element.
 	iterator erase(iterator pos) {
 		// we assume that pos always points to a valid entry, and not end().
-
-		// perform backward shift deletion: shift elements to the left
-		// until we find one that is either empty or has zero offset.
-		// TODO we don't need to move everything, just the last one for the same bucket.
 		auto idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
-		mKeyVals[idx].destroy(*this);
-		size_t nextIdx = (idx + 1) & mMask;
-		while (mInfo[nextIdx] > 1) {
-			mInfo[idx] = static_cast<uint8_t>(mInfo[nextIdx] - 1);
-			mKeyVals[idx] = std::move(mKeyVals[nextIdx]);
-			idx = nextIdx;
-			nextIdx = (idx + 1) & mMask;
-		}
 
-		mInfo[idx] = 0;
-		// don't destroy, we've moved it
-		// mKeyVals[idx].destroy(*this);
-		mKeyVals[idx].~Node();
+		shiftDown(idx);
 		--mNumElements;
 
 		if (*pos.mInfo) {
@@ -1227,23 +1232,7 @@ public:
 		// check while info matches with the source idx
 		while (info == mInfo[idx]) {
 			if (KeyEqual::operator()(key, mKeyVals[idx]->first)) {
-				// found it! perform backward shift deletion: shift elements to the left
-				mKeyVals[idx].destroy(*this);
-
-				// until we find one that is either empty or has zero offset.
-				size_t nextIdx = (idx + 1) & mMask;
-				while (mInfo[nextIdx] > 1) {
-					mInfo[idx] = static_cast<uint8_t>(mInfo[nextIdx] - 1);
-					mKeyVals[idx] = std::move(mKeyVals[nextIdx]);
-					idx = nextIdx;
-					nextIdx = (idx + 1) & mMask;
-				}
-
-				mInfo[idx] = 0;
-				// don't destroy, we've moved this
-				// mKeyVals[idx].destroy(*this);
-				mKeyVals[idx].~Node();
-
+				shiftDown(idx);
 				--mNumElements;
 				return 1;
 			}
