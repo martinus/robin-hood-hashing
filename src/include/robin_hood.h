@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 2 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 0 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 2 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 3 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstring>
@@ -496,8 +496,9 @@ struct hash<int32_t> {
 template <typename Key, typename T, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>,
 		  // Use direct map only when move does not throw, so swap and resize is possible without copying stuff.
 		  // also make sure data is not too large, then swap might be slow.
-		  bool IsDirect = sizeof(Key) + sizeof(T) <= sizeof(void*) * 3 &&
-						  std::is_nothrow_move_constructible<std::pair<Key, T>>::value&& std::is_nothrow_move_assignable<std::pair<Key, T>>::value,
+		  bool IsDirect =
+			  sizeof(robin_hood::pair<Key, T>) <= sizeof(size_t) * 4 &&
+			  std::is_nothrow_move_constructible<robin_hood::pair<Key, T>>::value&& std::is_nothrow_move_assignable<robin_hood::pair<Key, T>>::value,
 		  size_t MaxLoadFactor100 = 80>
 class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<pair<Key, T>, 4, 16384, IsDirect> {
 	// configuration defaults
@@ -513,6 +514,7 @@ public:
 	using hasher = Hash;
 	using key_equal = KeyEqual;
 	using Self = unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect, MaxLoadFactor100>;
+	static const bool is_flat_map = IsDirect;
 
 private:
 	// DataNode ////////////////////////////////////////////////////////
