@@ -81,18 +81,17 @@ TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark]", (robin_hood::flat_m
 				   (std::unordered_map<int, int>)) {
 	Rng rng(123);
 
-	uint64_t verifier = 0;
 	BENCHMARK("Random insert erase") {
+		uint64_t verifier = 0;
 		TestType map;
-		for (int n = 1; n < 10'000; ++n) {
-			for (int i = 0; i < 10'000; ++i) {
+		for (int n = 1; n < 20'000; ++n) {
+			for (int i = 0; i < 20'000; ++i) {
 				map[rng.uniform<int>(static_cast<uint64_t>(n))] = i;
 				verifier += map.erase(rng.uniform<int>(static_cast<uint64_t>(n)));
 			}
 		}
+		REQUIRE(verifier == 200050629);
 	}
-
-	REQUIRE(verifier == 50024052);
 }
 
 // benchmark adapted from https://github.com/attractivechaos/udb2
