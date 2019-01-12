@@ -390,3 +390,66 @@ TEMPLATE_TEST_CASE("maps of maps", "", FlatMapVerifier, NodeMapVerifier) {
 	}
 	REQUIRE(CtorDtorVerifier::mapSize() == static_cast<size_t>(0));
 }
+
+template <size_t S>
+struct ShiftHash {
+	size_t operator()(uint64_t const& t) const {
+		return static_cast<size_t>(t >> S);
+	}
+};
+
+TEMPLATE_TEST_CASE("insertion with simple hash", "", (robin_hood::flat_map<uint64_t, uint64_t, ShiftHash<1>>),
+				   (robin_hood::node_map<uint64_t, uint64_t, ShiftHash<1>>)) {
+	TestType map;
+
+	for (uint64_t i = 0; i < 4; ++i) {
+		map[i] = i;
+	}
+	for (uint64_t i = 0; i < 4; ++i) {
+		map.erase(i);
+	}
+}
+
+template <typename Collection>
+void print_keys(Collection&& col) {
+	std::vector<int> v;
+	for (auto const& kv : col) {
+		v.push_back(kv.first);
+	}
+	std::sort(v.begin(), v.end());
+	std::cout << "{";
+	const char* prefix = "";
+	for (auto k : v) {
+		std::cout << prefix << k;
+		prefix = ",";
+	}
+	std::cout << "}";
+}
+
+TEST_CASE("random insertion brute force", "[!hide]") {
+	// find a problem
+	size_t min_ops = 1000;
+	uint64_t const n = 13;
+
+	Rng rng{0x175ad82ad429e451, 0xce94701a5e81da69, 0x1cf05362b6b945b9, 69633};
+	while (true) {
+		auto state = rng.state();
+		std::unordered_map<int, int> suo;
+		robin_hood::flat_map<int, int> ruo;
+
+		for (size_t op = 0; op < min_ops; ++op) {
+			auto const key = rng.uniform<int>(n);
+			if (op & 1) {
+				suo.erase(key);
+				ruo.erase(key);
+			} else {
+				suo[key] = key;
+				ruo[key] = key;
+			}
+			if (suo.size() != ruo.size()) {
+				std::cout << "error after " << op << " ops, rng{" << sfc64{state} << "}" << std::endl;
+				min_ops = op;
+			}
+		}
+	}
+}
