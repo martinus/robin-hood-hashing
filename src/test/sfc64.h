@@ -3,6 +3,8 @@
 
 #include <array>
 #include <cstdint>
+#include <iomanip>
+#include <iostream>
 #include <limits>
 #include <random>
 #include <utility>
@@ -15,6 +17,18 @@ public:
 
 	sfc64()
 		: sfc64(UINT64_C(0x853c49e6748fea9b)) {}
+
+	sfc64(uint64_t a, uint64_t b, uint64_t c, uint64_t counter)
+		: m_a{a}
+		, m_b{b}
+		, m_c{c}
+		, m_counter{counter} {}
+
+	sfc64(std::array<uint64_t, 4> const& state)
+		: m_a{state[0]}
+		, m_b{state[1]}
+		, m_c{state[2]}
+		, m_counter{state[3]} {}
 
 	explicit sfc64(uint64_t seed)
 		: m_a(seed)
@@ -109,6 +123,12 @@ public:
 		m_counter = s[3];
 	}
 
+	std::ostream& print(std::ostream& os) const {
+		os << "0x" << std::setfill('0') << std::setw(16) << std::hex << m_a << ", 0x" << std::setfill('0') << std::setw(16) << std::hex << m_b
+		   << ", 0x" << std::setfill('0') << std::setw(16) << std::hex << m_c << ", " << std::dec << m_counter;
+		return os;
+	}
+
 private:
 	template <typename T>
 	T rotl(T const x, size_t k) {
@@ -123,6 +143,10 @@ private:
 	uint64_t m_c;
 	uint64_t m_counter;
 };
+
+inline std::ostream& operator<<(std::ostream& os, sfc64 const& rng) {
+	return rng.print(os);
+}
 
 template <typename U = uint64_t>
 class RandomBool {
