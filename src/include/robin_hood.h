@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 2.0.2
+// version 2.1.3
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -36,7 +36,7 @@
 
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 2 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 0 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_MINOR 1 // for adding functionality in a backwards-compatible manner
 #define ROBIN_HOOD_VERSION_PATCH 3 // for backwards-compatible bug fixes
 
 #include <algorithm>
@@ -264,7 +264,7 @@ private:
 	T** mListForFree;
 };
 
-template <typename T, size_t MinSize, size_t MaxSize, bool IsDirect>
+template <typename T, size_t MinSize, size_t MaxSize, bool IsFlatMap>
 struct NodeAllocator;
 
 // dummy allocator that does nothing
@@ -496,15 +496,15 @@ struct hash<int32_t> {
 template <typename Key, typename T, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>,
 		  // Use direct map only when move does not throw, so swap and resize is possible without copying stuff.
 		  // also make sure data is not too large, then swap might be slow.
-		  bool IsDirect =
+		  bool IsFlatMap =
 			  sizeof(robin_hood::pair<Key, T>) <= sizeof(size_t) * 4 &&
 			  std::is_nothrow_move_constructible<robin_hood::pair<Key, T>>::value&& std::is_nothrow_move_assignable<robin_hood::pair<Key, T>>::value,
 		  size_t MaxLoadFactor100 = 80>
-class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<pair<Key, T>, 4, 16384, IsDirect> {
+class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<pair<Key, T>, 4, 16384, IsFlatMap> {
 	// configuration defaults
 	static constexpr size_t InitialNumElements = 4;
 
-	using DataPool = detail::NodeAllocator<pair<Key, T>, 4, 16384, IsDirect>;
+	using DataPool = detail::NodeAllocator<pair<Key, T>, 4, 16384, IsFlatMap>;
 
 public:
 	using key_type = Key;
@@ -513,8 +513,8 @@ public:
 	using size_type = size_t;
 	using hasher = Hash;
 	using key_equal = KeyEqual;
-	using Self = unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect, MaxLoadFactor100>;
-	static const bool is_flat_map = IsDirect;
+	using Self = unordered_map<key_type, mapped_type, hasher, key_equal, IsFlatMap, MaxLoadFactor100>;
+	static const bool is_flat_map = IsFlatMap;
 
 private:
 	// DataNode ////////////////////////////////////////////////////////
@@ -643,7 +643,7 @@ private:
 		value_type* mData;
 	};
 
-	using Node = DataNode<Self, IsDirect>;
+	using Node = DataNode<Self, IsFlatMap>;
 
 	// Cloner //////////////////////////////////////////////////////////
 
@@ -678,7 +678,7 @@ private:
 
 	// Destroyer ///////////////////////////////////////////////////////
 
-	template <typename M, bool IsDirectAndTrivial>
+	template <typename M, bool IsFlatMapAndTrivial>
 	struct Destroyer {};
 
 	template <typename M>
@@ -771,7 +771,7 @@ private:
 		}
 
 	private:
-		friend class unordered_map<key_type, mapped_type, hasher, key_equal, IsDirect, MaxLoadFactor100>;
+		friend class unordered_map<key_type, mapped_type, hasher, key_equal, IsFlatMap, MaxLoadFactor100>;
 		NodePtr mKeyVals;
 		uint8_t const* mInfo;
 	};
@@ -879,7 +879,7 @@ private:
 	}
 
 	void cloneData(const unordered_map& o) {
-		Cloner<unordered_map, IsDirect && std::is_trivially_copyable<Node>::value>()(o, *this);
+		Cloner<unordered_map, IsFlatMap && std::is_trivially_copyable<Node>::value>()(o, *this);
 	}
 
 	// inserts a keyval that is guaranteed to be new, e.g. when the hashmap is resized.
@@ -1035,7 +1035,7 @@ public:
 		}
 
 		// clean up old stuff
-		Destroyer<Self, IsDirect && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
+		Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
 
 		if (mMask != o.mMask) {
 			// no luck: we don't have the same array size allocated, so we need to realloc.
@@ -1082,7 +1082,7 @@ public:
 			return;
 		}
 
-		Destroyer<Self, IsDirect && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
+		Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
 
 		// clear everything except the sentinel
 		// std::memset(mInfo, 0, sizeof(uint8_t) * (mMask + 1));
@@ -1445,7 +1445,7 @@ private:
 			return;
 		}
 
-		Destroyer<Self, IsDirect && std::is_trivially_destructible<Node>::value>{}.nodesDoNotDeallocate(*this);
+		Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}.nodesDoNotDeallocate(*this);
 		free(mKeyVals);
 	}
 
