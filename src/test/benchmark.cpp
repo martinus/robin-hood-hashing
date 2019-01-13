@@ -96,46 +96,58 @@ TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark]", (robin_hood::flat_m
 
 // benchmark adapted from https://github.com/attractivechaos/udb2
 // this implementation should have less overhead, because sfc64 and it's uniform() is extremely fast.
-TEMPLATE_TEST_CASE("25% distinct", "[!benchmark]", (robin_hood::unordered_map<int, int>), (std::unordered_map<int, int>)) {
+TEMPLATE_TEST_CASE("distinctness", "[!benchmark]", (robin_hood::unordered_map<int, int>), (std::unordered_map<int, int>)) {
+	static size_t const upper = 50'000'000;
+	static size_t const lower = 10'000'000;
+	static size_t const num_steps = 5;
+	static size_t const step_width = (upper - lower) / num_steps;
+
 	Rng rng(123);
 
 	int checksum = 0;
-	size_t const upper = 50'000'000;
-	size_t const lower = 10'000'000;
-	size_t const num_steps = 5;
-	size_t const step_width = (upper - lower) / num_steps;
-
-	for (size_t n = lower; n <= upper; n += step_width) {
-		size_t const max_rng = n / 4;
-		BENCHMARK(std::to_string(n) + " ") {
+	BENCHMARK("  5% distinct") {
+		for (size_t n = lower; n <= upper; n += step_width) {
+			size_t const max_rng = n / 20;
 			TestType map;
 			for (size_t i = 0; i < n; ++i) {
 				checksum += ++map[rng.uniform<int>(max_rng)];
 			}
 		}
 	}
+	REQUIRE(checksum == 1979940949);
 
-	REQUIRE(checksum == 539967125);
-}
-
-TEMPLATE_TEST_CASE("50% distinct", "[!benchmark]", (robin_hood::unordered_map<uint64_t, int>), (std::unordered_map<uint64_t, int>)) {
-	Rng rng(123);
-
-	size_t const upper = 100'000'000;
-	size_t const lower = 10'000'000;
-	size_t const num_steps = 10;
-	size_t const step_width = (upper - lower) / num_steps;
-
-	size_t checksum = 0;
-	BENCHMARK("50% distinct") {
-		TestType map;
+	checksum = 0;
+	BENCHMARK(" 25% distinct") {
 		for (size_t n = lower; n <= upper; n += step_width) {
-			size_t const max_rng = n / 2;
+			size_t const max_rng = n / 4;
+			TestType map;
 			for (size_t i = 0; i < n; ++i) {
-				checksum += ++map[rng(max_rng)];
+				checksum += ++map[rng.uniform<int>(max_rng)];
 			}
 		}
 	}
+	REQUIRE(checksum == 539988321);
 
-	REQUIRE(checksum == 5279885396);
+	checksum = 0;
+	BENCHMARK(" 50% distinct") {
+		for (size_t n = lower; n <= upper; n += step_width) {
+			size_t const max_rng = n / 2;
+			TestType map;
+			for (size_t i = 0; i < n; ++i) {
+				checksum += ++map[rng.uniform<int>(max_rng)];
+			}
+		}
+	}
+	REQUIRE(checksum == 360007397);
+
+	checksum = 0;
+	BENCHMARK("100% distinct") {
+		for (size_t n = lower; n <= upper; n += step_width) {
+			TestType map;
+			for (size_t i = 0; i < n; ++i) {
+				checksum += ++map[rng.uniform<int>()];
+			}
+		}
+	}
+	REQUIRE(checksum == 180759494);
 }
