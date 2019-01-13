@@ -118,40 +118,24 @@ TEMPLATE_TEST_CASE("25% distinct", "[!benchmark]", (robin_hood::unordered_map<in
 	REQUIRE(checksum == 539967125);
 }
 
-TEMPLATE_TEST_CASE("random find 50% existing", "[!benchmark]", (robin_hood::unordered_map<uint64_t, int>), (std::unordered_map<uint64_t, int>)) {
-	Rng rng(777);
+TEMPLATE_TEST_CASE("50% distinct", "[!benchmark]", (robin_hood::unordered_map<uint64_t, int>), (std::unordered_map<uint64_t, int>)) {
+	Rng rng(123);
 
-	TestType map;
-	size_t found = 0;
-	size_t not_found = 0;
-	BENCHMARK("random find 50% existing") {
-		for (size_t iters = 0; iters < 20; ++iters) {
-			auto before_insert_rng_state = rng.state();
-			for (int j = 0; j < 100'000; ++j) {
-				map[rng()];
-				// skip one rng number
-				rng();
-			}
-			auto const final_rng = rng();
+	size_t const upper = 100'000'000;
+	size_t const lower = 10'000'000;
+	size_t const num_steps = 10;
+	size_t const step_width = (upper - lower) / num_steps;
 
-			// the search a few times
-			for (size_t num_searches = 0; num_searches < 10; ++num_searches) {
-				rng.state(before_insert_rng_state);
-				uint64_t search_val = 0;
-				do {
-					search_val = rng();
-					auto it = map.find(search_val);
-					if (it != map.end()) {
-						++found;
-					} else {
-						++not_found;
-					}
-
-				} while (search_val != final_rng);
+	size_t checksum = 0;
+	BENCHMARK("50% distinct") {
+		TestType map;
+		for (size_t n = lower; n <= upper; n += step_width) {
+			size_t const max_rng = n / 2;
+			for (size_t i = 0; i < n; ++i) {
+				checksum += ++map[rng(max_rng)];
 			}
 		}
 	}
 
-	REQUIRE(found == 20000000);
-	REQUIRE(not_found == 20000200);
+	REQUIRE(checksum == 5279885396);
 }
