@@ -132,10 +132,11 @@ public:
 		return 1 == mConstructedAddresses.count(ptr);
 	}
 
+	static bool mDoPrintDebugInfo;
+
 private:
 	uint64_t mVal;
 	static std::unordered_set<CtorDtorVerifier const*> mConstructedAddresses;
-	static bool mDoPrintDebugInfo;
 };
 
 template <>
@@ -310,6 +311,8 @@ struct DummyHash {
 
 TEMPLATE_TEST_CASE("collisions", "", (robin_hood::flat_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>),
 				   (robin_hood::node_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>)) {
+
+	// CtorDtorVerifier::mDoPrintDebugInfo = true;
 	{
 		TestType m;
 		for (uint64_t i = 0; i < 255; ++i) {
@@ -431,11 +434,11 @@ TEST_CASE("random insertion brute force", "[!hide]") {
 	size_t min_ops = 1000;
 	uint64_t const n = 13;
 
-	Rng rng{0x175ad82ad429e451, 0xce94701a5e81da69, 0x1cf05362b6b945b9, 69633};
+	Rng rng{0x6105f48f7969b86d, 0xa167fa91a795ea5e, 0x1f6664bdc85ee695, 99879};
 	while (true) {
 		auto state = rng.state();
 		std::unordered_map<int, int> suo;
-		robin_hood::flat_map<int, int> ruo;
+		robin_hood::node_map<int, int> ruo;
 
 		for (size_t op = 0; op < min_ops; ++op) {
 			auto const key = rng.uniform<int>(n);
