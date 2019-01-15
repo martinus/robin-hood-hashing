@@ -151,3 +151,30 @@ TEMPLATE_TEST_CASE("distinctness", "[!benchmark]", (robin_hood::unordered_map<in
 	}
 	REQUIRE(checksum == 180759494);
 }
+
+TEMPLATE_TEST_CASE("random find", "[!benchmark]", (robin_hood::unordered_map<size_t, size_t>), (std::unordered_map<size_t, size_t>)) {
+	size_t const num_iters = 8;
+	size_t const insertion_factor = 10'000;
+	size_t const num_finds = 50'000'000;
+	Rng rng(123);
+
+	size_t num_found = 0;
+	BENCHMARK("random find") {
+		TestType map;
+		for (size_t iters = 1; iters <= num_iters; ++iters) {
+			auto const max_insertion = insertion_factor * iters;
+
+			for (size_t j = 0; j < max_insertion; ++j) {
+				map.emplace(rng.uniform<size_t>(max_insertion), j);
+			}
+
+			for (size_t n = 0; n < num_finds; ++n) {
+				auto it = map.find(rng.uniform<size_t>(max_insertion));
+				if (it != map.end()) {
+					++num_found;
+				}
+			}
+		}
+	}
+	REQUIRE(num_found == 334'097'031);
+}
