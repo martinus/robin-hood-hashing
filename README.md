@@ -31,7 +31,7 @@ Hashtable based on Robin Hood Hashing. In general, this map is both faster and u
 
 Take all benchmarks with a grain of salt, as it highly depends on the usage pattern. I usually see improvement in the order of
 
-* 3 times faster insertion than `std::unordered_map`
+* 3-10 times faster insert / erase than `std::unordered_map`
 * 2 times faster lookup than `std::unordered_map`
 * 2 - 3 times less memory usage than `std::unordered_map`
 
