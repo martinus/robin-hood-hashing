@@ -472,6 +472,8 @@ struct hash<int32_t> {
 	}
 };
 
+namespace detail {
+
 // A highly optimized hashmap implementation, using the Robin Hood algorithm.
 //
 // In most cases, this map should be usable as a drop-in replacement for std::unordered_map, but be about 2x faster in most cases
@@ -493,23 +495,17 @@ struct hash<int32_t> {
 //
 // * infoSentinel: Sentinel byte set to 1, so that iterator's ++ can stop at end() without the need for a idx
 //   variable.
-template <typename Key, typename T, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>,
-		  // Use direct map only when move does not throw, so swap and resize is possible without copying stuff.
-		  // also make sure data is not too large, then swap might be slow.
-		  bool IsFlatMap =
-			  sizeof(robin_hood::pair<Key, T>) <= sizeof(size_t) * 4 &&
-			  std::is_nothrow_move_constructible<robin_hood::pair<Key, T>>::value&& std::is_nothrow_move_assignable<robin_hood::pair<Key, T>>::value,
-		  size_t MaxLoadFactor100 = 80>
-class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<pair<Key, T>, 4, 16384, IsFlatMap> {
+template <typename Key, typename T, typename Hash, typename KeyEqual, bool IsFlatMap, size_t MaxLoadFactor100>
+class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<robin_hood::pair<Key, T>, 4, 16384, IsFlatMap> {
 	// configuration defaults
 	static constexpr size_t InitialNumElements = 4;
 
-	using DataPool = detail::NodeAllocator<pair<Key, T>, 4, 16384, IsFlatMap>;
+	using DataPool = detail::NodeAllocator<robin_hood::pair<Key, T>, 4, 16384, IsFlatMap>;
 
 public:
 	using key_type = Key;
 	using mapped_type = T;
-	using value_type = pair<Key, T>;
+	using value_type = robin_hood::pair<Key, T>;
 	using size_type = size_t;
 	using hasher = Hash;
 	using key_equal = KeyEqual;
@@ -1457,11 +1453,20 @@ private:
 	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte 40
 };
 
-template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
-using flat_map = unordered_map<Key, T, Hash, KeyEqual, true, MaxLoadFactor100>;
+} // namespace detail
 
 template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
-using node_map = unordered_map<Key, T, Hash, KeyEqual, false, MaxLoadFactor100>;
+using flat_map = detail::unordered_map<Key, T, Hash, KeyEqual, true, MaxLoadFactor100>;
+
+template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
+using node_map = detail::unordered_map<Key, T, Hash, KeyEqual, false, MaxLoadFactor100>;
+
+template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
+using unordered_map = detail::unordered_map<Key, T, Hash, KeyEqual,
+											sizeof(robin_hood::pair<Key, T>) <= sizeof(size_t) * 4 &&
+												std::is_nothrow_move_constructible<robin_hood::pair<Key, T>>::value &&
+												std::is_nothrow_move_assignable<robin_hood::pair<Key, T>>::value,
+											MaxLoadFactor100>;
 
 } // namespace robin_hood
 
