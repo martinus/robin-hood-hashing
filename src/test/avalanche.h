@@ -20,7 +20,7 @@ public:
 
 			// generate output with flipped bit
 			auto has_flipped = op(input_flipped) ^ output;
-			size_t i = 63;
+			size_t i = 64;
 			do {
 				--i;
 				if (has_flipped & 1) {
