@@ -432,8 +432,7 @@ template <>
 struct hash<uint64_t> {
 	size_t operator()(uint64_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
-		// 91887258544 masksum, 59652600 ops best: 0x735760375fa9a109 0xd889d8a073587867
-		return static_cast<size_t>(detail::umulh(UINT64_C(0x735760375fa9a109), obj * UINT64_C(0xd889d8a073587867)));
+		return static_cast<size_t>(detail::umulh(UINT64_C(0xfe592fb6000129a6), obj) * UINT64_C(0xa8b6130b6fde689f));
 #else
 		// murmurhash 3 finalizer
 		uint64_t h = obj;
@@ -497,6 +496,8 @@ namespace detail {
 //   variable.
 template <typename Key, typename T, typename Hash, typename KeyEqual, bool IsFlatMap, size_t MaxLoadFactor100>
 class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<robin_hood::pair<Key, T>, 4, 16384, IsFlatMap> {
+	static_assert(MaxLoadFactor100 > 10 && MaxLoadFactor100 < 100, "MaxLoadFactor100 needs to be >10 && < 100");
+
 	// configuration defaults
 	static constexpr size_t InitialNumElements = 4;
 
@@ -1398,7 +1399,7 @@ private:
 		if (maxElements > overflowLimit) {
 			return static_cast<size_t>(static_cast<double>(maxElements) * factor);
 		} else {
-			return (maxElements * MaxLoadFactor100) / 100;
+			return (std::min)(maxElements - 1, (maxElements * MaxLoadFactor100) / 100);
 		}
 	}
 
