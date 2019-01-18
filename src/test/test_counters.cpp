@@ -452,7 +452,7 @@ struct ConfigurableCounterHash {
 	ConfigurableCounterHash()
 		: m_values(
 #if ROBIN_HOOD_BITNESS == 64
-			  { UINT64_C(0x5e1caf9535ce6811), UINT64_C(0xbb1039b2f223f0af) }
+			  { UINT64_C(0x5e1caf9535ce6811) }
 #else
 			  { UINT64_C(0xa1ac131cae0b3f71) }
 #endif
@@ -467,43 +467,60 @@ struct ConfigurableCounterHash {
 		return *this;
 	}
 
-	size_t operator()(Counter const& c) const {
-		size_t const h = c.getForHash();
+	size_t operator()(size_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
-		size_t result = static_cast<size_t>(robin_hood::detail::umulh(m_values[0], h * m_values[1]));
+		uint64_t h = obj;
+		// auto result = static_cast<size_t>(robin_hood::detail::umulh(h * m_values[0], h + m_values[1]));
+		// auto result = static_cast<size_t>(robin_hood::detail::umulh(h + m_values[1], h * m_values[0]));
+		auto result = static_cast<size_t>(h * m_values[0]);
+
+/*
+		using robin_hood::detail::umulh;
+		size_t h = obj;
+		h = umulh(h, m_values[0]) * m_values[1];
+		auto result = static_cast<size_t>(h);
+		*/
 #else
 		uint64_t const factor = m_values[0];
 		size_t result = static_cast<size_t>((h * factor) >> 32);
 #endif
-		return result;
+		return result >> m_shift;
+	}
+
+	size_t operator()(Counter const& c) const {
+		return operator()(c.getForHash());
 	}
 
 #if ROBIN_HOOD_BITNESS == 64
-	std::array<uint64_t, 2> m_values;
-	const std::array<uint64_t, 2> m_max_values = {static_cast<uint64_t>(-1), static_cast<uint64_t>(-1)};
+	std::array<uint64_t, 1> m_values;
+	int m_shift = 0;
 #else
 	std::array<uint64_t, 1> m_values;
-	const std::array<uint64_t, 1> m_max_values = {(uint64_t)(-1)};
 #endif
 };
 
 template <typename A>
 void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, uint64_t& current_ops_sum) {
-	using Map = robin_hood::flat_map<Counter, uint64_t, ConfigurableCounterHash, std::equal_to<Counter>, 120>;
+	using Map = robin_hood::flat_map<Counter, uint64_t, ConfigurableCounterHash, std::equal_to<Counter>, 95>;
 	try {
 		Rng rng(static_cast<uint64_t>(iters) * 0x135ff36020fe7455);
+		RandomBool<> rbool;
 		Counter::Counts counts;
 		size_t const num_iters = 33000;
+		int max_shift_hash = sizeof(size_t) * 8 - 16;
+		// int max_shift_hash = 0;
+
 		{
 			// this tends to be very slow because of lots of shifts
 			Map map;
 			map.m_values = current_values;
+			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
 
-			for (size_t n = 1; n < 10000; n += (500 * 10000 / num_iters)) {
+			for (size_t n = 2; n < 10000; n += (500 * 10000 / num_iters)) {
 				for (size_t i = 0; i < 500; ++i) {
-					map[Counter{rng.uniform<size_t>(n), counts}] = i;
+					map[Counter{rng.uniform<size_t>(n * 10), counts}];
 					current_mask_sum += map.mask();
-					map.erase(Counter{rng.uniform<size_t>(n), counts});
+					map.erase(Counter{rng.uniform<size_t>(n * 10), counts});
 				}
 			}
 		}
@@ -511,6 +528,7 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 		{
 			Map map;
 			map.m_values = current_values;
+			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map[Counter{rng.uniform<size_t>(i + 1), counts}] = i;
@@ -522,6 +540,7 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 		{
 			Map map;
 			map.m_values = current_values;
+			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts), std::forward_as_tuple(i));
@@ -532,6 +551,7 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 		{
 			Map map;
 			map.m_values = current_values;
+			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts),
@@ -543,6 +563,7 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 		{
 			Map map;
 			map.m_values = current_values;
+			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
 
 			static size_t const max_shift = ROBIN_HOOD_BITNESS - 8;
 			static size_t const min_shift = 1;
@@ -559,6 +580,7 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 			// just sequential insertion
 			Map map;
 			map.m_values = current_values;
+			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(i, counts), std::forward_as_tuple(i));
@@ -570,6 +592,7 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 			// sequential shifted
 			Map map;
 			map.m_values = current_values;
+			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(i << ROBIN_HOOD_BITNESS / 2, counts), std::forward_as_tuple(i));
@@ -585,11 +608,16 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 
 #if ROBIN_HOOD_HAS_UMULH
 
+bool ge(uint64_t mask_a, uint64_t ops_a, uint64_t mask_b, uint64_t ops_b) {
+	// return std::log(mask_a) + std::log(ops_a) <= std::log(mask_b) + std::log(ops_b);
+	return std::tie(mask_a, ops_a) <= std::tie(mask_b, ops_b);
+}
+
 TEST_CASE("quickmixoptimizer", "[!hide]") {
 	Rng factorRng(std::random_device{}());
 	RandomBool<> rbool;
 
-	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash, std::equal_to<Counter>, 126>;
+	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash, std::equal_to<Counter>, 95>;
 	Map startup_map;
 	auto best_values = startup_map.m_values;
 	auto global_best_values = best_values;
@@ -620,19 +648,22 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 		++num_unsuccessful_tries;
 
 		// also assign when we are equally good, should lead to a bit more exploration
-		if (num_unsuccessful_tries == 2000 || std::tie(current_mask_sum, current_ops_sum) <= std::tie(best_mask_sum, best_ops_sum)) {
+		if (num_unsuccessful_tries == 2000 || ge(current_mask_sum, current_ops_sum, best_mask_sum, best_ops_sum)) {
 			best_mask_sum = current_mask_sum;
 			best_ops_sum = current_ops_sum;
 			best_values = current_values;
 
-			if (std::tie(best_mask_sum, best_ops_sum) <= std::tie(global_best_mask_sum, global_best_ops_sum)) {
+			if (ge(best_mask_sum, best_ops_sum, global_best_mask_sum, global_best_ops_sum)) {
 				global_best_mask_sum = best_mask_sum;
 				global_best_ops_sum = best_ops_sum;
 				global_best_values = best_values;
 
 				Avalanche a;
-				a.eval(100, [&global_best_values](uint64_t h) {
-					return static_cast<size_t>(robin_hood::detail::umulh(global_best_values[0], h * global_best_values[1]));
+				a.eval(5000, [&global_best_values](uint64_t h) {
+					ConfigurableCounterHash hasher;
+					hasher.m_values = global_best_values;
+					hasher.m_shift = 0;
+					return static_cast<size_t>(hasher(h));
 				});
 				a.save("quickmixoptimizer.ppm");
 			}

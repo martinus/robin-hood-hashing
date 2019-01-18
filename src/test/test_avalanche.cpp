@@ -18,19 +18,33 @@ TEST_CASE("avalanche optimizer", "[!hide]") {
 	Rng rng(std::random_device{}());
 	RandomBool<> rbool;
 
-	std::array<uint64_t, 2> factors = {0x8f51e0541f93532e, 0xd9f6699f11462b6d};
+	std::array<uint64_t, 2> factors = {};
 	auto best_factors = factors;
-	double best_rms = (std::numeric_limits<double>::max)();
+	size_t best_rms = (std::numeric_limits<size_t>::max)();
 
 	while (true) {
 		Avalanche a;
-		a.eval(100, [&factors](uint64_t h) { return static_cast<size_t>(robin_hood::detail::umulh(factors[0], h * factors[1])); });
+		a.eval(1000, [&factors](uint64_t h) {
+			// https://github.com/ZilongTan/fast-hash/blob/master/fasthash.c
+			// h ^= h >> 23;
+			// h *= factors[0];
+			// h ^= h >> 33;
+			// h *= factors[1];
 
-		auto rms = std::log(a.percentile()) + std::log(a.rms());
+			h = robin_hood::detail::umulh(h * factors[0], h * factors[1]);
+			return static_cast<size_t>(h);
+		});
+
+		auto rms = a.rms();
 		if (rms <= best_rms) {
 			best_rms = rms;
 			best_factors = factors;
-			std::cout << std::endl << hex(64) << factors[0] << " " << hex(64) << factors[1] << " " << std::dec << rms << std::endl;
+			std::cout << std::endl;
+			for (auto x : factors) {
+				std::cout << hex(64) << x << " ";
+			}
+			std::cout << std::dec << rms << std::endl;
+
 			a.save("avalanching_optimizer.ppm");
 		}
 		factors = best_factors;
