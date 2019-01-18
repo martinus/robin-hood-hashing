@@ -43,14 +43,14 @@ public:
 		}
 	}
 	// calculate current root mean squared error
-	double rms() const {
+	size_t rms() const {
 		auto const expected_flips = m_count / 2;
-		double sumtotal2 = 0;
+		size_t e = 0;
 		for (size_t y = 0; y < 64 * 64; ++y) {
-			double e = static_cast<double>(m_flip_count[y] - expected_flips);
-			sumtotal2 += e * e;
+			auto diff = m_flip_count[y] - expected_flips;
+			e += diff * diff;
 		}
-		return std::sqrt(sumtotal2 / (64 * 64));
+		return e;
 	}
 
 	double rms2() const {
@@ -72,8 +72,8 @@ public:
 
 		size_t e = 0;
 		auto last_it = a.begin();
-		for (auto idx : {1, 5, 95, 99}) {
-			auto next_it = a.begin() + (64 * 64 * idx / 100);
+		for (auto idx : {0, 5 * 64 * 64 / 100, 64 * 64 / 2, 95 * 64 * 64 / 100, 64 * 64 - 1}) {
+			auto next_it = a.begin() + idx;
 			std::nth_element(last_it, next_it, a.end());
 			auto diff = *next_it - expected_flips;
 			e += diff * diff;
