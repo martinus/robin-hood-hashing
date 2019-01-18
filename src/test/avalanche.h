@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <fstream>
 
+// x axis: output bits 63 to 0 (left to right)
+// y axis: input bits 0 to 63 (lower to upper)
 class Avalanche {
 public:
 	template <typename Op>
