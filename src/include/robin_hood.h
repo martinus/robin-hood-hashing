@@ -79,7 +79,7 @@ namespace robin_hood {
 namespace detail {
 
 #if ROBIN_HOOD_HAS_UMULH
-static uint64_t umulh(uint64_t a, uint64_t b) {
+inline uint64_t umulh(uint64_t a, uint64_t b) {
 #if (defined(_WIN32))
 	return __umulh(a, b);
 #else
