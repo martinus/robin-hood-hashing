@@ -431,28 +431,35 @@ void print_keys(Collection&& col) {
 
 TEST_CASE("random insertion brute force", "[!hide]") {
 	// find a problem
-	size_t min_ops = 1000;
-	uint64_t const n = 13;
+	size_t min_ops = 10000;
+	uint64_t const n = 500;
 
-	Rng rng{0x6105f48f7969b86d, 0xa167fa91a795ea5e, 0x1f6664bdc85ee695, 99879};
+	Rng rng{312};
 	while (true) {
+		size_t op = 0;
 		auto state = rng.state();
-		std::unordered_map<int, int> suo;
-		robin_hood::node_map<int, int> ruo;
+		try {
+			std::unordered_map<int, int> suo;
+			robin_hood::node_map<int, int> ruo;
 
-		for (size_t op = 0; op < min_ops; ++op) {
-			auto const key = rng.uniform<int>(n);
-			if (op & 1) {
-				suo.erase(key);
-				ruo.erase(key);
-			} else {
-				suo[key] = key;
-				ruo[key] = key;
+			while (++op < min_ops) {
+				auto const key = rng.uniform<int>(n);
+				if (op & 1) {
+					suo.erase(key);
+					ruo.erase(key);
+				} else {
+					suo[key] = key;
+					ruo[key] = key;
+				}
+				if (suo.size() != ruo.size()) {
+					std::cout << "error after " << op << " ops, rng{" << sfc64{state} << "}" << std::endl;
+					min_ops = op;
+				}
 			}
-			if (suo.size() != ruo.size()) {
-				std::cout << "error after " << op << " ops, rng{" << sfc64{state} << "}" << std::endl;
-				min_ops = op;
-			}
+
+		} catch (std::overflow_error const&) {
+			std::cout << "error after " << op << " ops, rng{" << sfc64{state} << "}" << std::endl;
+			min_ops = op;
 		}
 	}
 }

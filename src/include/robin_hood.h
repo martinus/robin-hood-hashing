@@ -432,8 +432,7 @@ template <>
 struct hash<uint64_t> {
 	size_t operator()(uint64_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
-		// 100228492296 masksum, 69591799 ops best: 0xfea97033ffe8774a 0x690bf33d0518df13
-		return static_cast<size_t>(detail::umulh(UINT64_C(0xfea97033ffe8774a), obj) * UINT64_C(0x690bf33d0518df13));
+		return static_cast<size_t>(detail::umulh(UINT64_C(0xfeeff91a7f2e74db), obj) * UINT64_C(0x55f259e92d7c6707));
 #else
 		// murmurhash 3 finalizer
 		uint64_t h = obj;
@@ -500,9 +499,11 @@ class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<robin_
 	static_assert(MaxLoadFactor100 > 10 && MaxLoadFactor100 < 100, "MaxLoadFactor100 needs to be >10 && < 100");
 
 	// configuration defaults
-	static constexpr size_t InitialNumElements = 4;
-	static constexpr int InfoInc = 1 << 0;
-	static constexpr int InfoMax = 0xFF - (InfoInc - 1);
+	static constexpr size_t InitialNumElements = sizeof(uint64_t); // make sure we have 8 elements, needed to quickly rehash mInfo
+	static constexpr int InitialInfoNumBits = 5;
+	static constexpr uint8_t InitialInfoInc = 1 << InitialInfoNumBits;
+	static constexpr uint8_t InitialInfoMax = 0xFF - (InitialInfoInc - 1);
+	static constexpr uint8_t InitialInfoHashShift = sizeof(size_t) * 8 - InitialInfoNumBits;
 	using DataPool = detail::NodeAllocator<robin_hood::pair<Key, T>, 4, 16384, IsFlatMap>;
 
 public:
@@ -805,15 +806,15 @@ private:
 	void keyToIdx(HashKey&& key, size_t& idx, int& info) const {
 		auto h = Hash::operator()(key);
 		idx = h & mMask;
-		// uses some bits from the highest byte
-		static constexpr const int shift = sizeof(h) * 8 - 8;
-		info = InfoInc + static_cast<int>((h >> shift) & (InfoInc - 1));
+		// take the highest bits of the hash
+		// Have to mask with (mInfoInc - 1) because mInfoHashShift can be 64, which is undefined?
+		info = mInfoInc + static_cast<int>(h >> mInfoHashShift);
 	}
 
 	// forwards the index by one, wrapping around at the end
 	void next(int* info, size_t* idx) const {
 		*idx = (*idx + 1) & mMask;
-		*info += InfoInc;
+		*info += mInfoInc;
 	}
 
 	void nextWhileLess(int* info, size_t* idx) const {
@@ -834,8 +835,8 @@ private:
 			} else {
 				new (mKeyVals + idx) Node(std::move(mKeyVals[prev_idx]));
 			}
-			mInfo[idx] = static_cast<uint8_t>(mInfo[prev_idx] + InfoInc);
-			if (InfoMax <= mInfo[idx]) {
+			mInfo[idx] = static_cast<uint8_t>(mInfo[prev_idx] + mInfoInc);
+			if (mInfoMax <= mInfo[idx]) {
 				mMaxNumElementsAllowed = 0;
 			}
 			idx = prev_idx;
@@ -849,8 +850,8 @@ private:
 
 		// until we find one that is either empty or has zero offset.
 		size_t nextIdx = (idx + 1) & mMask;
-		while (mInfo[nextIdx] >= 2 * InfoInc) {
-			mInfo[idx] = static_cast<uint8_t>(mInfo[nextIdx] - InfoInc);
+		while (mInfo[nextIdx] >= 2 * mInfoInc) {
+			mInfo[idx] = static_cast<uint8_t>(mInfo[nextIdx] - mInfoInc);
 			mKeyVals[idx] = std::move(mKeyVals[nextIdx]);
 			idx = nextIdx;
 			nextIdx = (idx + 1) & mMask;
@@ -891,7 +892,7 @@ private:
 	size_t insert_move(Node&& keyval) {
 		// we don't retry, fail if overflowing
 		// don't need to check max num elements
-		if (0 == mMaxNumElementsAllowed) {
+		if (0 == mMaxNumElementsAllowed && !try_increase_info()) {
 			throwOverflowError();
 		}
 
@@ -902,13 +903,13 @@ private:
 		// skip forward. Use <= because we are certain that the element is not there.
 		while (info <= mInfo[idx]) {
 			idx = (idx + 1) & mMask;
-			info += InfoInc;
+			info += mInfoInc;
 		}
 
 		// key not found, so we are now exactly where we want to insert it.
 		auto const insertion_idx = idx;
 		auto insertion_info = static_cast<uint8_t>(info);
-		if (InfoMax <= insertion_info) {
+		if (mInfoMax <= insertion_info) {
 			mMaxNumElementsAllowed = 0;
 		}
 
@@ -968,7 +969,9 @@ public:
 		, mInfo(std::move(o.mInfo))
 		, mNumElements(std::move(o.mNumElements))
 		, mMask(std::move(o.mMask))
-		, mMaxNumElementsAllowed(std::move(o.mMaxNumElementsAllowed)) {
+		, mMaxNumElementsAllowed(std::move(o.mMaxNumElementsAllowed))
+		, mInfoInc(std::move(o.mInfoInc))
+		, mInfoMax(std::move(o.mInfoMax)) {
 		// set other's mask to 0 so its destructor won't do anything
 		o.mMask = 0;
 	}
@@ -982,6 +985,8 @@ public:
 			mNumElements = std::move(o.mNumElements);
 			mMask = std::move(o.mMask);
 			mMaxNumElementsAllowed = std::move(o.mMaxNumElementsAllowed);
+			mInfoInc = std::move(o.mInfoInc);
+			mInfoMax = std::move(o.mInfoMax);
 			Hash::operator=(std::move(static_cast<Hash&>(o)));
 			KeyEqual::operator=(std::move(static_cast<KeyEqual&>(o)));
 			DataPool::operator=(std::move(static_cast<DataPool&>(o)));
@@ -1006,6 +1011,8 @@ public:
 			mNumElements = o.mNumElements;
 			mMask = o.mMask;
 			mMaxNumElementsAllowed = o.mMaxNumElementsAllowed;
+			mInfoInc = o.mInfoInc;
+			mInfoMax = o.mInfoMax;
 			cloneData(o);
 		}
 	}
@@ -1036,6 +1043,9 @@ public:
 			mNumElements = 0;
 			mMask = 0;
 			mMaxNumElementsAllowed = 0;
+			mInfoInc = InitialInfoInc;
+			mInfoMax = InitialInfoMax;
+			mInfoHashShift = InitialInfoHashShift;
 			return *this;
 		}
 
@@ -1053,6 +1063,9 @@ public:
 
 			// no need for calloc here because cloneData performs a memcpy.
 			mInfo = reinterpret_cast<uint8_t*>(mKeyVals + o.mMask + 1);
+			mInfoInc = o.mInfoInc;
+			mInfoMax = o.mInfoMax;
+			mInfoHashShift = o.mInfoHashShift;
 			// sentinel is set in cloneData
 		}
 		Hash::operator=(static_cast<const Hash&>(o));
@@ -1319,8 +1332,7 @@ private:
 			// key not found, so we are now exactly where we want to insert it.
 			auto const insertion_idx = idx;
 			auto const insertion_info = static_cast<uint8_t>(info);
-			if (InfoMax <= insertion_info) {
-				// might overflow next time, set to 0 so we increase size next time
+			if (mInfoMax <= insertion_info) {
 				mMaxNumElementsAllowed = 0;
 			}
 
@@ -1374,7 +1386,7 @@ private:
 			// key not found, so we are now exactly where we want to insert it.
 			const size_t insertion_idx = idx;
 			auto insertion_info = static_cast<uint8_t>(info);
-			if (InfoMax <= insertion_info) {
+			if (mInfoMax <= insertion_info) {
 				mMaxNumElementsAllowed = 0;
 			}
 
@@ -1411,10 +1423,37 @@ private:
 		}
 	}
 
+	bool try_increase_info() {
+		// we got space left, try to make info smaller
+		mInfoInc = static_cast<uint8_t>(mInfoInc >> 1);
+		if (1 == mInfoInc) {
+			// need to be > 1 so that shift works (otherwise undefined behavior!)
+			return false;
+		}
+
+		// remove one bit of the hash, leaving more space for the distance info.
+		// This is extremely fast because we can operate on 8 bytes at once.
+		mInfoMax = static_cast<uint8_t>(0xFF - (mInfoInc - 1));
+		++mInfoHashShift;
+		auto data = reinterpret_cast<uint64_t*>(mInfo);
+		auto numEntries = (mMask + 1) / 8;
+
+		for (size_t i = 0; i < numEntries; ++i) {
+			data[i] = (data[i] >> 1) & UINT64_C(0x7f7f7f7f7f7f7f7f);
+		}
+		mMaxNumElementsAllowed = calcMaxNumElementsAllowed(mMask + 1);
+		return true;
+	}
+
 	void increase_size() {
 		// nothing allocated yet? just allocate 4 elements
 		if (0 == mMask) {
 			init_data(InitialNumElements);
+			return;
+		}
+
+		auto maxNumElementsAllowed = calcMaxNumElementsAllowed(mMask + 1);
+		if (mNumElements < maxNumElementsAllowed && try_increase_info()) {
 			return;
 		}
 
@@ -1432,6 +1471,9 @@ private:
 		// resize operation: move stuff
 		init_data(oldMaxElements * 2);
 
+		mInfoInc = InitialInfoInc;
+		mInfoMax = InitialInfoMax;
+		mInfoHashShift = InitialInfoHashShift;
 		for (size_t i = 0; i < oldMaxElements; ++i) {
 			if (oldInfo[i] != 0) {
 				insert_move(std::move(oldKeyVals[i]));
@@ -1460,6 +1502,9 @@ private:
 	size_t mNumElements = 0;                                                                                      // 8 byte 24
 	size_t mMask = 0;                                                                                             // 8 byte 32
 	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte 40
+	int mInfoInc = InitialInfoInc;
+	int mInfoMax = InitialInfoMax;
+	int mInfoHashShift = InitialInfoHashShift;
 };
 
 } // namespace detail

@@ -532,10 +532,21 @@ struct ConfigurableCounterHash {
 };
 
 template <typename A>
-void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, uint64_t& current_ops_sum) {
+void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_t& current_ops_sum) {
 	using Map = robin_hood::flat_map<Counter, uint64_t, ConfigurableCounterHash, std::equal_to<Counter>, 95>;
 	try {
 		Rng rng(static_cast<uint64_t>(iters) * 0x135ff36020fe7455);
+		/*
+	   Rng rng{0x405f2f9cff6e0d8f, 0x0f97ae53d08500ea, 0x91e06131913057c3, 13 + iters * 0};
+	   current_values[0] = UINT64_C(14708910760473355443);
+	   current_values[1] = UINT64_C(11794246526519903291);
+
+	   std::cout << rng << std::endl;
+	   for (auto x : current_values) {
+		   std::cout << x << " ";
+	   }
+	   std::cout << std::endl;
+	   */
 		RandomBool<> rbool;
 		Counter::Counts counts;
 		size_t const num_iters = 33000;
@@ -631,6 +642,23 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 				current_mask_sum += map.mask();
 			}
 		}
+
+		{
+			Map map;
+			map.m_values = current_values;
+			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
+
+			for (size_t i = 1; i <= 10; ++i) {
+				for (size_t j = 0; j < 100; ++j) {
+					map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts), std::forward_as_tuple(i));
+				}
+
+				for (size_t j = 0; j < 5000; ++j) {
+					map.count(Counter{rng.uniform<size_t>(), counts});
+				}
+			}
+		}
+
 		current_ops_sum += counts.moveAssign + counts.moveCtor + counts.equals + counts.hash;
 	} catch (std::overflow_error const&) {
 		current_mask_sum += (std::numeric_limits<uint64_t>::max)() / 1000;
