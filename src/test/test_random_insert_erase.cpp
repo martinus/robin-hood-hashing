@@ -312,15 +312,17 @@ struct DummyHash {
 TEMPLATE_TEST_CASE("collisions", "", (robin_hood::flat_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>),
 				   (robin_hood::node_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>)) {
 
+	static const uint64_t max_val = 127;
+
 	// CtorDtorVerifier::mDoPrintDebugInfo = true;
 	{
 		TestType m;
-		for (uint64_t i = 0; i < 255; ++i) {
+		for (uint64_t i = 0; i < max_val; ++i) {
 			m[i];
 		}
-		REQUIRE(m.size() == 255);
-		REQUIRE_THROWS_AS(m[255], std::overflow_error);
-		REQUIRE(m.size() == 255);
+		REQUIRE(m.size() == max_val);
+		REQUIRE_THROWS_AS(m[max_val], std::overflow_error);
+		REQUIRE(m.size() == max_val);
 	}
 	if (0 != CtorDtorVerifier::mapSize()) {
 		CtorDtorVerifier::printMap();
@@ -329,12 +331,12 @@ TEMPLATE_TEST_CASE("collisions", "", (robin_hood::flat_map<CtorDtorVerifier, Cto
 
 	{
 		TestType m;
-		for (uint64_t i = 0; i < 255; ++i) {
+		for (uint64_t i = 0; i < max_val; ++i) {
 			REQUIRE(m.insert(typename TestType::value_type(i, i)).second);
 		}
-		REQUIRE(m.size() == 255);
-		REQUIRE_THROWS_AS(m.insert(typename TestType::value_type(UINT64_C(255), UINT64_C(255))), std::overflow_error);
-		REQUIRE(m.size() == 255);
+		REQUIRE(m.size() == max_val);
+		REQUIRE_THROWS_AS(m.insert(typename TestType::value_type(max_val, max_val)), std::overflow_error);
+		REQUIRE(m.size() == max_val);
 	}
 	if (0 != CtorDtorVerifier::mapSize()) {
 		CtorDtorVerifier::printMap();
