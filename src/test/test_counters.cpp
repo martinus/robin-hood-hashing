@@ -256,6 +256,40 @@ TEMPLATE_TEST_CASE("10k random insert & erase", "[display][counter]", (std::unor
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
+TEMPLATE_TEST_CASE("500M random find", "[display][counter]", (std::unordered_map<Counter, size_t>), (robin_hood::flat_map<Counter, size_t>),
+				   (robin_hood::node_map<Counter, size_t>)) {
+
+	size_t const num_iters = 10;
+	size_t const insertion_factor = 1000;
+	size_t const num_finds = 500'000;
+	Rng rng(123);
+
+	Counter::Counts counts;
+	Counter::staticDefaultCtor = 0;
+	Counter::staticDtor = 0;
+
+	size_t num_found = 0;
+
+	{
+		TestType map;
+		for (size_t iters = 1; iters <= num_iters; ++iters) {
+			auto const max_insertion = insertion_factor * iters;
+
+			for (size_t j = 0; j < max_insertion; ++j) {
+				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts),
+							std::forward_as_tuple(static_cast<size_t>(1)));
+			}
+
+			for (size_t n = 0; n < num_finds; ++n) {
+				num_found += map.count(Counter{rng.uniform<size_t>(), counts});
+			}
+		}
+	}
+
+	counts.printCounts(std::string("500M random find - ") + name(TestType{}));
+	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
+}
+
 TEMPLATE_TEST_CASE("10 insert erase", "[display][counter]", (robin_hood::node_map<Counter, Counter>)) {
 	for (size_t i = 23; i < 25; ++i) {
 		Rng rng(12);
@@ -470,9 +504,7 @@ struct ConfigurableCounterHash {
 	size_t operator()(size_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
 		uint64_t h = obj;
-		// auto result = static_cast<size_t>(robin_hood::detail::umulh(h * m_values[0], h + m_values[1]));
-		// auto result = static_cast<size_t>(robin_hood::detail::umulh(h + m_values[1], h * m_values[0]));
-		auto result = static_cast<size_t>(h * m_values[0]);
+		auto result = static_cast<size_t>(robin_hood::detail::umulh(h, m_values[0]) * m_values[1]);
 
 /*
 		using robin_hood::detail::umulh;
@@ -492,7 +524,7 @@ struct ConfigurableCounterHash {
 	}
 
 #if ROBIN_HOOD_BITNESS == 64
-	std::array<uint64_t, 1> m_values;
+	std::array<uint64_t, 2> m_values;
 	int m_shift = 0;
 #else
 	std::array<uint64_t, 1> m_values;
@@ -518,7 +550,7 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 
 			for (size_t n = 2; n < 10000; n += (500 * 10000 / num_iters)) {
 				for (size_t i = 0; i < 500; ++i) {
-					map[Counter{rng.uniform<size_t>(n * 10), counts}];
+					map.emplace(Counter{rng.uniform<size_t>(n * 10), counts}, i);
 					current_mask_sum += map.mask();
 					map.erase(Counter{rng.uniform<size_t>(n * 10), counts});
 				}
@@ -531,7 +563,7 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
 
 			for (size_t i = 0; i < num_iters; ++i) {
-				map[Counter{rng.uniform<size_t>(i + 1), counts}] = i;
+				map.emplace(Counter{rng.uniform<size_t>(i + 1), counts}, i);
 				current_mask_sum += map.mask();
 				map.erase(Counter{rng.uniform<size_t>(i + 1), counts});
 			}
@@ -570,7 +602,7 @@ void eval(int const iters, A const& current_values, uint64_t& current_mask_sum, 
 			static size_t const actual_iters = num_iters / (max_shift - min_shift);
 			for (size_t i = 0; i < actual_iters; ++i) {
 				for (size_t sh = 1; sh < max_shift; ++sh) {
-					map[Counter{rng.uniform<size_t>(100000) << sh, counts}] = i;
+					map.emplace(Counter{rng.uniform<size_t>(100000) << sh, counts}, i);
 					current_mask_sum += map.mask();
 					map.erase(Counter{rng.uniform<size_t>(100000) << sh, counts});
 				}
