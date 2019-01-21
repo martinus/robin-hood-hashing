@@ -72,9 +72,9 @@ public:
 		return tmp;
 	}
 
-	template <typename T>
-	T uniform(uint64_t i) {
-		return static_cast<T>(operator()(i));
+	template <typename Output, typename Input>
+	Output uniform(Input i) {
+		return static_cast<Output>(operator()(static_cast<uint64_t>(i)));
 	}
 
 	template <typename T>
