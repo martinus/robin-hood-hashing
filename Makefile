@@ -20,7 +20,7 @@ debug: CXXFLAGS += -ggdb -Wno-unknown-pragmas -fno-omit-frame-pointer
 debug: LDFLAGS += -ggdb
 debug: executable
 
-release: CXXFLAGS += -O2 -fopenmp
+release: CXXFLAGS += -O3 -fopenmp
 release: LDFLAGS += -fopenmp
 release: executable
 
