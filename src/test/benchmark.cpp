@@ -3,7 +3,7 @@
 #include <map>
 #include <unordered_map>
 
-TEMPLATE_TEST_CASE("hash std::string", "[!benchmark]", (robin_hood::hash<std::string>), (std::hash<std::string>)) {
+TEMPLATE_TEST_CASE("hash std::string", "[!benchmark][hash]", (robin_hood::hash<std::string>), (std::hash<std::string>)) {
 	size_t h = 0;
 	Rng rng(123);
 	auto hasher = TestType{};
@@ -24,7 +24,7 @@ TEMPLATE_TEST_CASE("hash std::string", "[!benchmark]", (robin_hood::hash<std::st
 	INFO(h);
 }
 
-TEMPLATE_TEST_CASE("hash integers", "[!benchmark]", uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t, uint64_t, int64_t) {
+TEMPLATE_TEST_CASE("hash integers", "[!benchmark][hash]", uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t, uint64_t, int64_t) {
 	size_t a = 0;
 	size_t b = 0;
 	size_t c = 0;
@@ -77,7 +77,7 @@ private:
 	Val m_val[2];
 };
 
-TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark]", (robin_hood::flat_map<int, int>), (robin_hood::node_map<int, int>),
+TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark][map]", (robin_hood::flat_map<int, int>), (robin_hood::node_map<int, int>),
 				   (std::unordered_map<int, int>)) {
 	Rng rng(123);
 
@@ -96,7 +96,7 @@ TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark]", (robin_hood::flat_m
 
 // benchmark adapted from https://github.com/attractivechaos/udb2
 // this implementation should have less overhead, because sfc64 and it's uniform() is extremely fast.
-TEMPLATE_TEST_CASE("distinctness", "[!benchmark]", (robin_hood::unordered_map<int, int>), (std::unordered_map<int, int>)) {
+TEMPLATE_TEST_CASE("distinctness", "[!benchmark][map]", (robin_hood::unordered_map<int, int>), (std::unordered_map<int, int>)) {
 	static size_t const upper = 50'000'000;
 	static size_t const lower = 10'000'000;
 	static size_t const num_steps = 5;
@@ -152,7 +152,7 @@ TEMPLATE_TEST_CASE("distinctness", "[!benchmark]", (robin_hood::unordered_map<in
 	REQUIRE(checksum == 180759494);
 }
 
-TEMPLATE_TEST_CASE("random find", "[!benchmark]", (robin_hood::flat_map<size_t, size_t>), (robin_hood::node_map<size_t, size_t>),
+TEMPLATE_TEST_CASE("random find", "[!benchmark][map]", (robin_hood::flat_map<size_t, size_t>), (robin_hood::node_map<size_t, size_t>),
 				   (std::unordered_map<size_t, size_t>)) {
 	size_t const num_iters = 30;
 	size_t const insertion_factor = 10'000;
