@@ -256,8 +256,8 @@ TEMPLATE_TEST_CASE("10k random insert & erase", "[display][counter]", (std::unor
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
-TEMPLATE_TEST_CASE("500M random find", "[display][counter]", (std::unordered_map<Counter, size_t>), (robin_hood::flat_map<Counter, size_t>),
-				   (robin_hood::node_map<Counter, size_t>)) {
+TEMPLATE_TEST_CASE("500M random find nonexisting", "[display][counter]", (std::unordered_map<Counter, size_t>),
+				   (robin_hood::flat_map<Counter, size_t>), (robin_hood::node_map<Counter, size_t>)) {
 
 	size_t const num_iters = 10;
 	size_t const insertion_factor = 1000;
@@ -286,7 +286,41 @@ TEMPLATE_TEST_CASE("500M random find", "[display][counter]", (std::unordered_map
 		}
 	}
 
-	counts.printCounts(std::string("500M random find - ") + name(TestType{}));
+	counts.printCounts(std::string("500M random find nonexisting - ") + name(TestType{}));
+	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
+}
+
+TEMPLATE_TEST_CASE("500M random find mostly existing", "[display][counter]", (std::unordered_map<Counter, size_t>),
+				   (robin_hood::flat_map<Counter, size_t>), (robin_hood::node_map<Counter, size_t>)) {
+
+	size_t const num_iters = 10;
+	size_t const insertion_factor = 1000;
+	size_t const num_finds = 500'000;
+	Rng rng(123);
+
+	Counter::Counts counts;
+	Counter::staticDefaultCtor = 0;
+	Counter::staticDtor = 0;
+
+	size_t num_found = 0;
+
+	{
+		TestType map;
+		for (size_t iters = 1; iters <= num_iters; ++iters) {
+			auto const max_insertion = insertion_factor * iters;
+
+			for (size_t j = 0; j < max_insertion; ++j) {
+				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(max_insertion), counts),
+							std::forward_as_tuple(static_cast<size_t>(1)));
+			}
+
+			for (size_t n = 0; n < num_finds; ++n) {
+				num_found += map.count(Counter{rng.uniform<size_t>(max_insertion), counts});
+			}
+		}
+	}
+
+	counts.printCounts(std::string("500M random find mostly existing - ") + name(TestType{}));
 	REQUIRE(counts.dtor + Counter::staticDtor == Counter::staticDefaultCtor + counts.ctor + counts.defaultCtor + counts.copyCtor + counts.moveCtor);
 }
 
@@ -504,8 +538,9 @@ struct ConfigurableCounterHash {
 	size_t operator()(size_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
 		uint64_t h = obj;
-		auto result = static_cast<size_t>(robin_hood::detail::umulh(h, m_values[0]) * m_values[1]);
+		h = robin_hood::detail::umulh(h, m_values[0]) * m_values[1];
 
+		auto result = static_cast<size_t>(h);
 /*
 		using robin_hood::detail::umulh;
 		size_t h = obj;
@@ -648,12 +683,13 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 			map.m_values = current_values;
 			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
 
-			for (size_t i = 1; i <= 10; ++i) {
-				for (size_t j = 0; j < 100; ++j) {
+			for (size_t i = 1; i <= 100; ++i) {
+				for (size_t j = 0; j < 1; ++j) {
 					map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts), std::forward_as_tuple(i));
+					current_mask_sum += map.mask();
 				}
 
-				for (size_t j = 0; j < num_iters / 10; ++j) {
+				for (size_t j = 0; j < num_iters / 1000; ++j) {
 					map.count(Counter{rng.uniform<size_t>(), counts});
 				}
 			}
@@ -708,7 +744,7 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 		++num_unsuccessful_tries;
 
 		// also assign when we are equally good, should lead to a bit more exploration
-		if (num_unsuccessful_tries == 2000 || ge(current_mask_sum, current_ops_sum, best_mask_sum, best_ops_sum)) {
+		if (num_unsuccessful_tries == 1000 || ge(current_mask_sum, current_ops_sum, best_mask_sum, best_ops_sum)) {
 			best_mask_sum = current_mask_sum;
 			best_ops_sum = current_ops_sum;
 			best_values = current_values;
