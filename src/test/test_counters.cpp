@@ -653,7 +653,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 					map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts), std::forward_as_tuple(i));
 				}
 
-				for (size_t j = 0; j < 5000; ++j) {
+				for (size_t j = 0; j < num_iters / 10; ++j) {
 					map.count(Counter{rng.uniform<size_t>(), counts});
 				}
 			}
