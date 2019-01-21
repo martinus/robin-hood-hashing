@@ -152,7 +152,8 @@ TEMPLATE_TEST_CASE("distinctness", "[!benchmark]", (robin_hood::unordered_map<in
 	REQUIRE(checksum == 180759494);
 }
 
-TEMPLATE_TEST_CASE("random find", "[!benchmark]", (robin_hood::unordered_map<size_t, size_t>)) {
+TEMPLATE_TEST_CASE("random find", "[!benchmark]", (robin_hood::flat_map<size_t, size_t>), (robin_hood::node_map<size_t, size_t>),
+				   (std::unordered_map<size_t, size_t>)) {
 	size_t const num_iters = 30;
 	size_t const insertion_factor = 10'000;
 	size_t const num_finds = 50'000'000;
