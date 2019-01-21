@@ -159,7 +159,7 @@ TEMPLATE_TEST_CASE("random find", "[!benchmark]", (robin_hood::unordered_map<siz
 	Rng rng(123);
 
 	size_t num_found = 0;
-	BENCHMARK("random find") {
+	BENCHMARK("random find mostly existing") {
 		TestType map;
 		for (size_t iters = 1; iters <= num_iters; ++iters) {
 			auto const max_insertion = insertion_factor * iters;
@@ -175,7 +175,23 @@ TEMPLATE_TEST_CASE("random find", "[!benchmark]", (robin_hood::unordered_map<siz
 			//	std::cout << i << ": " << map.counts[i] << std::endl;
 			//}
 		}
-
-		REQUIRE(num_found == 1'397'003'591);
 	}
+	REQUIRE(num_found == 1'397'003'591);
+
+	num_found = 0;
+	BENCHMARK("random find nonexisting") {
+		TestType map;
+		for (size_t iters = 1; iters <= num_iters; ++iters) {
+			auto const max_insertion = insertion_factor * iters;
+
+			for (size_t j = 0; j < max_insertion; ++j) {
+				map.emplace(rng.uniform<size_t>(), j);
+			}
+
+			for (size_t n = 0; n < num_finds; ++n) {
+				num_found += map.count(rng.uniform<size_t>());
+			}
+		}
+	}
+	REQUIRE(num_found == 0);
 }
