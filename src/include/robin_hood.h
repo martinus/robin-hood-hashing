@@ -35,8 +35,8 @@
 #define ROBIN_HOOD_H_INCLUDED
 
 // see https://semver.org/
-#define ROBIN_HOOD_VERSION_MAJOR 2 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 1 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
+#define ROBIN_HOOD_VERSION_MINOR 0 // for adding functionality in a backwards-compatible manner
 #define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
 
 #include <algorithm>
@@ -44,6 +44,14 @@
 #include <functional>
 #include <type_traits>
 #include <utility>
+
+//#define ROBIN_HOOD_LOG_ENABLED
+#ifdef ROBIN_HOOD_LOG_ENABLED
+#include <iostream>
+#define ROBIN_HOOD_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
+#else
+#define ROBIN_HOOD_LOG(x)
+#endif
 
 // mark unused members with this macro
 #define ROBIN_HOOD_UNUSED(identifier)
@@ -432,7 +440,8 @@ template <>
 struct hash<uint64_t> {
 	size_t operator()(uint64_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
-		return static_cast<size_t>(detail::umulh(UINT64_C(0xfeeff91a7f2e74db), obj) * UINT64_C(0x55f259e92d7c6707));
+		// 100228494904 masksum, 72502506 ops best: 0xfd44bb48c420db9e 0x1a2b0470568d42d7
+		return static_cast<size_t>(detail::umulh(UINT64_C(0xfd44bb48c420db9e), obj) * UINT64_C(0x1a2b0470568d42d7));
 #else
 		// murmurhash 3 finalizer
 		uint64_t h = obj;
@@ -1426,6 +1435,8 @@ private:
 	}
 
 	bool try_increase_info() {
+		ROBIN_HOOD_LOG("mInfoInc=" << mInfoInc << ", numElements=" << mNumElements
+								   << ", maxNumElementsAllowed=" << calcMaxNumElementsAllowed(mMask + 1));
 		// we got space left, try to make info smaller
 		mInfoInc = static_cast<uint8_t>(mInfoInc >> 1);
 		if (1 == mInfoInc) {
@@ -1458,6 +1469,7 @@ private:
 			return;
 		}
 
+		ROBIN_HOOD_LOG("mNumElements=" << mNumElements << ", maxNumElementsAllowed=" << maxNumElementsAllowed);
 		// it seems we have a really bad hash function! don't try to resize again
 		if (mNumElements * 2 < calcMaxNumElementsAllowed(mMask + 1)) {
 			throwOverflowError();
