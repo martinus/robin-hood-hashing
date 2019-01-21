@@ -243,7 +243,7 @@ private:
 
 		// alloc new memory: [prev |T, T, ... T]
 		// std::cout << (sizeof(T*) + ALIGNED_SIZE * numElementsToAlloc) << " bytes" << std::endl;
-		size_t bytes = ALIGNMENT + ALIGNED_SIZE * numElementsToAlloc;
+		size_t const bytes = ALIGNMENT + ALIGNED_SIZE * numElementsToAlloc;
 		add(assertNotNull<std::bad_alloc>(malloc(bytes)), bytes);
 		return mHead;
 	}
@@ -907,7 +907,7 @@ private:
 
 		// key not found, so we are now exactly where we want to insert it.
 		auto const insertion_idx = idx;
-		auto insertion_info = static_cast<uint8_t>(info);
+		auto const insertion_info = static_cast<uint8_t>(info);
 		if (0xFF <= insertion_info + mInfoInc) {
 			mMaxNumElementsAllowed = 0;
 		}
@@ -1004,7 +1004,7 @@ public:
 			// not empty: create an exact copy. it is also possible to just iterate through all elements and insert them, but
 			// copying is probably faster.
 
-			mKeyVals = reinterpret_cast<Node*>(detail::assertNotNull<std::bad_alloc>(malloc(calcNumBytesTotal(o.mMask + 1))));
+			mKeyVals = static_cast<Node*>(detail::assertNotNull<std::bad_alloc>(malloc(calcNumBytesTotal(o.mMask + 1))));
 			// no need for calloc because clonData does memcpy
 			mInfo = reinterpret_cast<uint8_t*>(mKeyVals + o.mMask + 1);
 			mNumElements = o.mNumElements;
@@ -1017,7 +1017,7 @@ public:
 	}
 
 	// Creates a copy of the given map. Copy constructor of each entry is used.
-	unordered_map& operator=(const unordered_map& o) {
+	unordered_map& operator=(unordered_map const& o) {
 		if (&o == this) {
 			// prevent assigning of itself
 			return *this;
@@ -1039,6 +1039,7 @@ public:
 			mInfo = reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte);
 			Hash::operator=(static_cast<const Hash&>(o));
 			KeyEqual::operator=(static_cast<const KeyEqual&>(o));
+			DataPool::operator=(static_cast<DataPool const&>(o));
 			mNumElements = 0;
 			mMask = 0;
 			mMaxNumElementsAllowed = 0;
@@ -1057,7 +1058,7 @@ public:
 				free(mKeyVals);
 			}
 
-			mKeyVals = reinterpret_cast<Node*>(detail::assertNotNull<std::bad_alloc>(malloc(calcNumBytesTotal(o.mMask + 1))));
+			mKeyVals = static_cast<Node*>(detail::assertNotNull<std::bad_alloc>(malloc(calcNumBytesTotal(o.mMask + 1))));
 
 			// no need for calloc here because cloneData performs a memcpy.
 			mInfo = reinterpret_cast<uint8_t*>(mKeyVals + o.mMask + 1);
@@ -1103,7 +1104,7 @@ public:
 
 		// clear everything except the sentinel
 		// std::memset(mInfo, 0, sizeof(uint8_t) * (mMask + 1));
-		uint8_t z = 0;
+		uint8_t const z = 0;
 		std::fill(mInfo, mInfo + (sizeof(uint8_t) * (mMask + 1)), z);
 
 		mInfoInc = InitialInfoInc;
@@ -1121,7 +1122,7 @@ public:
 			return false;
 		}
 		for (auto const& otherEntry : other) {
-			auto myIt = find(otherEntry.first);
+			auto const myIt = find(otherEntry.first);
 			if (myIt == end() || !(myIt->second == otherEntry.second)) {
 				return false;
 			}
@@ -1230,7 +1231,7 @@ public:
 	// Erases element at pos, returns iterator to the next element.
 	iterator erase(iterator pos) {
 		// we assume that pos always points to a valid entry, and not end().
-		auto idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
+		auto const idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
 
 		shiftDown(idx);
 		--mNumElements;
@@ -1385,8 +1386,8 @@ private:
 			}
 
 			// key not found, so we are now exactly where we want to insert it.
-			const size_t insertion_idx = idx;
-			auto insertion_info = static_cast<uint8_t>(info);
+			size_t const insertion_idx = idx;
+			auto const insertion_info = static_cast<uint8_t>(info);
 			if (0xFF <= insertion_info + mInfoInc) {
 				mMaxNumElementsAllowed = 0;
 			}
@@ -1435,8 +1436,8 @@ private:
 		// remove one bit of the hash, leaving more space for the distance info.
 		// This is extremely fast because we can operate on 8 bytes at once.
 		++mInfoHashShift;
-		auto data = reinterpret_cast<uint64_t*>(mInfo);
-		auto numEntries = (mMask + 1) / 8;
+		auto const data = reinterpret_cast<uint64_t*>(mInfo);
+		auto const numEntries = (mMask + 1) / 8;
 
 		for (size_t i = 0; i < numEntries; ++i) {
 			data[i] = (data[i] >> 1) & UINT64_C(0x7f7f7f7f7f7f7f7f);
@@ -1452,7 +1453,7 @@ private:
 			return;
 		}
 
-		auto maxNumElementsAllowed = calcMaxNumElementsAllowed(mMask + 1);
+		auto const maxNumElementsAllowed = calcMaxNumElementsAllowed(mMask + 1);
 		if (mNumElements < maxNumElementsAllowed && try_increase_info()) {
 			return;
 		}
@@ -1463,8 +1464,8 @@ private:
 		}
 
 		// std::cout << (100.0*mNumElements / (mMask + 1)) << "% full, resizing" << std::endl;
-		Node* oldKeyVals = mKeyVals;
-		uint8_t* oldInfo = mInfo;
+		Node* const oldKeyVals = mKeyVals;
+		uint8_t const* const oldInfo = mInfo;
 
 		const size_t oldMaxElements = mMask + 1;
 
