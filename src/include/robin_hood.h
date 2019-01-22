@@ -442,7 +442,8 @@ template <>
 struct hash<uint64_t> {
 	size_t operator()(uint64_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
-		return static_cast<size_t>(detail::umulh(UINT64_C(0xfd44bb48c420db9e), obj) * UINT64_C(0x1a2b0470568d42d7));
+		// 167079903232 masksum, 122791318 ops best: 0xfa1371431ef43ae1 0xfe9b65e7da1b3187
+		return static_cast<size_t>(detail::umulh(UINT64_C(0xfa1371431ef43ae1), obj) * UINT64_C(0xfe9b65e7da1b3187));
 #else
 		// murmurhash 3 finalizer
 		uint64_t h = obj;
