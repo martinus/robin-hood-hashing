@@ -33,8 +33,12 @@ void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool<>& rbool) {
 			mask |= UINT64_C(1) << rng(64);
 		} while (rbool(rng));
 		vals[rng.uniform<size_t>(vals.size())] ^= mask;
-	} while (rbool(rng));
 
+		// force 1 to lowest byte
+	} while (rbool(rng));
+	for (auto& v : vals) {
+		v |= UINT64_C(1);
+	}
 #if 0
 	do {
 		if (rbool(rng)) {
