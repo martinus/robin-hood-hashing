@@ -163,7 +163,7 @@ public:
 
 	// allocates, but does NOT initialize. Use in-place new constructor, e.g.
 	//   T* obj = pool.allocate();
-	//   new (obj) T();
+	//   ::new (static_cast<void*>(obj)) T();
 	T* allocate() {
 		T* tmp = mHead;
 		if (!tmp) {
@@ -440,7 +440,6 @@ template <>
 struct hash<uint64_t> {
 	size_t operator()(uint64_t const& obj) const {
 #if ROBIN_HOOD_HAS_UMULH
-		// 100228494904 masksum, 72502506 ops best: 0xfd44bb48c420db9e 0x1a2b0470568d42d7
 		return static_cast<size_t>(detail::umulh(UINT64_C(0xfd44bb48c420db9e), obj) * UINT64_C(0x1a2b0470568d42d7));
 #else
 		// murmurhash 3 finalizer
@@ -503,7 +502,10 @@ namespace detail {
 //
 // * infoSentinel: Sentinel byte set to 1, so that iterator's ++ can stop at end() without the need for a idx
 //   variable.
-template <typename Key, typename T, typename Hash, typename KeyEqual, bool IsFlatMap, size_t MaxLoadFactor100>
+//
+// According to STL, order of templates has effect on throughput. That's why I've moved the boolean to the front.
+// https://www.reddit.com/r/cpp/comments/ahp6iu/compile_time_binary_size_reductions_and_cs_future/eeguck4/
+template <bool IsFlatMap, size_t MaxLoadFactor100, typename Key, typename T, typename Hash, typename KeyEqual>
 class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<robin_hood::pair<Key, T>, 4, 16384, IsFlatMap> {
 	static_assert(MaxLoadFactor100 > 10 && MaxLoadFactor100 < 100, "MaxLoadFactor100 needs to be >10 && < 100");
 
@@ -521,7 +523,7 @@ public:
 	using size_type = size_t;
 	using hasher = Hash;
 	using key_equal = KeyEqual;
-	using Self = unordered_map<key_type, mapped_type, hasher, key_equal, IsFlatMap, MaxLoadFactor100>;
+	using Self = unordered_map<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
 	static const bool is_flat_map = IsFlatMap;
 
 private:
@@ -594,7 +596,7 @@ private:
 		template <typename... Args>
 		explicit DataNode(M& map, Args&&... args)
 			: mData(map.allocate()) {
-			new (mData) value_type(std::forward<Args>(args)...);
+			::new (static_cast<void*>(mData)) value_type(std::forward<Args>(args)...);
 		}
 
 		DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, DataNode<M, false>&& n)
@@ -678,7 +680,7 @@ private:
 
 			for (size_t i = 0; i < target.mMask + 1; ++i) {
 				if (target.mInfo[i]) {
-					new (target.mKeyVals + i) Node(target, *source.mKeyVals[i]);
+					::new (static_cast<void*>(target.mKeyVals + i)) Node(target, *source.mKeyVals[i]);
 				}
 			}
 		}
@@ -779,7 +781,7 @@ private:
 		}
 
 	private:
-		friend class unordered_map<key_type, mapped_type, hasher, key_equal, IsFlatMap, MaxLoadFactor100>;
+		friend class unordered_map<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
 		NodePtr mKeyVals;
 		uint8_t const* mInfo;
 	};
@@ -810,12 +812,13 @@ private:
 		return s;
 	}
 
+	// highly performance relevant code.
+	// Lower bits are used for indexing into the array (2^n size)
+	// The upper 5 bits need to be a good hash, to save comparisons.
 	template <typename HashKey>
 	void keyToIdx(HashKey&& key, size_t& idx, int_fast32_t& info) const {
 		auto h = Hash::operator()(key);
 		idx = h & mMask;
-		// take the highest bits of the hash
-		// Have to mask with (mInfoInc - 1) because mInfoHashShift can be 64, which is undefined?
 		info = mInfoInc + static_cast<int_fast32_t>(h >> mInfoHashShift);
 	}
 
@@ -841,7 +844,7 @@ private:
 			if (mInfo[idx]) {
 				mKeyVals[idx] = std::move(mKeyVals[prev_idx]);
 			} else {
-				new (mKeyVals + idx) Node(std::move(mKeyVals[prev_idx]));
+				::new (static_cast<void*>(mKeyVals + idx)) Node(std::move(mKeyVals[prev_idx]));
 			}
 			mInfo[idx] = static_cast<uint8_t>(mInfo[prev_idx] + mInfoInc);
 			if (0xFF <= mInfo[idx] + mInfoInc) {
@@ -928,7 +931,7 @@ private:
 
 		auto& l = mKeyVals[insertion_idx];
 		if (idx == insertion_idx) {
-			new (&l) Node(std::move(keyval));
+			::new (static_cast<void*>(&l)) Node(std::move(keyval));
 		} else {
 			shiftUp(idx, insertion_idx);
 			l = std::move(keyval);
@@ -1355,7 +1358,8 @@ private:
 			auto& l = mKeyVals[insertion_idx];
 			if (idx == insertion_idx) {
 				// put at empty spot. This forwards all arguments into the node where the object is constructed exactly where it is needed.
-				new (&l) Node(*this, std::piecewise_construct, std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
+				::new (static_cast<void*>(&l))
+					Node(*this, std::piecewise_construct, std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
 			} else {
 				shiftUp(idx, insertion_idx);
 				l = Node(*this, std::piecewise_construct, std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
@@ -1408,7 +1412,7 @@ private:
 
 			auto& l = mKeyVals[insertion_idx];
 			if (idx == insertion_idx) {
-				new (&l) Node(*this, std::forward<Arg>(keyval));
+				::new (static_cast<void*>(&l)) Node(*this, std::forward<Arg>(keyval));
 			} else {
 				shiftUp(idx, insertion_idx);
 				l = Node(*this, std::forward<Arg>(keyval));
@@ -1521,17 +1525,16 @@ private:
 } // namespace detail
 
 template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
-using flat_map = detail::unordered_map<Key, T, Hash, KeyEqual, true, MaxLoadFactor100>;
+using flat_map = detail::unordered_map<true, MaxLoadFactor100, Key, T, Hash, KeyEqual>;
 
 template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
-using node_map = detail::unordered_map<Key, T, Hash, KeyEqual, false, MaxLoadFactor100>;
+using node_map = detail::unordered_map<false, MaxLoadFactor100, Key, T, Hash, KeyEqual>;
 
 template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
-using unordered_map = detail::unordered_map<Key, T, Hash, KeyEqual,
-											sizeof(robin_hood::pair<Key, T>) <= sizeof(size_t) * 4 &&
+using unordered_map = detail::unordered_map<sizeof(robin_hood::pair<Key, T>) <= sizeof(size_t) * 4 &&
 												std::is_nothrow_move_constructible<robin_hood::pair<Key, T>>::value &&
 												std::is_nothrow_move_assignable<robin_hood::pair<Key, T>>::value,
-											MaxLoadFactor100>;
+											MaxLoadFactor100, Key, T, Hash, KeyEqual>;
 
 } // namespace robin_hood
 
