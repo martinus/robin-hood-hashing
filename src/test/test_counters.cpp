@@ -540,13 +540,6 @@ struct ConfigurableCounterHash {
 		uint64_t h = obj;
 		h = robin_hood::detail::umulh(h, m_values[0]) * m_values[1];
 		auto result = static_cast<size_t>(h);
-
-/*
-		using robin_hood::detail::umulh;
-		size_t h = obj;
-		h = umulh(h, m_values[0]) * m_values[1];
-		auto result = static_cast<size_t>(h);
-		*/
 #else
 		uint64_t h = obj;
 		uint64_t const factor = m_values[0];
@@ -561,10 +554,10 @@ struct ConfigurableCounterHash {
 
 #if ROBIN_HOOD_BITNESS == 64
 	std::array<uint64_t, 2> m_values;
-	int m_shift = 0;
 #else
-	std::array<uint64_t, 1> m_values;
+	std::array<uint64_t, 2> m_values;
 #endif
+	int m_shift = 0;
 };
 
 template <typename A>
