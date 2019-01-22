@@ -539,8 +539,8 @@ struct ConfigurableCounterHash {
 #if ROBIN_HOOD_HAS_UMULH
 		uint64_t h = obj;
 		h = robin_hood::detail::umulh(h, m_values[0]) * m_values[1];
-
 		auto result = static_cast<size_t>(h);
+
 /*
 		using robin_hood::detail::umulh;
 		size_t h = obj;
@@ -548,10 +548,11 @@ struct ConfigurableCounterHash {
 		auto result = static_cast<size_t>(h);
 		*/
 #else
+		uint64_t h = obj;
 		uint64_t const factor = m_values[0];
-		size_t result = static_cast<size_t>((h * factor) >> 32);
+		auto result = static_cast<size_t>((h * factor) >> 32);
 #endif
-		return result >> m_shift;
+		return result;
 	}
 
 	size_t operator()(Counter const& c) const {
