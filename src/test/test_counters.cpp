@@ -575,8 +575,8 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 			std::cout << x << " ";
 		}
 		std::cout << std::endl;
-	   */
-		RandomBool<> rbool;
+		*/
+		// RandomBool<> rbool;
 		Counter::Counts counts;
 		size_t const num_iters = 33000;
 
