@@ -572,27 +572,25 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 	try {
 		Rng rng(static_cast<uint64_t>(iters) * 0x135ff36020fe7455);
 		/*
-	   Rng rng{0x405f2f9cff6e0d8f, 0x0f97ae53d08500ea, 0x91e06131913057c3, 13 + iters * 0};
-	   current_values[0] = UINT64_C(14708910760473355443);
-	   current_values[1] = UINT64_C(11794246526519903291);
+		Rng rng{0x405f2f9cff6e0d8f, 0x0f97ae53d08500ea, 0x91e06131913057c3, 13 + iters * 0};
+		current_values[0] = UINT64_C(14708910760473355443);
+		current_values[1] = UINT64_C(11794246526519903291);
 
-	   std::cout << rng << std::endl;
-	   for (auto x : current_values) {
-		   std::cout << x << " ";
-	   }
-	   std::cout << std::endl;
+		std::cout << rng << std::endl;
+		for (auto x : current_values) {
+			std::cout << x << " ";
+		}
+		std::cout << std::endl;
 	   */
 		RandomBool<> rbool;
 		Counter::Counts counts;
 		size_t const num_iters = 33000;
-		int max_shift_hash = sizeof(size_t) * 8 - 16;
-		// int max_shift_hash = 0;
 
 		{
 			// this tends to be very slow because of lots of shifts
 			Map map;
 			map.m_values = current_values;
-			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
+			map.m_shift = iters;
 
 			for (size_t n = 2; n < 10000; n += (500 * 10000 / num_iters)) {
 				for (size_t i = 0; i < 500; ++i) {
@@ -606,7 +604,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 		{
 			Map map;
 			map.m_values = current_values;
-			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
+			map.m_shift = iters;
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(Counter{rng.uniform<size_t>(i + 1), counts}, i);
@@ -618,7 +616,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 		{
 			Map map;
 			map.m_values = current_values;
-			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
+			map.m_shift = iters;
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(), counts), std::forward_as_tuple(i));
@@ -629,7 +627,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 		{
 			Map map;
 			map.m_values = current_values;
-			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
+			map.m_shift = iters;
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts),
@@ -641,7 +639,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 		{
 			Map map;
 			map.m_values = current_values;
-			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
+			map.m_shift = iters;
 
 			static size_t const max_shift = ROBIN_HOOD_BITNESS - 8;
 			static size_t const min_shift = 1;
@@ -658,7 +656,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 			// just sequential insertion
 			Map map;
 			map.m_values = current_values;
-			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
+			map.m_shift = iters;
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(i, counts), std::forward_as_tuple(i));
@@ -670,7 +668,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 			// sequential shifted
 			Map map;
 			map.m_values = current_values;
-			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
+			map.m_shift = iters;
 
 			for (size_t i = 0; i < num_iters; ++i) {
 				map.emplace(std::piecewise_construct, std::forward_as_tuple(i << ROBIN_HOOD_BITNESS / 2, counts), std::forward_as_tuple(i));
@@ -681,7 +679,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 		{
 			Map map;
 			map.m_values = current_values;
-			map.m_shift = rbool(rng) ? 0 : rng.uniform<int>(max_shift_hash);
+			map.m_shift = iters;
 
 			for (size_t i = 1; i <= 100; ++i) {
 				for (size_t j = 0; j < 1; ++j) {
@@ -735,7 +733,7 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 		uint64_t current_mask_sum = 0;
 		uint64_t current_ops_sum = 0;
 #pragma omp parallel for reduction(+ : current_mask_sum, current_ops_sum)
-		for (int iters = 0; iters < 12 * 2; ++iters) {
+		for (int iters = 0; iters < 24; ++iters) {
 			eval(iters, current_values, current_mask_sum, current_ops_sum);
 		}
 		// std::cout << ".";

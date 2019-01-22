@@ -28,6 +28,15 @@ inline std::ostream& operator<<(std::ostream& os, hex const& h) {
 template <size_t S>
 void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool<>& rbool) {
 	do {
+		uint64_t mask = 0;
+		do {
+			mask |= UINT64_C(1) << rng(64);
+		} while (rbool(rng));
+		vals[rng.uniform<size_t>(vals.size())] ^= mask;
+	} while (rbool(rng));
+
+#if 0
+	do {
 		if (rbool(rng)) {
 			auto mask_bits = rng(24) + 1;
 			uint64_t mask = rng((UINT64_C(1) << mask_bits) - 1) + 1;
@@ -37,6 +46,7 @@ void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool<>& rbool) {
 			vals[rng.uniform<size_t>(vals.size())] = rng();
 		}
 	} while (rbool(rng));
+#endif
 }
 
 #endif
