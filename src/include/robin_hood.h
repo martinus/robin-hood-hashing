@@ -42,6 +42,8 @@
 #include <algorithm>
 #include <cstring>
 #include <functional>
+#include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <utility>
 
