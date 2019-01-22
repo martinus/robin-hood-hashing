@@ -19,6 +19,31 @@ Hashtable based on Robin Hood Hashing. In general, this map is both faster and u
 
 `robin_hood::unordered_map` should be a platform independent replacement for `std::unordered_map` while being faster and more memory efficient for real-world use cases.
 
+## Benchmarks
+
+I've performed extensive tests with [map_benchmark](https://github.com/martinus/map_benchmark), which can generate nice graphs of memoryusage & runtime. Here are some of my results.
+
+### Insert
+Measure runtime and memory usage when inserting 100M randomly generated `int`, then call `clear()`, then inserting again 100M `int`. 
+
+![Insert](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/insert_int.png)
+brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>`. std::unordered_map is 7 times slower and uses 2.7 times more memory.
+
+### Random find
+Insert 100k `uint32_t`, search 100M times. Repeat 8 times, so in total the map will contain 800k elements and 800M lookups are performed.
+
+![Random Find](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/random_find_existing.png)
+
+Brown is `std::unordered_map<uint32_t, uint32_t>`, green is `robin_hood::unordered_map<uint32_t, uint32_t>`.  `robin_hood::unordered_map` is 2.9 times faster while using 4 times less memory.
+
+### Random distinct
+
+A mixed workload, similar to the benchmark used in [attractivechaos/udb2](https://github.com/attractivechaos/udb2). 50M `operator[]` are performed with random keys. This is done 4 times, with different number of prabability of accessing existing elements: 5% distinct values, 25% distinct, 50%, and purely random numbers with 100% distinctness. This tests accessing mostly existing numbers to always inserting new numbers.
+
+![Random Distinct](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/random_distinct.png)
+
+Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int, int>`.
+
 ## Features
 
 - **Two memory layouts**. Data is either stored in a flat map, or node based. Flat map's access is extremely fast due to no indirection, but references to elements are not stable. It also causes allocation spikes when resizing will need more memory for large objects. Node based map has stable references but is a bit slower due to indirection. The choice is yours; you can either use `robin_hood::flat_map` or `robin_hood::node_map` directly. If you use `robin_hood::unordered_map` It tries to choose the layout that seems appropriate for your data.
