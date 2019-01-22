@@ -1,15 +1,12 @@
 #include "robin_hood.h"
+#include <stdexcept>
 
 // this file makes sure robin_hood.h includes everything it needs
-
-namespace {
-
-static inline void foo() {
+size_t inline_only() {
 	robin_hood::unordered_map<int, int> map;
 	map[123] = 43;
-	map.clear();
 	
 	robin_hood::unordered_map<int, int> map2 = map;
-}
-
+	map.clear();
+	return map.size() + map2.size();
 }
