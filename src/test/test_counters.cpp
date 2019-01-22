@@ -552,7 +552,7 @@ struct ConfigurableCounterHash {
 		uint64_t const factor = m_values[0];
 		auto result = static_cast<size_t>((h * factor) >> 32);
 #endif
-		return result;
+		return result >> m_shift;
 	}
 
 	size_t operator()(Counter const& c) const {
@@ -734,7 +734,7 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 		uint64_t current_mask_sum = 0;
 		uint64_t current_ops_sum = 0;
 #pragma omp parallel for reduction(+ : current_mask_sum, current_ops_sum)
-		for (int iters = 0; iters < 24; ++iters) {
+		for (int iters = 0; iters < 40; ++iters) {
 			eval(iters, current_values, current_mask_sum, current_ops_sum);
 		}
 		// std::cout << ".";
