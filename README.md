@@ -23,11 +23,22 @@ Hashtable based on Robin Hood Hashing. In general, this map is both faster and u
 
 I've performed extensive tests with [map_benchmark](https://github.com/martinus/map_benchmark), which can generate nice graphs of memoryusage & runtime. Here are some of my results.
 
+In general, insertion & removal is by far the fastest of all maps I've tested. Find performance is 2-3 times faster than `std::unordered_map`, but slower than `absl::flat_hash_map`.
+
 ### Insert
 Measure runtime and memory usage when inserting 100M randomly generated `int`, then call `clear()`, then inserting again 100M `int`. 
 
 ![Insert](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/insert_int.png)
-brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>`. std::unordered_map is 7 times slower and uses 2.7 times more memory.
+brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>`. std::unordered_map is 7 times slower and uses 2.7 times more memory. More results with other maps:
+
+|                           | runtime [sec] | peak memory [MB] |
+|--------------------------:|--------------:|-----------------:|
+|       absl::flat_hash_map |          22.8 |             7965 |
+|       absl::node_hash_map |          82.1 |             5162 |
+|      robin_hood::node_map |          24.0 |         **2611** |
+|      robin_hood::flat_map |      **10.4** |             7965 |
+|      ska::bytell_hash_map |          17.4 |             6252 |
+|        std::unordered_map |          69.8 |             4982 |
 
 ### Random find
 Insert 100k `uint32_t`, search 100M times. Repeat 8 times, so in total the map will contain 800k elements and 800M lookups are performed.
@@ -36,13 +47,31 @@ Insert 100k `uint32_t`, search 100M times. Repeat 8 times, so in total the map w
 
 Brown is `std::unordered_map<uint32_t, uint32_t>`, green is `robin_hood::unordered_map<uint32_t, uint32_t>`.  `robin_hood::unordered_map` is 2.9 times faster while using 4 times less memory.
 
-### Random distinct
+|                           | runtime [sec] | peak memory [MB] |
+|--------------------------:|--------------:|-----------------:|
+|       absl::flat_hash_map |       **6.7** |             7965 |
+|       absl::node_hash_map |           9.6 |             5162 |
+|      robin_hood::node_map |           9.8 |         **2611** |
+|      robin_hood::flat_map |           9.2 |             7965 |
+|      ska::bytell_hash_map |           8.6 |             6252 |
+|        std::unordered_map |          26.5 |             4982 |
+
+### Random Distinct
 
 A mixed workload, similar to the benchmark used in [attractivechaos/udb2](https://github.com/attractivechaos/udb2). 50M `operator[]` are performed with random keys. This is done 4 times, with different number of prabability of accessing existing elements: 5% distinct values, 25% distinct, 50%, and purely random numbers with 100% distinctness. This tests accessing mostly existing numbers to always inserting new numbers.
 
 ![Random Distinct](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/random_distinct2.png)
 
 Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int, int>`. Again, peak memory for `robin_hood::unordered_map` is about 2.8 times lower while being more than 6 times faster.
+
+|                           | runtime [sec] | peak memory [MB] |
+|--------------------------:|--------------:|-----------------:|
+|       absl::flat_hash_map |          18.7 |          **906** |
+|       absl::node_hash_map |          53.9 |             2592 |
+|      robin_hood::node_map |          25.8 |             1207 |
+|      robin_hood::flat_map |       **7.7** |          **906** |
+|      ska::bytell_hash_map |          10.9 |             1422 |
+|        std::unordered_map |          49.2 |             2495 |
 
 ## Features
 
@@ -51,16 +80,6 @@ Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int
 - **Custom allocator**. Node based representation has a custom bulk allocator that tries to make few memory allocations. All allocated memory is reused, so there won't be any allocation spikes. It's very fast as well.
 
 - **Optimized hash**. `robin_hood::hash` has custom implementations for integer types and for `std::string`, and falls back to `std::hash` for everything else.
-
-## Benchmarks
-
-Take all benchmarks with a grain of salt, as it highly depends on the usage pattern. I usually see improvement in the order of
-
-* 3-10 times faster insert / erase than `std::unordered_map`
-* 2 times faster lookup than `std::unordered_map`
-* 2 - 3 times less memory usage than `std::unordered_map`
-
-Of course, your milage may vary. There are an infinite number of use cases, and while I've tested a wide range of scenarios you have to do benchmarks with your own workload to be sure this is worth it.
 
 ## Good, Bad, Ugly
 
