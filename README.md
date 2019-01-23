@@ -1,7 +1,6 @@
 ➵ robin_hood
 ============
 
-
  [![Release](https://img.shields.io/github/release/martinus/robin-hood-hashing.svg)](https://github.com/martinus/robin-hood-hashing/releases) [![GitHub license](https://img.shields.io/github/license/martinus/robin-hood-hashing.svg)](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/LICENSE)
 [![Travis CI Build Status](https://travis-ci.com/martinus/robin-hood-hashing.svg?branch=master)](https://travis-ci.com/martinus/robin-hood-hashing)
 [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/github/martinus/robin-hood-hashing?branch=master&svg=true)](https://ci.appveyor.com/project/martinus/robin-hood-hashing)
@@ -9,17 +8,12 @@
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/martinus/robin-hood-hashing.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/martinus/robin-hood-hashing/alerts/)
 [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/martinus/robin-hood-hashing.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/martinus/robin-hood-hashing/context:cpp)
 
-Hashtable based on Robin Hood Hashing. In general, this map is both faster and uses less memory than
-`std::unordered_map` implementations.
+`robin_hood::unordered_map` is be a platform independent replacement for `std::unordered_map` which is both faster and more memory efficient for real-world use cases.
 
 ## Installation & Usage
 
 1. Add [`robin_hood.h`](https://github.com/martinus/robin-hood-hashing/blob/master/src/include/robin_hood.h) to your C++ project.
 1. Use `robin_hood::unordered_map` instead of `std::unordered_map`.
-
-## Design Goals
-
-`robin_hood::unordered_map` should be a platform independent replacement for `std::unordered_map` while being faster and more memory efficient for real-world use cases.
 
 ## Benchmarks
 
@@ -75,7 +69,7 @@ Uses 20 byte long `std::string` as key, and `size_t` as value. Inserts & lookups
 
 ### Random Distinct
 
-A mixed workload, similar to the benchmark used in [attractivechaos/udb2](https://github.com/attractivechaos/udb2). 50M `operator[]` are performed with random keys. This is done 4 times, with different number of prabability of accessing existing elements: 5% distinct values, 25% distinct, 50%, and purely random numbers with 100% distinctness. This tests accessing mostly existing numbers to always inserting new numbers. [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/RandomDistinct.cpp#L5)
+A mixed workload, similar to the benchmark used in [attractivechaos/udb2](https://github.com/attractivechaos/udb2). 50M `operator[]` are performed with random keys. This is done 4 times, with different number of prabability of accessing existing elements: 5% distinct values, 25% distinct, 50%, and purely random numbers with 100% distinctness. [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/RandomDistinct.cpp#L5)
 
 ![Random Distinct](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/random_distinct2.png)
 
