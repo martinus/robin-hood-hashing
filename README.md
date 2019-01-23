@@ -56,6 +56,21 @@ Brown is `std::unordered_map<uint32_t, uint32_t>`, green is `robin_hood::unorder
 |    `ska::bytell_hash_map` |           8.6 |             22.2 |
 |      `std::unordered_map` |          26.5 |             14.1 |
 
+### Insert & Lookup `std::string`
+
+Uses 20 byte long `std::string` as key, and `size_t` as value. Inserts & lookups 50M strings so that about 25% are distinct. Brown is `std::unordered_map<std::string, size_t>`, green is `robin_hood::unordered_map<std::string, size_t>`. Here the difference is not so big, mostly because g++'s hash implementation uses a fast Murmurhash2 which is very similar to robin_hood's implementation. It seems all the other implementations are not really tuned for such data types.
+
+![String 25% distinct](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/string25.png)
+
+|                           | runtime [sec] | peak memory [MB] |
+|--------------------------:|--------------:|-----------------:|
+|     `absl::flat_hash_map` |          14.9 |             1325 |
+|     `absl::node_hash_map` |          15.5 |             1329 |
+|    `robin_hood::node_map` |          17.0 |         **1133** |
+|    `robin_hood::flat_map` |      **11.4** |             1300 |
+|    `ska::bytell_hash_map` |          14.6 |             2090 |
+|      `std::unordered_map` |          16.2 |             1497 |
+
 ### Random Distinct
 
 A mixed workload, similar to the benchmark used in [attractivechaos/udb2](https://github.com/attractivechaos/udb2). 50M `operator[]` are performed with random keys. This is done 4 times, with different number of prabability of accessing existing elements: 5% distinct values, 25% distinct, 50%, and purely random numbers with 100% distinctness. This tests accessing mostly existing numbers to always inserting new numbers.
