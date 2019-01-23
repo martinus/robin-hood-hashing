@@ -40,9 +40,9 @@ Brown is `std::unordered_map<uint32_t, uint32_t>`, green is `robin_hood::unorder
 
 A mixed workload, similar to the benchmark used in [attractivechaos/udb2](https://github.com/attractivechaos/udb2). 50M `operator[]` are performed with random keys. This is done 4 times, with different number of prabability of accessing existing elements: 5% distinct values, 25% distinct, 50%, and purely random numbers with 100% distinctness. This tests accessing mostly existing numbers to always inserting new numbers.
 
-![Random Distinct](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/random_distinct.png)
+![Random Distinct](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/random_distinct2.png)
 
-Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int, int>`.
+Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int, int>`. Again, peak memory for `robin_hood::unordered_map` is about 2.8 times lower while being more than 6 times faster.
 
 ## Features
 
