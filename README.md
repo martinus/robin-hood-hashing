@@ -33,10 +33,10 @@ brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, in
 
 |                           | runtime [sec] | peak memory [MB] |
 |--------------------------:|--------------:|-----------------:|
-|     `absl::flat_hash_map` |          22.8 |             7965 |
+|     `absl::flat_hash_map` |          22.8 |         **1182** |
 |     `absl::node_hash_map` |          82.1 |             5162 |
-|    `robin_hood::node_map` |          24.0 |         **2611** |
-|    `robin_hood::flat_map` |      **10.4** |             7965 |
+|    `robin_hood::node_map` |          24.0 |             2416 |
+|    `robin_hood::flat_map` |      **10.4** |         **1182** |
 |    `ska::bytell_hash_map` |          17.4 |             6252 |
 |      `std::unordered_map` |          69.8 |             4982 |
 
@@ -49,12 +49,12 @@ Brown is `std::unordered_map<uint32_t, uint32_t>`, green is `robin_hood::unorder
 
 |                           | runtime [sec] | peak memory [MB] |
 |--------------------------:|--------------:|-----------------:|
-|     `absl::flat_hash_map` |       **6.7** |             7965 |
-|     `absl::node_hash_map` |           9.6 |             5162 |
-|    `robin_hood::node_map` |           9.8 |         **2611** |
-|    `robin_hood::flat_map` |           9.2 |             7965 |
-|    `ska::bytell_hash_map` |           8.6 |             6252 |
-|      `std::unordered_map` |          26.5 |             4982 |
+|     `absl::flat_hash_map` |       **6.7** |         **14.1** |
+|     `absl::node_hash_map` |           9.6 |             41.4 |
+|    `robin_hood::node_map` |           9.8 |             18.9 |
+|    `robin_hood::flat_map` |           9.2 |         **14.1** |
+|    `ska::bytell_hash_map` |           8.6 |             22.2 |
+|      `std::unordered_map` |          26.5 |             14.1 |
 
 ### Random Distinct
 
@@ -68,7 +68,7 @@ Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int
 |--------------------------:|--------------:|-----------------:|
 |     `absl::flat_hash_map` |          18.7 |          **906** |
 |     `absl::node_hash_map` |          53.9 |             2592 |
-|    `robin_hood::node_map` |          25.8 |             1207 |
+|    `robin_hood::node_map` |          25.8 |             1208 |
 |    `robin_hood::flat_map` |       **7.7** |          **906** |
 |    `ska::bytell_hash_map` |          10.9 |             1422 |
 |      `std::unordered_map` |          49.2 |             2495 |
