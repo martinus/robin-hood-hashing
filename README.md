@@ -17,7 +17,7 @@
 
 ## Benchmarks
 
-I've performed extensive tests with [map_benchmark](https://github.com/martinus/map_benchmark), which can generate nice graphs of memoryusage & runtime. Here are some of my results. In general, insertion & removal is by far the fastest of all maps I've tested. Find performance is 2-3 times faster than `std::unordered_map`, but slower than `absl::flat_hash_map`.
+I've performed extensive tests with [map_benchmark](https://github.com/martinus/map_benchmark), which can generate nice graphs of memory usage & runtime. In general, insertion & removal is by far the fastest of all maps I've tested. Find performance is 2-3 times faster than `std::unordered_map`, but slower than `absl::flat_hash_map`.
 
 All benchmarks are done on an Intel i7-8700, Linux, compiled with `g++-8 -O3`.
 
