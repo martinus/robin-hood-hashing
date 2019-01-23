@@ -26,7 +26,7 @@ I've performed extensive tests with [map_benchmark](https://github.com/martinus/
 All benchmarks are done on an Intel i7-8700, Linux, compiled with `g++-8 -O3`.
 
 ### Insert
-Measure runtime and memory usage when inserting 100M randomly generated `int`, then call `clear()`, then inserting again 100M `int`. 
+Measure runtime and memory usage when inserting 100M randomly generated `int`, then call `clear()`, then inserting again 100M `int`. [source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/Insert.cpp#L5)
 
 ![Insert](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/insert_int.png)
 brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>`. std::unordered_map is 7 times slower and uses 2.7 times more memory. More results with other maps:
@@ -41,7 +41,7 @@ brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, in
 |      `std::unordered_map` |          69.8 |             4982 |
 
 ### Random find
-Insert 100k `uint32_t`, search 100M times. Repeat 8 times, so in total the map will contain 800k elements and 800M lookups are performed.
+Insert 100k `uint32_t`, search 100M times. Repeat 8 times, so in total the map will contain 800k elements and 800M lookups are performed. [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/RandomFindExisting.cpp#L11)
 
 ![Random Find](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/random_find_existing.png)
 
@@ -58,7 +58,7 @@ Brown is `std::unordered_map<uint32_t, uint32_t>`, green is `robin_hood::unorder
 
 ### Insert & Lookup `std::string`
 
-Uses 20 byte long `std::string` as key, and `size_t` as value. Inserts & lookups 50M strings so that about 25% are distinct. Brown is `std::unordered_map<std::string, size_t>`, green is `robin_hood::unordered_map<std::string, size_t>`. Here the difference is not so big, mostly because g++'s hash implementation uses a fast Murmurhash2 which is very similar to robin_hood's implementation. It seems all the other implementations are not really tuned for such data types.
+Uses 20 byte long `std::string` as key, and `size_t` as value. Inserts & lookups 50M strings so that about 25% are distinct. Brown is `std::unordered_map<std::string, size_t>`, green is `robin_hood::unordered_map<std::string, size_t>`. Here the difference is not so big, mostly because g++'s hash implementation uses a fast Murmurhash2 which is very similar to robin_hood's implementation. It seems all the other implementations are not really tuned for such data types. [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/Strings.cpp#L44)
 
 ![String 25% distinct](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/string25.png)
 
@@ -77,7 +77,7 @@ A mixed workload, similar to the benchmark used in [attractivechaos/udb2](https:
 
 ![Random Distinct](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/random_distinct2.png)
 
-Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int, int>`. Again, peak memory for `robin_hood::unordered_map` is about 2.8 times lower while being more than 6 times faster.
+Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int, int>`. Again, peak memory for `robin_hood::unordered_map` is about 2.8 times lower while being more than 6 times faster. [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/RandomDistinct.cpp#L5)
 
 |                           | runtime [sec] | peak memory [MB] |
 |--------------------------:|--------------:|-----------------:|
