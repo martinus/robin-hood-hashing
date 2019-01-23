@@ -1534,7 +1534,7 @@ template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual
 using node_map = detail::unordered_map<false, MaxLoadFactor100, Key, T, Hash, KeyEqual>;
 
 template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
-using unordered_map = detail::unordered_map<sizeof(robin_hood::pair<Key, T>) <= sizeof(size_t) * 4 &&
+using unordered_map = detail::unordered_map<sizeof(robin_hood::pair<Key, T>) <= sizeof(size_t) * 6 &&
 												std::is_nothrow_move_constructible<robin_hood::pair<Key, T>>::value &&
 												std::is_nothrow_move_assignable<robin_hood::pair<Key, T>>::value,
 											MaxLoadFactor100, Key, T, Hash, KeyEqual>;
