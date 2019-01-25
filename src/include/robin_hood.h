@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 2.2.0
+// version 2.3.0
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -36,7 +36,7 @@
 
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 2 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 2 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_MINOR 3 // for adding functionality in a backwards-compatible manner
 #define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
 
 #include <algorithm>
@@ -47,47 +47,47 @@
 #include <type_traits>
 #include <utility>
 
-//#define ROBIN_HOOD_LOG_ENABLED
+// #define ROBIN_HOOD_LOG_ENABLED
 #ifdef ROBIN_HOOD_LOG_ENABLED
-#include <iostream>
-#define ROBIN_HOOD_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
+#	include <iostream>
+#	define ROBIN_HOOD_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
 #else
-#define ROBIN_HOOD_LOG(x)
+#	define ROBIN_HOOD_LOG(x)
 #endif
 
 // mark unused members with this macro
 #define ROBIN_HOOD_UNUSED(identifier)
 
 #if SIZE_MAX == UINT32_MAX
-#define ROBIN_HOOD_BITNESS 32
+#	define ROBIN_HOOD_BITNESS 32
 #elif SIZE_MAX == UINT64_MAX
-#define ROBIN_HOOD_BITNESS 64
+#	define ROBIN_HOOD_BITNESS 64
 #else
-#error Unsupported bitness
+#	error Unsupported bitness
 #endif
 
 // inline
 #ifdef _WIN32
-#define ROBIN_HOOD_NOINLINE __declspec(noinline)
+#	define ROBIN_HOOD_NOINLINE __declspec(noinline)
 #else
-#if __GNUC__ >= 4
-#define ROBIN_HOOD_NOINLINE __attribute__((noinline))
-#else
-#define ROBIN_HOOD_NOINLINE
-#endif
+#	if __GNUC__ >= 4
+#		define ROBIN_HOOD_NOINLINE __attribute__((noinline))
+#	else
+#		define ROBIN_HOOD_NOINLINE
+#	endif
 #endif
 
 // endianess
 #ifdef _WIN32
-#define ROBIN_HOOD_LITTLE_ENDIAN 1
-#define ROBIN_HOOD_BIG_ENDIAN 0
+#	define ROBIN_HOOD_LITTLE_ENDIAN 1
+#	define ROBIN_HOOD_BIG_ENDIAN 0
 #else
-#if __GNUC__ >= 4
-#define ROBIN_HOOD_LITTLE_ENDIAN (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-#define ROBIN_HOOD_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-#else
-#error cannot determine endianness
-#endif
+#	if __GNUC__ >= 4
+#		define ROBIN_HOOD_LITTLE_ENDIAN (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#		define ROBIN_HOOD_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#	else
+#		error cannot determine endianness
+#	endif
 #endif
 static_assert(ROBIN_HOOD_LITTLE_ENDIAN || ROBIN_HOOD_BIG_ENDIAN, "neither little nor big endian defined");
 
@@ -96,23 +96,23 @@ static_assert(ROBIN_HOOD_LITTLE_ENDIAN || ROBIN_HOOD_BIG_ENDIAN, "neither little
 // see https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
 // No undefined behavior for __lzcnt64.
 #ifdef _WIN32
-#include <intrin.h>
-#define ROBIN_HOOD_COUNT_LEADING_ZEROES64(x) __lzcnt64(x)
+#	include <intrin.h>
+#	define ROBIN_HOOD_COUNT_LEADING_ZEROES64(x) __lzcnt64(x)
 #else
-#if __GNUC__ >= 4
-#define ROBIN_HOOD_COUNT_LEADING_ZEROES64(x) (x == 0 ? 64 : __builtin_clzll(x))
-#define ROBIN_HOOD_COUNT_TRAILING_ZEROES64(x) (x == 0 ? 64 : __builtin_ctzll(x))
-#else
-#error clz not supported
-#endif
+#	if __GNUC__ >= 4
+#		define ROBIN_HOOD_COUNT_LEADING_ZEROES64(x) (x == 0 ? 64 : __builtin_clzll(x))
+#		define ROBIN_HOOD_COUNT_TRAILING_ZEROES64(x) (x == 0 ? 64 : __builtin_ctzll(x))
+#	else
+#		error clz not supported
+#	endif
 #endif
 
 // umulh
 #if (defined(_WIN32) && ROBIN_HOOD_BITNESS == 64) || defined(__SIZEOF_INT128__)
-#define ROBIN_HOOD_HAS_UMULH 1
+#	define ROBIN_HOOD_HAS_UMULH 1
 #endif
 #if defined(_WIN32) && ROBIN_HOOD_HAS_UMULH
-#include <intrin.h> // for __umulh
+#	include <intrin.h> // for __umulh
 #endif
 
 namespace robin_hood {
@@ -121,12 +121,12 @@ namespace detail {
 
 #if ROBIN_HOOD_HAS_UMULH
 inline uint64_t umulh(uint64_t a, uint64_t b) {
-#if (defined(_WIN32))
+#	if (defined(_WIN32))
 	return __umulh(a, b);
-#else
+#	else
 	using uint128 = unsigned __int128;
 	return static_cast<uint64_t>((static_cast<uint128>(a) * static_cast<uint128>(b)) >> 64u);
-#endif
+#	endif
 }
 #endif
 
