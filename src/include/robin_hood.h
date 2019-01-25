@@ -108,27 +108,16 @@ static_assert(ROBIN_HOOD_LITTLE_ENDIAN || ROBIN_HOOD_BIG_ENDIAN, "neither little
 #endif
 
 // umulh
-#if (defined(_WIN32) && ROBIN_HOOD_BITNESS == 64) || defined(__SIZEOF_INT128__)
-#	define ROBIN_HOOD_HAS_UMULH 1
-#endif
-#if defined(_WIN32) && ROBIN_HOOD_HAS_UMULH
+#if defined(__SIZEOF_INT128__)
+#	define ROBIN_HOOD_UMULH(a, b) static_cast<uint64_t>((static_cast<unsigned __int128>(a) * static_cast<unsigned __int128>(b)) >> 64u)
+#elif (defined(_WIN32) && ROBIN_HOOD_BITNESS == 64)
 #	include <intrin.h> // for __umulh
+#	define ROBIN_HOOD_UMULH(a, b) __umulh(a, b)
 #endif
 
 namespace robin_hood {
 
 namespace detail {
-
-#if ROBIN_HOOD_HAS_UMULH
-inline uint64_t umulh(uint64_t a, uint64_t b) {
-#	if (defined(_WIN32))
-	return __umulh(a, b);
-#	else
-	using uint128 = unsigned __int128;
-	return static_cast<uint64_t>((static_cast<uint128>(a) * static_cast<uint128>(b)) >> 64u);
-#	endif
-}
-#endif
 
 // make sure this is not inlined as it is slow and dramatically enlarges code, thus making other inlinings more difficult.
 // Throws are also generally the slow path.
@@ -476,9 +465,9 @@ struct hash<std::string> {
 template <>
 struct hash<uint64_t> {
 	size_t operator()(uint64_t const& obj) const {
-#if ROBIN_HOOD_HAS_UMULH
+#if defined(ROBIN_HOOD_UMULH)
 		// 167079903232 masksum, 122791318 ops best: 0xfa1371431ef43ae1 0xfe9b65e7da1b3187
-		return static_cast<size_t>(detail::umulh(UINT64_C(0xfa1371431ef43ae1), obj) * UINT64_C(0xfe9b65e7da1b3187));
+		return static_cast<size_t>(ROBIN_HOOD_UMULH(UINT64_C(0xfa1371431ef43ae1), obj) * UINT64_C(0xfe9b65e7da1b3187));
 #else
 		// murmurhash 3 finalizer
 		uint64_t h = obj;

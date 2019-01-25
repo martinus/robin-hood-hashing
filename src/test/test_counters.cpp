@@ -536,9 +536,9 @@ struct ConfigurableCounterHash {
 	}
 
 	size_t operator()(size_t const& obj) const {
-#if ROBIN_HOOD_HAS_UMULH
+#if defined(ROBIN_HOOD_UMULH)
 		uint64_t h = obj;
-		h = robin_hood::detail::umulh(h, m_values[0]) * m_values[1];
+		h = ROBIN_HOOD_UMULH(h, m_values[0]) * m_values[1];
 		auto result = static_cast<size_t>(h);
 #else
 		uint64_t h = obj;
@@ -694,7 +694,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 	}
 }
 
-#if ROBIN_HOOD_HAS_UMULH
+#if defined(ROBIN_HOOD_UMULH)
 
 bool ge(uint64_t mask_a, uint64_t ops_a, uint64_t mask_b, uint64_t ops_b) {
 	// return std::log(mask_a) + std::log(ops_a) <= std::log(mask_b) + std::log(ops_b);
