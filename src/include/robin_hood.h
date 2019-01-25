@@ -66,6 +66,7 @@
 #error Unsupported bitness
 #endif
 
+// inline
 #ifdef _WIN32
 #define ROBIN_HOOD_NOINLINE __declspec(noinline)
 #else
@@ -76,13 +77,40 @@
 #endif
 #endif
 
-#define ROBIN_HOOD_LIKELY(x) __builtin_expect(x, 1)
-#define ROBIN_HOOD_UNLIKELY(x) __builtin_expect(x, 0)
+// endianess
+#ifdef _WIN32
+#define ROBIN_HOOD_LITTLE_ENDIAN 1
+#define ROBIN_HOOD_BIG_ENDIAN 0
+#else
+#if __GNUC__ >= 4
+#define ROBIN_HOOD_LITTLE_ENDIAN (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#define ROBIN_HOOD_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#else
+#error cannot determine endianness
+#endif
+#endif
+static_assert(ROBIN_HOOD_LITTLE_ENDIAN || ROBIN_HOOD_BIG_ENDIAN, "neither little nor big endian defined");
 
+// count leading/trailing bits
+// __builtin_clzll for 0 is undefined (and compiler uses that! so make sure to check!)
+// see https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
+// No undefined behavior for __lzcnt64.
+#ifdef _WIN32
+#include <intrin.h>
+#define ROBIN_HOOD_COUNT_LEADING_ZEROES64(x) __lzcnt64(x)
+#else
+#if __GNUC__ >= 4
+#define ROBIN_HOOD_COUNT_LEADING_ZEROES64(x) (x == 0 ? 64 : __builtin_clzll(x))
+#define ROBIN_HOOD_COUNT_TRAILING_ZEROES64(x) (x == 0 ? 64 : __builtin_ctzll(x))
+#else
+#error clz not supported
+#endif
+#endif
+
+// umulh
 #if (defined(_WIN32) && ROBIN_HOOD_BITNESS == 64) || defined(__SIZEOF_INT128__)
 #define ROBIN_HOOD_HAS_UMULH 1
 #endif
-
 #if defined(_WIN32) && ROBIN_HOOD_HAS_UMULH
 #include <intrin.h> // for __umulh
 #endif
@@ -114,6 +142,15 @@ static T* assertNotNull(T* t, Args&&... args) {
 	if (nullptr == t) {
 		doThrow<E>(std::forward<Args>(args)...);
 	}
+	return t;
+}
+
+template <typename T>
+inline T unaligned_load(void const* ptr) {
+	// using memcpy so we don't get into unaligned load problems.
+	// compiler should optimize this very well anyways.
+	T t;
+	std::memcpy(&t, ptr, 8);
 	return t;
 }
 
@@ -188,8 +225,8 @@ public:
 		mHead = obj;
 	}
 
-	// Adds an already allocated block of memory to the allocator. This allocator is from now on responsible for freeing the data (with free()). If
-	// the provided data is not large enough to make use of, it is immediately freed. Otherwise it is reused and freed in the destructor.
+	// Adds an already allocated block of memory to the allocator. This allocator is from now on responsible for freeing the data (with free()).
+	// If the provided data is not large enough to make use of, it is immediately freed. Otherwise it is reused and freed in the destructor.
 	void addOrFree(void* ptr, const size_t numBytes) {
 		// calculate number of available elements in ptr
 		if (numBytes < ALIGNMENT + ALIGNED_SIZE) {
@@ -392,12 +429,7 @@ struct hash<std::string> {
 
 		size_t const n_blocks = len / 8;
 		for (size_t i = 0; i < n_blocks; ++i) {
-			uint64_t k;
-			// using memcpy so we don't get into unaligned load problems.
-			// compiler optimizes this very well anyways.
-			//
-			// we don't care about big endianness.
-			std::memcpy(&k, data64 + i, 8);
+			uint64_t k = detail::unaligned_load<uint64_t>(data64 + i);
 
 			k *= m;
 			k ^= k >> r;
@@ -763,11 +795,29 @@ private:
 
 		// prefix increment. Undefined behavior if we are at end()!
 		Iter& operator++() {
+			/*
 			do {
 				mKeyVals++;
 				mInfo++;
 			} while (0 == *mInfo);
 			return *this;
+			*/
+			//#if 0
+			mInfo++;
+			mKeyVals++;
+			int inc;
+			do {
+				auto const n = detail::unaligned_load<uint64_t>(mInfo);
+#if ROBIN_HOOD_LITTLE_ENDIAN
+				inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES64(n) / 8;
+#else
+				inc = ROBIN_HOOD_COUNT_LEADING_ZEROES64(n) / 8;
+#endif
+				mInfo += inc;
+				mKeyVals += inc;
+			} while (inc == 8);
+			return *this;
+			//#endif
 		}
 
 		reference operator*() const {
@@ -801,7 +851,8 @@ private:
 		if (s / sizeof(uint8_t) != numElements + 1) {
 			throwOverflowError();
 		}
-		return s;
+		// make sure it's a bit larger, so we can load 64bit numbers
+		return s + sizeof(uint64_t);
 	}
 	size_t calcNumBytesNode(size_t numElements) const {
 		const size_t s = sizeof(Node) * numElements;
@@ -888,7 +939,6 @@ private:
 		size_t idx;
 		InfoType info;
 		keyToIdx(key, idx, info);
-		// nextWhileLess(&info, &idx);
 
 		do {
 			// check while info matches with the source idx
