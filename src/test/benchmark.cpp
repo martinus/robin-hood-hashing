@@ -196,3 +196,42 @@ TEMPLATE_TEST_CASE("random find", "[!benchmark][map]", (robin_hood::flat_map<siz
 	}
 	REQUIRE(num_found == 0);
 }
+
+TEMPLATE_TEST_CASE("iterate", "[!benchmark][map]", (robin_hood::flat_map<uint64_t, size_t>), (robin_hood::node_map<uint64_t, size_t>),
+				   (std::unordered_map<uint64_t, size_t>)) {
+	size_t totals = 50000;
+	uint64_t rng_seed = UINT64_C(123);
+	Rng rng{rng_seed};
+	uint64_t checksum = 0;
+
+	BENCHMARK("iterate") {
+		TestType map;
+		for (size_t n = 0; n < totals; ++n) {
+			// insert a single element
+			map[rng()];
+
+			// then iterate everything
+			uint64_t iter_sum = 0;
+			for (auto const& keyVal : map) {
+				iter_sum += keyVal.first;
+			}
+			checksum += iter_sum * n;
+		}
+
+		// now remove element after element until the map is empty
+		rng.seed(rng_seed);
+
+		for (size_t n = 0; n < totals; ++n) {
+			map.erase(rng());
+
+			// then iterate everything
+			uint64_t iter_sum = 0;
+			for (auto const& keyVal : map) {
+				iter_sum += keyVal.first;
+			}
+			checksum += iter_sum * n;
+		}
+	}
+
+	REQUIRE(checksum == UINT64_C(0x82ab73e8f2678680));
+}
