@@ -726,7 +726,7 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
 	while (true) {
 		uint64_t current_mask_sum = 0;
 		uint64_t current_ops_sum = 0;
-#pragma omp parallel for reduction(+ : current_mask_sum, current_ops_sum)
+#	pragma omp parallel for reduction(+ : current_mask_sum, current_ops_sum)
 		for (int iters = 0; iters < 40; ++iters) {
 			eval(iters, current_values, current_mask_sum, current_ops_sum);
 		}

@@ -59,7 +59,6 @@ TEST_CASE("trivially copyable") {
 	// static_assert(std::is_trivially_copyable<std::pair<int, int>>::value, "NOT is_trivially_destructible");
 }
 
-
 size_t inline_only();
 
 TEST_CASE("inline_only") {
