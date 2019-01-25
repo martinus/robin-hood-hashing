@@ -827,7 +827,7 @@ private:
 	void keyToIdx(HashKey&& key, size_t& idx, InfoType& info) const {
 		auto h = Hash::operator()(key);
 		idx = h & mMask;
-		info = static_cast<InfoType>(mInfoInc + (h >> mInfoHashShift));
+		info = static_cast<InfoType>(mInfoInc + static_cast<InfoType>(h >> mInfoHashShift));
 	}
 
 	// forwards the index by one, wrapping around at the end
@@ -1333,10 +1333,11 @@ private:
 			size_t idx;
 			InfoType info;
 			keyToIdx(key, idx, info);
+			nextWhileLess(&info, &idx);
 
 			// while we potentially have a match. Can't do a do-while here because when mInfo is 0 we don't want to skip forward
-			while (info <= mInfo[idx]) {
-				if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+			while (info == mInfo[idx]) {
+				if (KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
 					// key already exists, do not insert.
 					return mKeyVals[idx].getSecond();
 				}
