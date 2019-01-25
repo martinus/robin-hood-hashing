@@ -12,3 +12,5 @@ AllowShortFunctionsOnASingleLine: Empty
 PointerAlignment: Left
 BreakConstructorInitializers: BeforeComma
 AlwaysBreakTemplateDeclarations: true
+
+IndentPPDirectives: AfterHash
