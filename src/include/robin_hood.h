@@ -76,6 +76,9 @@
 #endif
 #endif
 
+#define ROBIN_HOOD_LIKELY(x) __builtin_expect(x, 1)
+#define ROBIN_HOOD_UNLIKELY(x) __builtin_expect(x, 0)
+
 #if (defined(_WIN32) && ROBIN_HOOD_BITNESS == 64) || defined(__SIZEOF_INT128__)
 #define ROBIN_HOOD_HAS_UMULH 1
 #endif
@@ -519,6 +522,8 @@ class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<robin_
 	static constexpr uint8_t InitialInfoHashShift = sizeof(size_t) * 8 - InitialInfoNumBits;
 	using DataPool = detail::NodeAllocator<robin_hood::pair<Key, T>, 4, 16384, IsFlatMap>;
 
+	using InfoType = int_fast16_t; // type needs to be wider than uint8_t.
+
 public:
 	using key_type = Key;
 	using mapped_type = T;
@@ -819,19 +824,19 @@ private:
 	// Lower bits are used for indexing into the array (2^n size)
 	// The upper 5 bits need to be a good hash, to save comparisons.
 	template <typename HashKey>
-	void keyToIdx(HashKey&& key, size_t& idx, int_fast32_t& info) const {
+	void keyToIdx(HashKey&& key, size_t& idx, InfoType& info) const {
 		auto h = Hash::operator()(key);
 		idx = h & mMask;
-		info = mInfoInc + static_cast<int_fast32_t>(h >> mInfoHashShift);
+		info = static_cast<InfoType>(mInfoInc + (h >> mInfoHashShift));
 	}
 
 	// forwards the index by one, wrapping around at the end
-	void next(int_fast32_t* info, size_t* idx) const {
+	void next(InfoType* info, size_t* idx) const {
 		*idx = (*idx + 1) & mMask;
-		*info += mInfoInc;
+		*info = static_cast<InfoType>(*info + mInfoInc);
 	}
 
-	void nextWhileLess(int_fast32_t* info, size_t* idx) const {
+	void nextWhileLess(InfoType* info, size_t* idx) const {
 		// unrolling this by hand did not bring any speedups.
 		while (*info < mInfo[*idx]) {
 			next(info, idx);
@@ -881,17 +886,17 @@ private:
 	template <typename Other>
 	size_t findIdx(const Other& key) const {
 		size_t idx;
-		int_fast32_t info;
+		InfoType info;
 		keyToIdx(key, idx, info);
-		nextWhileLess(&info, &idx);
+		// nextWhileLess(&info, &idx);
 
-		// check while info matches with the source idx
-		while (info == mInfo[idx]) {
-			if (KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+		do {
+			// check while info matches with the source idx
+			if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
 				return idx;
 			}
 			next(&info, &idx);
-		}
+		} while (info <= mInfo[idx]);
 
 		// nothing found!
 		return mMask + 1;
@@ -911,13 +916,13 @@ private:
 		}
 
 		size_t idx;
-		int_fast32_t info;
+		InfoType info;
 		keyToIdx(keyval.getFirst(), idx, info);
 
 		// skip forward. Use <= because we are certain that the element is not there.
 		while (info <= mInfo[idx]) {
 			idx = (idx + 1) & mMask;
-			info += mInfoInc;
+			info = static_cast<InfoType>(info + mInfoInc);
 		}
 
 		// key not found, so we are now exactly where we want to insert it.
@@ -1262,19 +1267,18 @@ public:
 
 	size_t erase(const key_type& key) {
 		size_t idx;
-		int_fast32_t info;
+		InfoType info;
 		keyToIdx(key, idx, info);
-		nextWhileLess(&info, &idx);
 
 		// check while info matches with the source idx
-		while (info == mInfo[idx]) {
-			if (KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+		do {
+			if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
 				shiftDown(idx);
 				--mNumElements;
 				return 1;
 			}
 			next(&info, &idx);
-		}
+		} while (info <= mInfo[idx]);
 
 		// nothing found to delete
 		return 0;
@@ -1327,13 +1331,12 @@ private:
 	mapped_type& doCreateByKey(Arg&& key) {
 		while (true) {
 			size_t idx;
-			int_fast32_t info;
+			InfoType info;
 			keyToIdx(key, idx, info);
-			nextWhileLess(&info, &idx);
 
-			// while we potentially have a match
-			while (info == mInfo[idx]) {
-				if (KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+			// while we potentially have a match. Can't do a do-while here because when mInfo is 0 we don't want to skip forward
+			while (info <= mInfo[idx]) {
+				if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
 					// key already exists, do not insert.
 					return mKeyVals[idx].getSecond();
 				}
@@ -1348,7 +1351,7 @@ private:
 
 			// key not found, so we are now exactly where we want to insert it.
 			auto const insertion_idx = idx;
-			auto const insertion_info = static_cast<uint8_t>(info);
+			auto const insertion_info = info;
 			if (0xFF <= insertion_info + mInfoInc) {
 				mMaxNumElementsAllowed = 0;
 			}
@@ -1369,7 +1372,7 @@ private:
 			}
 
 			// mKeyVals[idx].getFirst() = std::move(key);
-			mInfo[insertion_idx] = insertion_info;
+			mInfo[insertion_idx] = static_cast<uint8_t>(insertion_info);
 
 			++mNumElements;
 			return mKeyVals[insertion_idx].getSecond();
@@ -1381,7 +1384,7 @@ private:
 	std::pair<iterator, bool> doInsert(Arg&& keyval) {
 		while (true) {
 			size_t idx;
-			int_fast32_t info;
+			InfoType info;
 			keyToIdx(keyval.getFirst(), idx, info);
 			nextWhileLess(&info, &idx);
 
@@ -1521,8 +1524,8 @@ private:
 	size_t mNumElements = 0;                                                                                      // 8 byte 24
 	size_t mMask = 0;                                                                                             // 8 byte 32
 	size_t mMaxNumElementsAllowed = 0;                                                                            // 8 byte 40
-	int_fast32_t mInfoInc = InitialInfoInc;
-	int_fast32_t mInfoHashShift = InitialInfoHashShift;
+	InfoType mInfoInc = InitialInfoInc;
+	InfoType mInfoHashShift = InitialInfoHashShift;
 };
 
 } // namespace detail
