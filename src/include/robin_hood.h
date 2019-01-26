@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 2.3.0
+// version 2.3.1
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 2 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 3 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstring>
@@ -58,23 +58,13 @@
 // mark unused members with this macro
 #define ROBIN_HOOD_UNUSED(identifier)
 
+// bitness
 #if SIZE_MAX == UINT32_MAX
 #	define ROBIN_HOOD_BITNESS 32
 #elif SIZE_MAX == UINT64_MAX
 #	define ROBIN_HOOD_BITNESS 64
 #else
 #	error Unsupported bitness
-#endif
-
-// inline
-#ifdef _WIN32
-#	define ROBIN_HOOD_NOINLINE __declspec(noinline)
-#else
-#	if __GNUC__ >= 4
-#		define ROBIN_HOOD_NOINLINE __attribute__((noinline))
-#	else
-#		define ROBIN_HOOD_NOINLINE
-#	endif
 #endif
 
 // endianess
@@ -89,19 +79,43 @@
 #		error cannot determine endianness
 #	endif
 #endif
-static_assert(ROBIN_HOOD_LITTLE_ENDIAN || ROBIN_HOOD_BIG_ENDIAN, "neither little nor big endian defined");
 
-// count leading/trailing bits
-// __builtin_clzll for 0 is undefined (and compiler uses that! so make sure to check!)
-// see https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
-// No undefined behavior for __lzcnt64.
+// inline
 #ifdef _WIN32
-#	include <intrin.h>
-#	define ROBIN_HOOD_COUNT_LEADING_ZEROES64(x) __lzcnt64(x)
+#	define ROBIN_HOOD_NOINLINE __declspec(noinline)
 #else
 #	if __GNUC__ >= 4
-#		define ROBIN_HOOD_COUNT_LEADING_ZEROES64(x) (x == 0 ? 64 : __builtin_clzll(x))
-#		define ROBIN_HOOD_COUNT_TRAILING_ZEROES64(x) (x == 0 ? 64 : __builtin_ctzll(x))
+#		define ROBIN_HOOD_NOINLINE __attribute__((noinline))
+#	else
+#		define ROBIN_HOOD_NOINLINE
+#	endif
+#endif
+
+// count leading/trailing bits
+#ifdef _WIN32
+#	if ROBIN_HOOD_BITNESS == 32
+#		define ROBIN_HOOD_BITSCANFORWARD _BitScanForward
+#	else
+#		define ROBIN_HOOD_BITSCANFORWARD _BitScanForward64
+#	endif
+#	include <intrin.h>
+#	pragma intrinsic(ROBIN_HOOD_BITSCANFORWARD)
+#	define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                                                                                      \
+		[](size_t mask) -> int {                                                                                                                     \
+			unsigned long index;                                                                                                                     \
+			return ROBIN_HOOD_BITSCANFORWARD(&index, mask) ? index : sizeof(size_t) * 8;                                           \
+		}(x)
+#else
+#	if __GNUC__ >= 4
+#		if ROBIN_HOOD_BITNESS == 32
+#			define ROBIN_HOOD_CTZ(x) __builtin_ctzl(x)
+#			define ROBIN_HOOD_CLZ(x) __builtin_clzl(x)
+#		else
+#			define ROBIN_HOOD_CTZ(x) __builtin_ctzll(x)
+#			define ROBIN_HOOD_CLZ(x) __builtin_clzll(x)
+#		endif
+#		define ROBIN_HOOD_COUNT_LEADING_ZEROES(x) (x == 0 ? 64 : ROBIN_HOOD_CLZ(x))
+#		define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) (x == 0 ? 64 : ROBIN_HOOD_CTZ(x))
 #	else
 #		error clz not supported
 #	endif
@@ -112,6 +126,7 @@ static_assert(ROBIN_HOOD_LITTLE_ENDIAN || ROBIN_HOOD_BIG_ENDIAN, "neither little
 #	define ROBIN_HOOD_UMULH(a, b) static_cast<uint64_t>((static_cast<unsigned __int128>(a) * static_cast<unsigned __int128>(b)) >> 64u)
 #elif (defined(_WIN32) && ROBIN_HOOD_BITNESS == 64)
 #	include <intrin.h> // for __umulh
+#	pragma intrinsic(__umulh)
 #	define ROBIN_HOOD_UMULH(a, b) __umulh(a, b)
 #endif
 
@@ -139,7 +154,7 @@ inline T unaligned_load(void const* ptr) {
 	// using memcpy so we don't get into unaligned load problems.
 	// compiler should optimize this very well anyways.
 	T t;
-	std::memcpy(&t, ptr, 8);
+	std::memcpy(&t, ptr, sizeof(T));
 	return t;
 }
 
@@ -784,29 +799,20 @@ private:
 
 		// prefix increment. Undefined behavior if we are at end()!
 		Iter& operator++() {
-			/*
-			do {
-				mKeyVals++;
-				mInfo++;
-			} while (0 == *mInfo);
-			return *this;
-			*/
-			//#if 0
 			mInfo++;
 			mKeyVals++;
 			int inc;
 			do {
-				auto const n = detail::unaligned_load<uint64_t>(mInfo);
+				auto const n = detail::unaligned_load<size_t>(mInfo);
 #if ROBIN_HOOD_LITTLE_ENDIAN
-				inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES64(n) / 8;
+				inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
 #else
-				inc = ROBIN_HOOD_COUNT_LEADING_ZEROES64(n) / 8;
+				inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / 8;
 #endif
 				mInfo += inc;
 				mKeyVals += inc;
-			} while (inc == 8);
+			} while (inc == sizeof(size_t));
 			return *this;
-			//#endif
 		}
 
 		reference operator*() const {
