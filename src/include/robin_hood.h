@@ -103,7 +103,7 @@
 #	define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                                                                                      \
 		[](size_t mask) -> int {                                                                                                                     \
 			unsigned long index;                                                                                                                     \
-			return ROBIN_HOOD_BITSCANFORWARD(&index, mask) ? index : sizeof(size_t) * 8;                                           \
+			return ROBIN_HOOD_BITSCANFORWARD(&index, mask) ? index : ROBIN_HOOD_BITNESS;                                                             \
 		}(x)
 #else
 #	if __GNUC__ >= 4
@@ -114,8 +114,8 @@
 #			define ROBIN_HOOD_CTZ(x) __builtin_ctzll(x)
 #			define ROBIN_HOOD_CLZ(x) __builtin_clzll(x)
 #		endif
-#		define ROBIN_HOOD_COUNT_LEADING_ZEROES(x) (x == 0 ? 64 : ROBIN_HOOD_CLZ(x))
-#		define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) (x == 0 ? 64 : ROBIN_HOOD_CTZ(x))
+#		define ROBIN_HOOD_COUNT_LEADING_ZEROES(x) (x ? ROBIN_HOOD_CLZ(x) : ROBIN_HOOD_BITNESS)
+#		define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) (x ? ROBIN_HOOD_CTZ(x) : ROBIN_HOOD_BITNESS)
 #	else
 #		error clz not supported
 #	endif
@@ -799,6 +799,13 @@ private:
 
 		// prefix increment. Undefined behavior if we are at end()!
 		Iter& operator++() {
+#if 0
+			do {
+				mInfo++;
+				mKeyVals++;
+			} while (0 == *mInfo);
+			return *this;
+#endif
 			mInfo++;
 			mKeyVals++;
 			int inc;
