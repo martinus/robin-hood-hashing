@@ -172,9 +172,6 @@ TEMPLATE_TEST_CASE("random find", "[!benchmark][map]", (robin_hood::flat_map<siz
 			for (size_t n = 0; n < num_finds; ++n) {
 				num_found += map.count(rng.uniform<size_t>(max_insertion));
 			}
-			// for (size_t i = 0; i < map.counts.size(); ++i) {
-			//	std::cout << i << ": " << map.counts[i] << std::endl;
-			//}
 		}
 	}
 	REQUIRE(num_found == 1'397'003'591);
