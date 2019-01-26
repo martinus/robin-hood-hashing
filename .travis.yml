@@ -14,6 +14,18 @@ matrix:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-8']
 
+  # 32bit build
+  - os: linux
+    compiler: gcc
+    env:
+    - COMPILER=g++-8
+    - CXXFLAGS="-Wno-unknown-pragmas -O2 -m32"
+    - LDFLAGS="-m32"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-8-multilib']        
+
   # build for c++17
   - os: linux
     compiler: gcc
@@ -71,6 +83,9 @@ script:
 
   # build
   - make -j4 all
+
+  # check file
+  - file ./build/robinhood-test
 
   # run test
   - ./build/robinhood-test
