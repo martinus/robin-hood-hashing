@@ -24,7 +24,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8-multilib']        
+        packages: ['g++-8-multilib', 'linux-libc-dev:i386']        
 
   # build for c++17
   - os: linux
