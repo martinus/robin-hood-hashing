@@ -31,8 +31,8 @@ brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, in
 |--------------------------:|--------------:|-----------------:|
 |     `absl::flat_hash_map` |          22.8 |         **1182** |
 |     `absl::node_hash_map` |          82.1 |             5162 |
-|    `robin_hood::node_map` |          24.0 |             2416 |
 |    `robin_hood::flat_map` |      **10.4** |         **1182** |
+|    `robin_hood::node_map` |          24.0 |             2416 |
 |    `ska::bytell_hash_map` |          17.4 |             6252 |
 |      `std::unordered_map` |          69.8 |             4982 |
 
@@ -47,8 +47,8 @@ Brown is `std::unordered_map<uint32_t, uint32_t>`, green is `robin_hood::unorder
 |--------------------------:|--------------:|-----------------:|
 |     `absl::flat_hash_map` |       **6.7** |         **14.1** |
 |     `absl::node_hash_map` |           9.6 |             41.4 |
-|    `robin_hood::node_map` |           9.8 |             18.9 |
 |    `robin_hood::flat_map` |           9.2 |         **14.1** |
+|    `robin_hood::node_map` |           9.8 |             18.9 |
 |    `ska::bytell_hash_map` |           8.6 |             22.2 |
 |      `std::unordered_map` |          26.5 |             14.1 |
 
@@ -62,8 +62,8 @@ Uses 20 byte long `std::string` as key, and `size_t` as value. Inserts & lookups
 |--------------------------:|--------------:|-----------------:|
 |     `absl::flat_hash_map` |          14.9 |             1325 |
 |     `absl::node_hash_map` |          15.5 |             1329 |
-|    `robin_hood::node_map` |          17.0 |         **1133** |
 |    `robin_hood::flat_map` |      **11.4** |             1300 |
+|    `robin_hood::node_map` |          17.0 |         **1133** |
 |    `ska::bytell_hash_map` |          14.6 |             2090 |
 |      `std::unordered_map` |          16.2 |             1497 |
 
@@ -79,10 +79,27 @@ Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int
 |--------------------------:|--------------:|-----------------:|
 |     `absl::flat_hash_map` |          18.7 |          **906** |
 |     `absl::node_hash_map` |          53.9 |             2592 |
-|    `robin_hood::node_map` |          25.8 |             1208 |
 |    `robin_hood::flat_map` |       **7.7** |          **906** |
+|    `robin_hood::node_map` |          25.8 |             1208 |
 |    `ska::bytell_hash_map` |          10.9 |             1422 |
 |      `std::unordered_map` |          49.2 |             2495 |
+
+### Iteration
+
+Repeat 50k times: insert one element, then iterate the whole map. After that, again repeat 50k times: delete on element, iterate the whole map. Thus in total 2500M elements are accessed.
+
+![Iterate](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/doc/iterate.png)
+Brown is `std::unordered_map<uint64_t, size_t>`, green is `robin_hood::unordered_map<uint64_t, size_t>`. 
+
+|                           | runtime [sec] | peak memory [MB] |
+|--------------------------:|--------------:|-----------------:|
+|     `absl::flat_hash_map` |          8.49 |         **0.88** |
+|     `absl::node_hash_map` |          8.86 |             2.58 |
+|    `robin_hood::flat_map` |      **6.98** |         **0.88** |
+|    `robin_hood::node_map` |          7.80 |             1.18 |
+|    `ska::bytell_hash_map` |         17.01 |             1.39 |
+|      `std::unordered_map` |         16.43 |             2.42 |
+
 
 ## Features
 
