@@ -6,7 +6,7 @@ I've performed extensive tests with [map_benchmark](https://github.com/martinus/
 All benchmarks are done on an Intel i7-8700, Linux, compiled with `g++-8 -O3`.
 
 ## Insert
-Measure runtime and memory usage when inserting 100M randomly generated `int`, then call `clear()`, then inserting again 100M `int`. [source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/Insert.cpp#L5)
+Measure runtime and memory usage when inserting 100M randomly generated `int`, then call `clear()`, then inserting again 100M `int`. [Source].(https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/Insert.cpp#L5)
 
 ![Insert](insert_int.png)
 brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>`. std::unordered_map is 7 times slower and uses 2.7 times more memory. More results with other maps:
@@ -20,20 +20,19 @@ brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, in
 |    `ska::bytell_hash_map` |          17.4 |             6252 |
 |      `std::unordered_map` |          69.8 |             4982 |
 
-## Random find
-Insert 100k `uint32_t`, search 100M times. Repeat 8 times, so in total the map will contain 800k elements and 800M lookups are performed. [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/RandomFindExisting.cpp#L11)
+## Find
+Iterating `i` from 1 to 1M: Randomly decide to insert `i`. Thus, about 50% of the values are inserted, the map will contain about 500k elements. Each iteration perform 1000 finds of random values in the range [0, i(. Thus, approximately 50% of the searches will find an element. [Source](https://github.com/martinus/map_benchmark/blob/a62f9a4c1be91b726c73e26653610dec5bb74849/src/benchmarks/RandomFind.cpp#L6).
 
-![Random Find](random_find_existing.png)
-Brown is `std::unordered_map<uint32_t, uint32_t>`, green is `robin_hood::unordered_map<uint32_t, uint32_t>`.  `robin_hood::unordered_map` is 2.9 times faster while using 4 times less memory.
+![Random Find](random_find.png) Brown is `std::unordered_map<size_t, size_t>`, green is `robin_hood::unordered_map<size_t, size_t>`.
 
 |                           | runtime [sec] | peak memory [MB] |
 |--------------------------:|--------------:|-----------------:|
-|     `absl::flat_hash_map` |       **6.7** |         **14.1** |
-|     `absl::node_hash_map` |           9.6 |             41.4 |
-|    `robin_hood::flat_map` |           9.2 |         **14.1** |
-|    `robin_hood::node_map` |           9.8 |             18.9 |
-|    `ska::bytell_hash_map` |           8.6 |             22.2 |
-|      `std::unordered_map` |          26.5 |             14.1 |
+|     `absl::flat_hash_map` |          13.3 |             26.7 |
+|     `absl::node_hash_map` |          18.6 |             32.5 |
+|    `robin_hood::flat_map` |      **10.1** |             26.7 |
+|    `robin_hood::node_map` |          12.2 |         **21.0** |
+|    `ska::bytell_hash_map` |          14.0 |         **21.0** |
+|      `std::unordered_map` |          44.5 |             28.6 |
 
 ## Insert & Lookup `std::string`
 
