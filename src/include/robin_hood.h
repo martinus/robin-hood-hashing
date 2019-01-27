@@ -878,9 +878,9 @@ private:
 	// The upper 5 bits need to be a good hash, to save comparisons.
 	template <typename HashKey>
 	void keyToIdx(HashKey&& key, size_t& idx, InfoType& info) const {
-		auto h = Hash::operator()(key);
-		idx = h & mMask;
-		info = static_cast<InfoType>(mInfoInc + static_cast<InfoType>(h >> mInfoHashShift));
+		idx = Hash::operator()(key);
+		info = static_cast<InfoType>(mInfoInc + static_cast<InfoType>(idx >> mInfoHashShift));
+		idx &= mMask;
 	}
 
 	// forwards the index by one, wrapping around at the end
@@ -937,13 +937,17 @@ private:
 
 	// copy of find(), except that it returns iterator instead of const_iterator.
 	template <typename Other>
-	size_t findIdx(const Other& key) const {
+	size_t findIdx(Other const& key) const {
 		size_t idx;
 		InfoType info;
 		keyToIdx(key, idx, info);
 
 		do {
 			// check while info matches with the source idx
+			if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+				return idx;
+			}
+			next(&info, &idx);
 			if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
 				return idx;
 			}
