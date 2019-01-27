@@ -148,13 +148,12 @@ inline std::ostream& operator<<(std::ostream& os, sfc64 const& rng) {
 	return rng.print(os);
 }
 
-template <typename U = uint64_t>
 class RandomBool {
 public:
 	template <typename Rng>
 	bool operator()(Rng& rng) {
 		if (1 == m_rand) {
-			m_rand = std::uniform_int_distribution<U>{}(rng) | s_mask_left1;
+			m_rand = std::uniform_int_distribution<size_t>{}(rng) | s_mask_left1;
 		}
 		bool const ret = m_rand & 1;
 		m_rand >>= 1;
@@ -162,8 +161,8 @@ public:
 	}
 
 private:
-	static constexpr const U s_mask_left1 = U(1) << (sizeof(U) * 8 - 1);
-	U m_rand = 1;
+	static constexpr const size_t s_mask_left1 = size_t(1) << (sizeof(size_t) * 8 - 1);
+	size_t m_rand = 1;
 };
 
 #endif

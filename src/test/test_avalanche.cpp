@@ -16,7 +16,7 @@ TEST_CASE("avalanche hash", "[!hide]") {
 #if defined(ROBIN_HOOD_UMULH)
 TEST_CASE("avalanche optimizer", "[!hide]") {
 	Rng rng(std::random_device{}());
-	RandomBool<> rbool;
+	RandomBool rbool;
 
 	std::array<uint64_t, 2> factors = {};
 	auto best_factors = factors;

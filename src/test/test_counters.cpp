@@ -576,7 +576,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum, uint64_
 		}
 		std::cout << std::endl;
 		*/
-		// RandomBool<> rbool;
+		// RandomBool rbool;
 		Counter::Counts counts;
 		size_t const num_iters = 33000;
 
@@ -703,7 +703,7 @@ bool ge(uint64_t mask_a, uint64_t ops_a, uint64_t mask_b, uint64_t ops_b) {
 
 TEST_CASE("quickmixoptimizer", "[!hide]") {
 	Rng factorRng(std::random_device{}());
-	RandomBool<> rbool;
+	RandomBool rbool;
 
 	using Map = robin_hood::flat_map<Counter, Counter, ConfigurableCounterHash, std::equal_to<Counter>, 95>;
 	Map startup_map;

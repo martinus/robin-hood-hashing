@@ -26,7 +26,7 @@ inline std::ostream& operator<<(std::ostream& os, hex const& h) {
 
 // Mutates input
 template <size_t S>
-void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool<>& rbool) {
+void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool& rbool) {
 	do {
 		uint64_t mask = 0;
 		do {
