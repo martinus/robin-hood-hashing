@@ -14,7 +14,9 @@ In all benchmarks either `robin_hood::flat_map` or `robin_hood::node_map` uses t
 
 
 ## Insert
-Measure runtime and memory usage when inserting 100M randomly generated `int`, then call `clear()`, then inserting again 100M `int`. [Source].(https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/Insert.cpp#L5)
+Measure runtime and memory usage when inserting 100M randomly generated `int`, then call `clear()`, then inserting
+again 100M `int`.
+[Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/Insert.cpp#L5).
 
 ![Insert](insert_int.png)
 brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>` (defaulting to `flat_map`). More results with other maps:
