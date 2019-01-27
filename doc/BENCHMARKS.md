@@ -21,7 +21,13 @@ brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, in
 |      `std::unordered_map` |          69.8 |             4982 |
 
 ## Find
-Iterating `i` from 1 to 1M: Randomly decide to insert `i`. Thus, about 50% of the values are inserted, the map will contain about 500k elements. Each iteration perform 1000 finds of random values in the range [0, i(. Thus, approximately 50% of the searches will find an element. [Source](https://github.com/martinus/map_benchmark/blob/a62f9a4c1be91b726c73e26653610dec5bb74849/src/benchmarks/RandomFind.cpp#L6).
+Benchmarks finding elements with an enlarging map, and with a find probability of 50%. This makes sure that we get a
+wide range different load factors to get a relatively unbiased result.
+
+In detail, we iterate `i` from 1 to 1M, and with 50% probability insert `i` into the map. Thus, about 50% of the
+values are inserted, the map will contain about 500k elements. Each iteration perform 1000 finds of random values
+in the range [0, i(. So we perform a total of 1000M searches of which about 50% will find an element.
+[Source](https://github.com/martinus/map_benchmark/blob/a62f9a4c1be91b726c73e26653610dec5bb74849/src/benchmarks/RandomFind.cpp#L6).
 
 ![Random Find](random_find.png) Brown is `std::unordered_map<size_t, size_t>`, green is `robin_hood::unordered_map<size_t, size_t>`.
 
