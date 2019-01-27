@@ -50,6 +50,23 @@ in the range [0, i(. So we perform a total of 1000M searches of which about 50% 
 |    `ska::bytell_hash_map` |          14.0 |         **21.0** |  3.18       |    **73%**      |
 |      `std::unordered_map` |          44.5 |             28.6 |  1.00       |   100%          |
 
+
+## Iteration
+
+Repeat 50k times: insert one element, then iterate the whole map. After that, again repeat 50k times: delete on element, iterate the whole map. Thus in total 2500M elements are accessed. [Source](https://github.com/martinus/map_benchmark/blob/898a5c6d647df57692a9277d3cd1ed19a865dac4/src/benchmarks/Iterate.cpp#L5)
+
+![Iterate](iterate.png)
+Brown is `std::unordered_map<uint64_t, size_t>`, green is `robin_hood::unordered_map<uint64_t, size_t>` (defaulting to `flat_map`). 
+
+|                           | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
+|--------------------------:|--------------:|-----------------:|------------:|----------------:|
+|     `absl::flat_hash_map` |          8.49 |         **0.88** |  1.94       |   **36%**       |
+|     `absl::node_hash_map` |          8.86 |             2.58 |  1.85       |   107%          |
+|    `robin_hood::flat_map` |      **6.98** |         **0.88** |  **2.35**   |   **36%**       |
+|    `robin_hood::node_map` |          7.80 |             1.18 |  2.11       |    49%          |
+|    `ska::bytell_hash_map` |         17.01 |             1.39 |  0.97       |    57%          |
+|      `std::unordered_map` |         16.43 |             2.42 |  1.00       |   100%          |
+
 ## Insert & Lookup `std::string`
 
 Uses 20 byte long `std::string` as key, and `size_t` as value. Inserts & lookups 50M strings so that about 25% are distinct. Brown is `std::unordered_map<std::string, size_t>`, green is `robin_hood::unordered_map<std::string, size_t>`. Here the difference is not so big, mostly because g++'s hash implementation uses a fast Murmurhash2 which is very similar to robin_hood's implementation. [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/Strings.cpp#L44)
@@ -81,19 +98,3 @@ Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int
 |    `robin_hood::node_map` |          25.8 |             1208 |  1.91       |    48%          |
 |    `ska::bytell_hash_map` |          10.9 |             1422 |  4.51       |    57%          |
 |      `std::unordered_map` |          49.2 |             2495 |  1.00       |   100%          |
-
-## Iteration
-
-Repeat 50k times: insert one element, then iterate the whole map. After that, again repeat 50k times: delete on element, iterate the whole map. Thus in total 2500M elements are accessed. [Source](https://github.com/martinus/map_benchmark/blob/898a5c6d647df57692a9277d3cd1ed19a865dac4/src/benchmarks/Iterate.cpp#L5)
-
-![Iterate](iterate.png)
-Brown is `std::unordered_map<uint64_t, size_t>`, green is `robin_hood::unordered_map<uint64_t, size_t>` (defaulting to `flat_map`). 
-
-|                           | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
-|--------------------------:|--------------:|-----------------:|------------:|----------------:|
-|     `absl::flat_hash_map` |          8.49 |         **0.88** |  1.94       |   **36%**       |
-|     `absl::node_hash_map` |          8.86 |             2.58 |  1.85       |   107%          |
-|    `robin_hood::flat_map` |      **6.98** |         **0.88** |  **2.35**   |   **36%**       |
-|    `robin_hood::node_map` |          7.80 |             1.18 |  2.11       |    49%          |
-|    `ska::bytell_hash_map` |         17.01 |             1.39 |  0.97       |    57%          |
-|      `std::unordered_map` |         16.43 |             2.42 |  1.00       |   100%          |
