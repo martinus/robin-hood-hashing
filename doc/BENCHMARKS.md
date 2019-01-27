@@ -21,14 +21,14 @@ again 100M `int`.
 ![Insert](insert_int.png)
 brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>` (defaulting to `flat_map`). More results with other maps:
 
-|                           | runtime [sec] | peak memory [MB] |
-|--------------------------:|--------------:|-----------------:|
-|     `absl::flat_hash_map` |          22.8 |         **1182** |
-|     `absl::node_hash_map` |          82.1 |             5162 |
-|    `robin_hood::flat_map` |      **10.4** |         **1182** |
-|    `robin_hood::node_map` |          24.0 |             2416 |
-|    `ska::bytell_hash_map` |          17.4 |             6252 |
-|      `std::unordered_map` |          69.8 |             4982 |
+|       map                 | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
+|--------------------------:|--------------:|-----------------:|-----------:|----------------:|
+|     `absl::flat_hash_map` |          22.8 |         **1182** |   3.06     |    **24%**      |
+|     `absl::node_hash_map` |          82.1 |             5162 |   0.85     |   104%          |
+|    `robin_hood::flat_map` |      **10.4** |         **1182** |  **6.71**  |    **24%**      |
+|    `robin_hood::node_map` |          24.0 |             2416 |   2.91     |    48%          |
+|    `ska::bytell_hash_map` |          17.4 |             6252 |   4.01     |   125%          |
+|      `std::unordered_map` |          69.8 |             4982 |   1.00     |   100%          |
 
 ## Find
 Benchmarks finding elements with an enlarging map, and with a find probability of 50%. This makes sure that we get a
@@ -41,14 +41,14 @@ in the range [0, i(. So we perform a total of 1000M searches of which about 50% 
 
 ![Random Find](random_find.png) Brown is `std::unordered_map<size_t, size_t>`, green is `robin_hood::unordered_map<size_t, size_t>` (defaulting to `flat_map`).
 
-|                           | runtime [sec] | peak memory [MB] |
-|--------------------------:|--------------:|-----------------:|
-|     `absl::flat_hash_map` |          13.3 |             26.7 |
-|     `absl::node_hash_map` |          18.6 |             32.5 |
-|    `robin_hood::flat_map` |      **10.1** |             26.7 |
-|    `robin_hood::node_map` |          12.2 |         **21.0** |
-|    `ska::bytell_hash_map` |          14.0 |         **21.0** |
-|      `std::unordered_map` |          44.5 |             28.6 |
+|                           | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
+|--------------------------:|--------------:|-----------------:|------------:|----------------:|
+|     `absl::flat_hash_map` |          13.3 |             26.7 |  3.35       |    93%          |
+|     `absl::node_hash_map` |          18.6 |             32.5 |  2.39       |   114%          |
+|    `robin_hood::flat_map` |      **10.1** |             26.7 |  **4.41**   |    93%          |
+|    `robin_hood::node_map` |          12.2 |         **21.0** |  3.65       |    **73%**      |
+|    `ska::bytell_hash_map` |          14.0 |         **21.0** |  3.18       |    **73%**      |
+|      `std::unordered_map` |          44.5 |             28.6 |  1.00       |   100%          |
 
 ## Insert & Lookup `std::string`
 
@@ -57,14 +57,14 @@ Uses 20 byte long `std::string` as key, and `size_t` as value. Inserts & lookups
 ![String 25% distinct](string25.png)
 Brown is `std::unordered_map<std::string, size_t>`, green is `robin_hood::unordered_map<std::string, size_t>` (defaulting to `flat_map`).
 
-|                           | runtime [sec] | peak memory [MB] |
-|--------------------------:|--------------:|-----------------:|
-|     `absl::flat_hash_map` |          14.9 |             1325 |
-|     `absl::node_hash_map` |          15.5 |             1329 |
-|    `robin_hood::flat_map` |      **11.4** |             1300 |
-|    `robin_hood::node_map` |          17.0 |         **1133** |
-|    `ska::bytell_hash_map` |          14.6 |             2090 |
-|      `std::unordered_map` |          16.2 |             1497 |
+|                           | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
+|--------------------------:|--------------:|-----------------:|------------:|----------------:|
+|     `absl::flat_hash_map` |          14.9 |             1325 |  1.09       |   89%           |
+|     `absl::node_hash_map` |          15.5 |             1329 |  1.05       |   89%           |
+|    `robin_hood::flat_map` |      **11.4** |             1300 |  **1.42**   |   87%           |
+|    `robin_hood::node_map` |          17.0 |         **1133** |  0.95       |   **76%**       |
+|    `ska::bytell_hash_map` |          14.6 |             2090 |  1.11       |   140%          |
+|      `std::unordered_map` |          16.2 |             1497 |  1.00       |   100%          |
 
 ## Random Distinct
 
@@ -73,14 +73,14 @@ A mixed workload, similar to the benchmark used in [attractivechaos/udb2](https:
 ![Random Distinct](random_distinct2.png)
 Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int, int>` (defaulting to `flat_map`).
 
-|                           | runtime [sec] | peak memory [MB] |
-|--------------------------:|--------------:|-----------------:|
-|     `absl::flat_hash_map` |          18.7 |          **906** |
-|     `absl::node_hash_map` |          53.9 |             2592 |
-|    `robin_hood::flat_map` |       **7.7** |          **906** |
-|    `robin_hood::node_map` |          25.8 |             1208 |
-|    `ska::bytell_hash_map` |          10.9 |             1422 |
-|      `std::unordered_map` |          49.2 |             2495 |
+|                           | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
+|--------------------------:|--------------:|-----------------:|------------:|----------------:|
+|     `absl::flat_hash_map` |          18.7 |          **906** |  2.63       |   **36%**       |
+|     `absl::node_hash_map` |          53.9 |             2592 |  0.91       |   104%          |
+|    `robin_hood::flat_map` |       **7.7** |          **906** |  **6.39**   |   **36%**       |
+|    `robin_hood::node_map` |          25.8 |             1208 |  1.91       |    48%          |
+|    `ska::bytell_hash_map` |          10.9 |             1422 |  4.51       |    57%          |
+|      `std::unordered_map` |          49.2 |             2495 |  1.00       |   100%          |
 
 ## Iteration
 
@@ -89,11 +89,11 @@ Repeat 50k times: insert one element, then iterate the whole map. After that, ag
 ![Iterate](iterate.png)
 Brown is `std::unordered_map<uint64_t, size_t>`, green is `robin_hood::unordered_map<uint64_t, size_t>` (defaulting to `flat_map`). 
 
-|                           | runtime [sec] | peak memory [MB] |
-|--------------------------:|--------------:|-----------------:|
-|     `absl::flat_hash_map` |          8.49 |         **0.88** |
-|     `absl::node_hash_map` |          8.86 |             2.58 |
-|    `robin_hood::flat_map` |      **6.98** |         **0.88** |
-|    `robin_hood::node_map` |          7.80 |             1.18 |
-|    `ska::bytell_hash_map` |         17.01 |             1.39 |
-|      `std::unordered_map` |         16.43 |             2.42 |
+|                           | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
+|--------------------------:|--------------:|-----------------:|------------:|----------------:|
+|     `absl::flat_hash_map` |          8.49 |         **0.88** |  1.94       |   **36%**       |
+|     `absl::node_hash_map` |          8.86 |             2.58 |  1.85       |   107%          |
+|    `robin_hood::flat_map` |      **6.98** |         **0.88** |  **2.35**   |   **36%**       |
+|    `robin_hood::node_map` |          7.80 |             1.18 |  2.11       |    49%          |
+|    `ska::bytell_hash_map` |         17.01 |             1.39 |  0.97       |    57%          |
+|      `std::unordered_map` |         16.43 |             2.42 |  1.00       |   100%          |
