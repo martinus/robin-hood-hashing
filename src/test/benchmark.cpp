@@ -194,6 +194,27 @@ TEMPLATE_TEST_CASE("random find", "[!benchmark][map]", (robin_hood::flat_map<siz
 	REQUIRE(num_found == 0);
 }
 
+TEMPLATE_TEST_CASE("random find new", "[!benchmark][map]", (robin_hood::flat_map<size_t, size_t>), (robin_hood::node_map<size_t, size_t>),
+				   (std::unordered_map<size_t, size_t>)) {
+	Rng rng(123);
+	RandomBool rbool;
+
+	size_t num_found = 0;
+	BENCHMARK("random find") {
+		TestType map;
+		for (size_t i = 1; i <= 1000000; ++i) {
+			if (rbool(rng)) {
+				map.emplace(i, i);
+			}
+
+			for (size_t j = 0; j < 1000; ++j) {
+				num_found += map.count(rng.uniform<size_t>(i));
+			}
+		}
+	}
+	REQUIRE(num_found == 500787924);
+}
+
 TEMPLATE_TEST_CASE("iterate", "[!benchmark][map]", (robin_hood::flat_map<uint64_t, size_t>), (robin_hood::node_map<uint64_t, size_t>),
 				   (std::unordered_map<uint64_t, size_t>)) {
 	size_t totals = 50000;
