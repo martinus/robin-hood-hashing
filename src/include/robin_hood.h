@@ -943,7 +943,7 @@ private:
 		keyToIdx(key, idx, info);
 
 		do {
-			// check while info matches with the source idx
+			// unrolling this twice gives a bit of a speedup. More unrolling did not help.
 			if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
 				return idx;
 			}
