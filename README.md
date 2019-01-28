@@ -8,7 +8,7 @@
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/martinus/robin-hood-hashing.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/martinus/robin-hood-hashing/alerts/)
 [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/martinus/robin-hood-hashing.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/martinus/robin-hood-hashing/context:cpp)
 
-`robin_hood::unordered_map` is be a platform independent replacement for `std::unordered_map` which is both faster and more memory efficient for real-world use cases.
+`robin_hood::unordered_map` is a platform independent replacement for `std::unordered_map` which is both faster and more memory efficient for real-world use cases.
 
 ## Installation & Usage
 
