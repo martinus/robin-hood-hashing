@@ -19,7 +19,7 @@ again 100M `int`.
 [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/Insert.cpp#L5).
 
 ![Insert](insert_int.png)
-brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>` (defaulting to `flat_map`). More results with other maps:
+brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>` (defaulting to `flat_map`). More results with other maps. Speedup and peak memory is relative to `std::unordered_map`.
 
 |   flat maps                     | runtime [sec] | peak memory [MB] |  speedup   | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|-----------:|----------------:|
