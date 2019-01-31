@@ -82,6 +82,7 @@ public:
 		return static_cast<T>(operator()());
 	}
 
+	// This is slow, but unfortunately I need want the same result in both 32bit and 64bit so the tests work.
 	uint64_t multhi64(uint64_t const a, uint64_t const b) {
 		uint64_t a_lo = static_cast<uint32_t>(a);
 		uint64_t a_hi = a >> 32u;

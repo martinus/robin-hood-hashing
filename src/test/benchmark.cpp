@@ -77,8 +77,8 @@ private:
 	Val m_val[2];
 };
 
-TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark][map]", (robin_hood::flat_map<int, int>), (robin_hood::node_map<int, int>),
-				   (std::unordered_map<int, int>)) {
+TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark][map]", (robin_hood::unordered_flat_map<int, int>),
+				   (robin_hood::unordered_node_map<int, int>), (std::unordered_map<int, int>)) {
 	Rng rng(123);
 
 	BENCHMARK("Random insert erase") {
@@ -152,8 +152,8 @@ TEMPLATE_TEST_CASE("distinctness", "[!benchmark][map]", (robin_hood::unordered_m
 	REQUIRE(checksum == 180759494);
 }
 
-TEMPLATE_TEST_CASE("random find", "[!benchmark][map]", (robin_hood::flat_map<size_t, size_t>), (robin_hood::node_map<size_t, size_t>),
-				   (std::unordered_map<size_t, size_t>)) {
+TEMPLATE_TEST_CASE("random find", "[!benchmark][map]", (robin_hood::unordered_flat_map<size_t, size_t>),
+				   (robin_hood::unordered_node_map<size_t, size_t>), (std::unordered_map<size_t, size_t>)) {
 	size_t const num_iters = 30;
 	size_t const insertion_factor = 10'000;
 	size_t const num_finds = 50'000'000;
@@ -194,8 +194,8 @@ TEMPLATE_TEST_CASE("random find", "[!benchmark][map]", (robin_hood::flat_map<siz
 	REQUIRE(num_found == 0);
 }
 
-TEMPLATE_TEST_CASE("random find 50%", "[!benchmark][map]", (robin_hood::flat_map<size_t, size_t>), (robin_hood::node_map<size_t, size_t>),
-				   (std::unordered_map<size_t, size_t>)) {
+TEMPLATE_TEST_CASE("random find 50%", "[!benchmark][map]", (robin_hood::unordered_flat_map<size_t, size_t>),
+				   (robin_hood::unordered_node_map<size_t, size_t>), (std::unordered_map<size_t, size_t>)) {
 	Rng rng(123);
 	RandomBool rbool;
 
@@ -215,8 +215,8 @@ TEMPLATE_TEST_CASE("random find 50%", "[!benchmark][map]", (robin_hood::flat_map
 	REQUIRE(num_found == 500787924);
 }
 
-TEMPLATE_TEST_CASE("iterate", "[!benchmark][map]", (robin_hood::flat_map<uint64_t, size_t>), (robin_hood::node_map<uint64_t, size_t>),
-				   (std::unordered_map<uint64_t, size_t>)) {
+TEMPLATE_TEST_CASE("iterate", "[!benchmark][map]", (robin_hood::unordered_flat_map<uint64_t, size_t>),
+				   (robin_hood::unordered_node_map<uint64_t, size_t>), (std::unordered_map<uint64_t, size_t>)) {
 	size_t totals = 50000;
 	uint64_t rng_seed = UINT64_C(123);
 	Rng rng{rng_seed};

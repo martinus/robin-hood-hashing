@@ -8,8 +8,8 @@
 #include <iomanip>
 #include <iostream>
 
-using FlatMap = robin_hood::flat_map<uint64_t, uint64_t>;
-using NodeMap = robin_hood::node_map<uint64_t, uint64_t>;
+using FlatMap = robin_hood::unordered_flat_map<uint64_t, uint64_t>;
+using NodeMap = robin_hood::unordered_node_map<uint64_t, uint64_t>;
 using Rng = sfc64;
 
 struct hex {

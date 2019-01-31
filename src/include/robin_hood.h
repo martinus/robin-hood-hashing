@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 2.4.0
+// version 3.0.0
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -35,8 +35,8 @@
 #define ROBIN_HOOD_H_INCLUDED
 
 // see https://semver.org/
-#define ROBIN_HOOD_VERSION_MAJOR 2 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 4 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
+#define ROBIN_HOOD_VERSION_MINOR 0 // for adding functionality in a backwards-compatible manner
 #define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
 
 #include <algorithm>
@@ -548,7 +548,20 @@ namespace detail {
 // According to STL, order of templates has effect on throughput. That's why I've moved the boolean to the front.
 // https://www.reddit.com/r/cpp/comments/ahp6iu/compile_time_binary_size_reductions_and_cs_future/eeguck4/
 template <bool IsFlatMap, size_t MaxLoadFactor100, typename Key, typename T, typename Hash, typename KeyEqual>
-class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<robin_hood::pair<Key, T>, 4, 16384, IsFlatMap> {
+class unordered_map : public Hash,
+					  public KeyEqual,
+					  detail::NodeAllocator<robin_hood::pair<typename std::conditional<IsFlatMap, Key, Key const>::type, T>, 4, 16384, IsFlatMap> {
+public:
+	using key_type = Key;
+	using mapped_type = T;
+	using value_type = robin_hood::pair<typename std::conditional<IsFlatMap, Key, Key const>::type, T>;
+	using size_type = size_t;
+	using hasher = Hash;
+	using key_equal = KeyEqual;
+	using Self = unordered_map<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
+	static const bool is_flat_map = IsFlatMap;
+
+private:
 	static_assert(MaxLoadFactor100 > 10 && MaxLoadFactor100 < 100, "MaxLoadFactor100 needs to be >10 && < 100");
 
 	// configuration defaults
@@ -556,19 +569,9 @@ class unordered_map : public Hash, public KeyEqual, detail::NodeAllocator<robin_
 	static constexpr int InitialInfoNumBits = 5;
 	static constexpr uint8_t InitialInfoInc = 1 << InitialInfoNumBits;
 	static constexpr uint8_t InitialInfoHashShift = sizeof(size_t) * 8 - InitialInfoNumBits;
-	using DataPool = detail::NodeAllocator<robin_hood::pair<Key, T>, 4, 16384, IsFlatMap>;
+	using DataPool = detail::NodeAllocator<value_type, 4, 16384, IsFlatMap>;
 
 	using InfoType = int_fast16_t; // type needs to be wider than uint8_t.
-
-public:
-	using key_type = Key;
-	using mapped_type = T;
-	using value_type = robin_hood::pair<Key, T>;
-	using size_type = size_t;
-	using hasher = Hash;
-	using key_equal = KeyEqual;
-	using Self = unordered_map<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
-	static const bool is_flat_map = IsFlatMap;
 
 private:
 	// DataNode ////////////////////////////////////////////////////////
@@ -1588,10 +1591,10 @@ private:
 } // namespace detail
 
 template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
-using flat_map = detail::unordered_map<true, MaxLoadFactor100, Key, T, Hash, KeyEqual>;
+using unordered_flat_map = detail::unordered_map<true, MaxLoadFactor100, Key, T, Hash, KeyEqual>;
 
 template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
-using node_map = detail::unordered_map<false, MaxLoadFactor100, Key, T, Hash, KeyEqual>;
+using unordered_node_map = detail::unordered_map<false, MaxLoadFactor100, Key, T, Hash, KeyEqual>;
 
 template <typename Key, typename T, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
 using unordered_map = detail::unordered_map<sizeof(robin_hood::pair<Key, T>) <= sizeof(size_t) * 6 &&

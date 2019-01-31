@@ -21,7 +21,7 @@ Please see extensive benchmarks in [doc/BENCHMARKS.md](doc/BENCHMARKS.md). In sh
 
 ## Features
 
-- **Two memory layouts**. Data is either stored in a flat map, or node based. Flat map's access is extremely fast due to no indirection, but references to elements are not stable. It also causes allocation spikes when resizing will need more memory for large objects. Node based map has stable references but is a bit slower due to indirection. The choice is yours; you can either use `robin_hood::flat_map` or `robin_hood::node_map` directly. If you use `robin_hood::unordered_map` It tries to choose the layout that seems appropriate for your data.
+- **Two memory layouts**. Data is either stored in a flat array, or with node indirection. Access for `unordered_flat_map` is extremely fast due to no indirection, but references to elements are not stable. It also causes allocation spikes when the map resizes, and will need plenty of memory for large objects. Node based map has stable references and uses `const Key` in the pair. It is a bit slower due to indirection. The choice is yours; you can either use `robin_hood::unordered_flat_map` or `robin_hood::unordered_node_map` directly. If you use `robin_hood::unordered_map` It tries to choose the layout that seems appropriate for your data.
 
 - **Custom allocator**. Node based representation has a custom bulk allocator that tries to make few memory allocations. All allocated memory is reused, so there won't be any allocation spikes. It's very fast as well.
 

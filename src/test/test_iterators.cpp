@@ -51,7 +51,8 @@ TEMPLATE_TEST_CASE("iterators", "", FlatMap, NodeMap) {
 	}
 }
 
-TEMPLATE_TEST_CASE("iterators brute force", "", (robin_hood::flat_map<uint64_t, size_t>), (robin_hood::node_map<uint64_t, size_t>)) {
+TEMPLATE_TEST_CASE("iterators brute force", "", (robin_hood::unordered_flat_map<uint64_t, size_t>),
+				   (robin_hood::unordered_node_map<uint64_t, size_t>)) {
 	size_t totals = 5000;
 	uint64_t rng_seed = UINT64_C(123);
 	Rng rng{rng_seed};

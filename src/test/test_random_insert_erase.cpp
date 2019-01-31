@@ -159,8 +159,8 @@ struct hash<CtorDtorVerifier> {
 
 } // namespace std
 
-using FlatMapVerifier = robin_hood::flat_map<CtorDtorVerifier, CtorDtorVerifier>;
-using NodeMapVerifier = robin_hood::node_map<CtorDtorVerifier, CtorDtorVerifier>;
+using FlatMapVerifier = robin_hood::unordered_flat_map<CtorDtorVerifier, CtorDtorVerifier>;
+using NodeMapVerifier = robin_hood::unordered_node_map<CtorDtorVerifier, CtorDtorVerifier>;
 
 TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier) {
 	using Map = TestType;
@@ -309,8 +309,8 @@ struct DummyHash {
 	}
 };
 
-TEMPLATE_TEST_CASE("collisions", "", (robin_hood::flat_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>),
-				   (robin_hood::node_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>)) {
+TEMPLATE_TEST_CASE("collisions", "", (robin_hood::unordered_flat_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>),
+				   (robin_hood::unordered_node_map<CtorDtorVerifier, CtorDtorVerifier, DummyHash<CtorDtorVerifier>>)) {
 
 	static const uint64_t max_val = 127;
 
@@ -403,8 +403,8 @@ struct ShiftHash {
 	}
 };
 
-TEMPLATE_TEST_CASE("insertion with simple hash", "", (robin_hood::flat_map<uint64_t, uint64_t, ShiftHash<1>>),
-				   (robin_hood::node_map<uint64_t, uint64_t, ShiftHash<1>>)) {
+TEMPLATE_TEST_CASE("insertion with simple hash", "", (robin_hood::unordered_flat_map<uint64_t, uint64_t, ShiftHash<1>>),
+				   (robin_hood::unordered_node_map<uint64_t, uint64_t, ShiftHash<1>>)) {
 	TestType map;
 
 	for (uint64_t i = 0; i < 4; ++i) {
@@ -442,7 +442,7 @@ TEST_CASE("random insertion brute force", "[!hide]") {
 		auto state = rng.state();
 		try {
 			std::unordered_map<int, int> suo;
-			robin_hood::node_map<int, int> ruo;
+			robin_hood::unordered_node_map<int, int> ruo;
 
 			while (++op < min_ops) {
 				auto const key = rng.uniform<int>(n);

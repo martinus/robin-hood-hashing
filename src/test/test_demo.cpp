@@ -9,7 +9,7 @@ TEST_CASE("Api demonstration", "[demo]") {
 }
 
 TEST_CASE("api flat", "[demo]") {
-	robin_hood::flat_map<int, int> map;
+	robin_hood::unordered_flat_map<int, int> map;
 	map[123] = 7;
 	map[42] = 543;
 
@@ -18,7 +18,7 @@ TEST_CASE("api flat", "[demo]") {
 }
 
 TEST_CASE("api node", "[demo]") {
-	robin_hood::node_map<int, int> map;
+	robin_hood::unordered_node_map<int, int> map;
 	map[123] = 7;
 	map[42] = 543;
 
