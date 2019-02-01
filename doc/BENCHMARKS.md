@@ -30,7 +30,7 @@ brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, in
 |   pointer stable maps           | runtime [sec] | peak memory [MB] |  speedup   | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|-----------:|----------------:|
 |           `absl::node_hash_map` |          82.1 |             5162 |   0.85     |   104%          |
-|`robin_hood::unordered_node_map` |      **24.0** |         **2416** | **2.91**   |   **48%**       |
+|`robin_hood::unordered_node_map` |          24.0 |             241* |   2.91     |   48%           |
 |            `std::unordered_map` |          69.8 |             4982 |   1.00     |   100%          |
 
 ## Find
@@ -53,7 +53,7 @@ in the range [0, i(. So we perform a total of 1000M searches of which about 50% 
 |  pointer stable maps            | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|------------:|----------------:|
 |           `absl::node_hash_map` |          18.6 |             32.5 |  2.39       |   114%          |
-|`robin_hood::unordered_node_map` |      **12.2** |         **21.0** | **3.65**    |    **73%**      |
+|`robin_hood::unordered_node_map` |          12.2 |         **21.0** |  3.65       |   **73%**       |
 |      `std::unordered_map`       |          44.5 |             28.6 |  1.00       |   100%          |
 
 
@@ -73,7 +73,7 @@ Brown is `std::unordered_map<uint64_t, size_t>`, green is `robin_hood::unordered
 |   pointer stable maps           | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|------------:|----------------:|
 |     `absl::node_hash_map`       |          8.86 |             2.58 |  1.85       |   107%          |
-|`robin_hood::unordered_node_map` |      **7.80** |         **1.18** |  **2.11**   |   **49%**       |
+|`robin_hood::unordered_node_map` |          7.80 |             1.18 |  2.11       |    49%          |
 |            `std::unordered_map` |         16.43 |             2.42 |  1.00       |   100%          |
 
 
@@ -92,7 +92,7 @@ Brown is `std::unordered_map<std::string, size_t>`, green is `robin_hood::unorde
 
 |pointer stable maps              | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|------------:|----------------:|
-|           `absl::node_hash_map` |      **15.5** |             1329 |  **1.05**   |   89%           |
+|           `absl::node_hash_map` |          15.5 |             1329 |  1.05       |   89%           |
 |`robin_hood::unordered_node_map` |          17.0 |         **1133** |  0.95       |   **76%**       |
 |            `std::unordered_map` |          16.2 |             1497 |  1.00       |   100%          |
 
@@ -112,5 +112,5 @@ Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int
 | pointer stable maps             | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|------------:|----------------:|
 |           `absl::node_hash_map` |          53.9 |             2592 |  0.91       |   104%          |
-|`robin_hood::unordered_node_map` |      **25.8** |         **1208** | **1.91**    |  **48%**        |
+|`robin_hood::unordered_node_map` |          25.8 |             1208 |  1.91       |    48%          |
 |            `std::unordered_map` |          49.2 |             2495 |  1.00       |   100%          |
