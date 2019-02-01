@@ -13,32 +13,32 @@ using NodeMap = robin_hood::unordered_node_map<uint64_t, uint64_t>;
 using Rng = sfc64;
 
 struct hex {
-	explicit hex(int b)
-		: bits(b) {}
+    explicit hex(int b)
+        : bits(b) {}
 
-	int const bits;
+    int const bits;
 };
 
 inline std::ostream& operator<<(std::ostream& os, hex const& h) {
-	os << "0x" << std::setfill('0') << std::setw(h.bits * 2 / 8) << std::hex;
-	return os;
+    os << "0x" << std::setfill('0') << std::setw(h.bits * 2 / 8) << std::hex;
+    return os;
 }
 
 // Mutates input
 template <size_t S>
 void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool& rbool) {
-	do {
-		uint64_t mask = 0;
-		do {
-			mask |= UINT64_C(1) << rng(64);
-		} while (rbool(rng));
-		vals[rng.uniform<size_t>(vals.size())] ^= mask;
+    do {
+        uint64_t mask = 0;
+        do {
+            mask |= UINT64_C(1) << rng(64);
+        } while (rbool(rng));
+        vals[rng.uniform<size_t>(vals.size())] ^= mask;
 
-		// force 1 to lowest byte
-	} while (rbool(rng));
-	for (auto& v : vals) {
-		v |= UINT64_C(1);
-	}
+        // force 1 to lowest byte
+    } while (rbool(rng));
+    for (auto& v : vals) {
+        v |= UINT64_C(1);
+    }
 #if 0
 	do {
 		if (rbool(rng)) {
