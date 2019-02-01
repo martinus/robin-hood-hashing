@@ -19,7 +19,7 @@ again 100M `int`.
 [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/Insert.cpp#L5).
 
 ![Insert](insert_int.png)
-brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>` (defaulting to `flat_map`). More results with other maps. Speedup and peak memory is relative to `std::unordered_map`.
+brown: `std::unordered_map<int, int>`, green: `robin_hood::unordered_map<int, int>` (defaulting to `unordered_flat_map`). More results with other maps. Speedup and peak memory is relative to `std::unordered_map`.
 
 |   flat maps                     | runtime [sec] | peak memory [MB] |  speedup   | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|-----------:|----------------:|
@@ -42,7 +42,7 @@ values are inserted, the map will contain about 500k elements. Each iteration pe
 in the range [0, i(. So we perform a total of 1000M searches of which about 50% will find an element.
 [Source](https://github.com/martinus/map_benchmark/blob/a62f9a4c1be91b726c73e26653610dec5bb74849/src/benchmarks/RandomFind.cpp#L6).
 
-![Random Find](random_find.png) Brown is `std::unordered_map<size_t, size_t>`, green is `robin_hood::unordered_map<size_t, size_t>` (defaulting to `flat_map`).
+![Random Find](random_find.png) Brown is `std::unordered_map<size_t, size_t>`, green is `robin_hood::unordered_map<size_t, size_t>` (defaulting to `unordered_flat_map`).
 
 |      flat maps                  | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|------------:|----------------:|
@@ -59,10 +59,10 @@ in the range [0, i(. So we perform a total of 1000M searches of which about 50% 
 
 ## Iteration
 
-Repeat 50k times: insert one element, then iterate the whole map. After that, again repeat 50k times: delete on element, iterate the whole map. Thus in total 2500M elements are accessed. [Source](https://github.com/martinus/map_benchmark/blob/898a5c6d647df57692a9277d3cd1ed19a865dac4/src/benchmarks/Iterate.cpp#L5)
+Repeat 50k times: insert one element, then iterate the whole map. After that, again repeat 50k times: delete one element, iterate the whole map. Thus in total 2500M elements are iterated. [Source](https://github.com/martinus/map_benchmark/blob/898a5c6d647df57692a9277d3cd1ed19a865dac4/src/benchmarks/Iterate.cpp#L5)
 
 ![Iterate](iterate.png)
-Brown is `std::unordered_map<uint64_t, size_t>`, green is `robin_hood::unordered_map<uint64_t, size_t>` (defaulting to `flat_map`). 
+Brown is `std::unordered_map<uint64_t, size_t>`, green is `robin_hood::unordered_map<uint64_t, size_t>` (defaulting to `unordered_flat_map`). 
 
 |    flat maps                    | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|------------:|----------------:|
@@ -82,7 +82,7 @@ Brown is `std::unordered_map<uint64_t, size_t>`, green is `robin_hood::unordered
 Uses 20 byte long `std::string` as key, and `size_t` as value. Inserts & lookups 50M strings so that about 25% are distinct. Brown is `std::unordered_map<std::string, size_t>`, green is `robin_hood::unordered_map<std::string, size_t>`. Here the difference is not so big, mostly because g++'s hash implementation uses a fast Murmurhash2 which is very similar to robin_hood's implementation. [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/Strings.cpp#L44)
 
 ![String 25% distinct](string25.png)
-Brown is `std::unordered_map<std::string, size_t>`, green is `robin_hood::unordered_map<std::string, size_t>` (defaulting to `flat_map`).
+Brown is `std::unordered_map<std::string, size_t>`, green is `robin_hood::unordered_map<std::string, size_t>` (defaulting to `unordered_flat_map`).
 
 |flat maps                        | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|------------:|----------------:|
@@ -101,7 +101,7 @@ Brown is `std::unordered_map<std::string, size_t>`, green is `robin_hood::unorde
 A mixed workload, similar to the benchmark used in [attractivechaos/udb2](https://github.com/attractivechaos/udb2). 50M `operator[]` are performed with random keys. This is done 4 times with a new map, with different number of prabability of accessing existing elements: 5% distinct values, 25% distinct, 50%, and purely random numbers with 100% distinctness. [Source](https://github.com/martinus/map_benchmark/blob/4f4ed87d1e73082bf1fde5e14e8c24b825c09db9/src/benchmarks/RandomDistinct.cpp#L5)
 
 ![Random Distinct](random_distinct2.png)
-Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int, int>` (defaulting to `flat_map`).
+Brown is `std::unordered_map<int, int>`, green is `robin_hood::unordered_map<int, int>` (defaulting to `unordered_flat_map`).
 
 |  flat maps                      | runtime [sec] | peak memory [MB] |  speedup    | peak memory [%] |
 |:--------------------------------|--------------:|-----------------:|------------:|----------------:|
