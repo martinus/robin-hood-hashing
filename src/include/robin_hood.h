@@ -298,7 +298,7 @@ private:
     // Called when no memory is available (mHead == 0).
     // Don't inline this slow path.
     ROBIN_HOOD_NOINLINE T* performAllocation() {
-        const size_t numElementsToAlloc = calcNumElementsToAlloc();
+        size_t const numElementsToAlloc = calcNumElementsToAlloc();
 
         // alloc new memory: [prev |T, T, ... T]
         // std::cout << (sizeof(T*) + ALIGNED_SIZE * numElementsToAlloc) << " bytes" << std::endl;
@@ -308,12 +308,9 @@ private:
     }
 
     // enforce byte alignment of the T's
-    static const size_t ALIGNMENT =
-        (std::alignment_of<T>::value >
-         std::alignment_of<T*>::value) // lgtm [cpp/comparison-of-identical-expressions]
-            ? std::alignment_of<T>::value
-            : std::alignment_of<T*>::value;
-    static const size_t ALIGNED_SIZE = ((sizeof(T) - 1) / ALIGNMENT + 1) * ALIGNMENT;
+    static constexpr size_t ALIGNMENT =
+        (std::max)(std::alignment_of<T>::value, std::alignment_of<T*>::value);
+    static constexpr size_t ALIGNED_SIZE = ((sizeof(T) - 1) / ALIGNMENT + 1) * ALIGNMENT;
 
     static_assert(MinNumAllocs >= 1, "MinNumAllocs");
     static_assert(MaxNumAllocs >= MinNumAllocs, "MaxNumAllocs");
@@ -346,8 +343,11 @@ struct NodeAllocator<T, MinSize, MaxSize, false> : public BulkPoolAllocator<T, M
 //
 // we have to use data >1byte (at least 2 bytes), because initially we set mShift to 63 (has to be
 // <63), so initial index will be 0 or 1.
-static uint64_t sDummyInfoByte = 0;
+namespace DummyInfoByte {
 
+static uint64_t b = 0;
+
+} // namespace DummyInfoByte
 } // namespace detail
 
 struct is_transparent_tag {};
@@ -434,9 +434,9 @@ struct hash : public std::hash<T> {
 template <>
 struct hash<std::string> {
     size_t operator()(std::string const& str) const {
-        static constexpr uint64_t const m = UINT64_C(0xc6a4a7935bd1e995);
-        static constexpr uint64_t const seed = UINT64_C(0xe17a1465);
-        static constexpr unsigned int const r = 47;
+        static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
+        static constexpr uint64_t seed = UINT64_C(0xe17a1465);
+        static constexpr unsigned int r = 47;
 
         size_t const len = str.size();
         auto const data64 = reinterpret_cast<uint64_t const*>(str.data());
@@ -580,7 +580,7 @@ public:
     using key_equal = KeyEqual;
     using Self =
         unordered_map<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
-    static const bool is_flat_map = IsFlatMap;
+    static constexpr bool is_flat_map = IsFlatMap;
 
 private:
     static_assert(MaxLoadFactor100 > 10 && MaxLoadFactor100 < 100,
@@ -595,7 +595,8 @@ private:
     static constexpr uint8_t InitialInfoHashShift = sizeof(size_t) * 8 - InitialInfoNumBits;
     using DataPool = detail::NodeAllocator<value_type, 4, 16384, IsFlatMap>;
 
-    using InfoType = int_fast16_t; // type needs to be wider than uint8_t.
+    // type needs to be wider than uint8_t.
+    using InfoType = int32_t;
 
 private:
     // DataNode ////////////////////////////////////////////////////////
@@ -1039,7 +1040,7 @@ public:
     // Creates an empty hash map. Nothing is allocated yet, this happens at the first insert. This
     // tremendously speeds up ctor & dtor of a map that never receives an element. The penalty is
     // payed at the first insert, and not before. Lookup of this empty map works because everybody
-    // points to sDummyInfoByte. parameter bucket_count is dictated by the standard, but we can
+    // points to DummyInfoByte::b. parameter bucket_count is dictated by the standard, but we can
     // ignore it.
     explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
                            const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
@@ -1137,10 +1138,11 @@ public:
             // not empty: destroy what we have there
             // clear also resets mInfo to 0, that's sometimes not necessary.
             destroy();
+
             // we assign an invalid pointer, but this is ok because we never dereference it.
-            mKeyVals = reinterpret_cast<Node*>(&detail::sDummyInfoByte) -
-                       1; // lgtm [cpp/suspicious-pointer-scaling]
-            mInfo = reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte);
+            using detail::DummyInfoByte::b;
+            mKeyVals = reinterpret_cast<Node*>(&b) - 1; // lgtm [cpp/suspicious-pointer-scaling]
+            mInfo = reinterpret_cast<uint8_t*>(&b);
             Hash::operator=(static_cast<const Hash&>(o));
             KeyEqual::operator=(static_cast<const KeyEqual&>(o));
             DataPool::operator=(static_cast<DataPool const&>(o));
@@ -1200,7 +1202,7 @@ public:
     // Clears all data, without resizing.
     void clear() {
         if (empty()) {
-            // don't do anything! also important because we don't want to write to sDummyInfoByte,
+            // don't do anything! also important because we don't want to write to DummyInfoByte::b,
             // even though we would just write 0 to it.
             return;
         }
@@ -1526,8 +1528,8 @@ private:
     }
 
     size_t calcMaxNumElementsAllowed(size_t maxElements) {
-        static const size_t overflowLimit = (std::numeric_limits<size_t>::max)() / 100;
-        static const double factor = MaxLoadFactor100 / 100.0;
+        static constexpr size_t overflowLimit = (std::numeric_limits<size_t>::max)() / 100;
+        static constexpr double factor = MaxLoadFactor100 / 100.0;
 
         // make sure we can't get an overflow; use floatingpoint arithmetic if necessary.
         if (maxElements > overflowLimit) {
@@ -1605,7 +1607,7 @@ private:
 
     void destroy() {
         if (0 == mMask) {
-            // don't deallocate! we are pointing to sDummyInfoByte.
+            // don't deallocate! we are pointing to DummyInfoByte::b.
             return;
         }
 
@@ -1615,14 +1617,15 @@ private:
     }
 
     // members are sorted so no padding occurs
-    Node* mKeyVals = reinterpret_cast<Node*>(reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte) -
-                                             sizeof(Node));               // 8 byte  8
-    uint8_t* mInfo = reinterpret_cast<uint8_t*>(&detail::sDummyInfoByte); // 8 byte 16
-    size_t mNumElements = 0;                                              // 8 byte 24
-    size_t mMask = 0;                                                     // 8 byte 32
-    size_t mMaxNumElementsAllowed = 0;                                    // 8 byte 40
-    InfoType mInfoInc = InitialInfoInc;
-    InfoType mInfoHashShift = InitialInfoHashShift;
+    Node* mKeyVals = reinterpret_cast<Node*>(reinterpret_cast<uint8_t*>(&detail::DummyInfoByte::b) -
+                                             sizeof(Node));                 // 8 byte  8
+    uint8_t* mInfo = reinterpret_cast<uint8_t*>(&detail::DummyInfoByte::b); // 8 byte 16
+    size_t mNumElements = 0;                                                // 8 byte 24
+    size_t mMask = 0;                                                       // 8 byte 32
+    size_t mMaxNumElementsAllowed = 0;                                      // 8 byte 40
+    InfoType mInfoInc = InitialInfoInc;                                     // 4 byte 44
+    InfoType mInfoHashShift = InitialInfoHashShift;                         // 4 byte 48
+                                                    // 16 byte 56 if NodeAllocator
 };
 
 } // namespace detail
