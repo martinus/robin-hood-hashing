@@ -50,21 +50,17 @@ This map is obviously not as well tested as `std::unorderered_map`. It shoud be 
 There are lots of `std::unorderd_map` challengers, here are a few interesting ones that I had a look at:
 
 * [google/absl::Hash](https://abseil.io/blog/20180927-swisstables) Brand new and from google, but a bit difficult
-to set up. Searches are extremely fast, about 30% faster than `robin_hood::unordered_map`. Insertion & deletion is
-about 40% slower though. clear() frees all memory, so reinserting will be as slow as initial insertion was. For
-integral types this seems to use exactly the same amount of memory as `robin_hood::unordered_map`, but for larger
-data structures (when `robin_hood::unordered_map` switches to it's node-based mode) memory usage blows up to 2.4
-times as much. Use this if lookup performance is absolutely critical for you.
+to set up. Lots of features, heavily optimized, with some SIMD tricks.
 
 * [skarupke/flat_hash_map](https://github.com/skarupke/flat_hash_map/blob/master/flat_hash_map.hpp): Very fast,
-especially for integral types. Sometimes faster sometimes slower as `robin_hood::unordered_map`. Memory usage
-tends to be much higher for non-integral types.
+especially for integral types. Designed as a response to google's absl::Hash. 
 
 * [google/dense_hash_map](http://goog-sparsehash.sourceforge.net/doc/dense_hash_map.html) Old and fast but does
 not have a modern C++ interface.
 
-
 ## Blog Posts
+
+Beware, these posts are out of date now.
 
 * [Part 1: Hopscotch & Robin Hood Hashing](http://martin.ankerl.com/2016/09/15/very-fast-hashmap-in-c-part-1/)
 * [Part 2: Implementation Variants](http://martin.ankerl.com/2016/09/21/very-fast-hashmap-in-c-part-2/)
