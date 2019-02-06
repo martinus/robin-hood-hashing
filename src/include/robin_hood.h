@@ -395,7 +395,12 @@ struct pair {
                 std::index_sequence<Indexes1...> /*unused*/,
                 std::index_sequence<Indexes2...> /*unused*/)
         : first{std::forward<Args1>(std::get<Indexes1>(tuple1))...}
-        , second{std::forward<Args2>(std::get<Indexes2>(tuple2))...} {}
+        , second{std::forward<Args2>(std::get<Indexes2>(tuple2))...} {
+        // make visual studio compiler happy about warning about unused tuple1 & tuple2.
+        // Visual studio's pair implementation disables warning 4100.
+        (void)tuple1;
+        (void)tuple2;
+    }
 
     first_type& getFirst() {
         return first;
