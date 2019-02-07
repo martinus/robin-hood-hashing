@@ -478,3 +478,17 @@ TEST_CASE("random insertion brute force", "[!hide]") {
         }
     }
 }
+
+TEMPLATE_TEST_CASE("testing at()", "", (robin_hood::unordered_flat_map<uint64_t, size_t>),
+                   (robin_hood::unordered_node_map<uint64_t, size_t>)) {
+    TestType map;
+    map[123] = 321;
+
+    REQUIRE_THROWS_AS(map.at(666), std::out_of_range);
+    REQUIRE(map.at(123) == 321);
+
+    // same with const map
+    auto const& cmap = map;
+    REQUIRE_THROWS_AS(cmap.at(666), std::out_of_range);
+    REQUIRE(cmap.at(123) == 321);
+}
