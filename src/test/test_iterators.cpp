@@ -87,3 +87,15 @@ TEMPLATE_TEST_CASE("iterators brute force", "", (robin_hood::unordered_flat_map<
     REQUIRE(map.empty());
     REQUIRE(checksum == UINT64_C(0x76c1c392ca6abb88));
 }
+
+TEMPLATE_TEST_CASE("default constructed iterators", "",
+                   (robin_hood::unordered_flat_map<uint64_t, size_t>),
+                   (robin_hood::unordered_node_map<uint64_t, size_t>)) {
+    TestType map;
+    using It = typename TestType::iterator;
+    using CIt = typename TestType::const_iterator;
+    REQUIRE(It{} == It{});
+    REQUIRE(CIt{} == CIt{});
+    REQUIRE(It{} == CIt{});
+    REQUIRE(CIt{} == CIt{});
+}

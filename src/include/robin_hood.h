@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.0.1
+// version 3.1.0
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -36,8 +36,8 @@
 
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 0 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_MINOR 1 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstring>
@@ -823,6 +823,12 @@ private:
         using reference = typename std::conditional<IsConst, value_type const&, value_type&>::type;
         using pointer = typename std::conditional<IsConst, value_type const*, value_type*>::type;
         using iterator_category = std::forward_iterator_tag;
+
+        // default constructed iterator can be compared to itself, but WON'T return true when
+        // compared to end().
+        Iter()
+            : mKeyVals(nullptr)
+            , mInfo(nullptr) {}
 
         // both const_iterator and iterator can be constructed from a non-const iterator
         Iter(Iter<false> const& other)
