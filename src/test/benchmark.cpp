@@ -8,7 +8,7 @@ TEMPLATE_TEST_CASE("hash std::string", "[!benchmark][hash]", (robin_hood::hash<s
     size_t h = 0;
     Rng rng(123);
     auto hasher = TestType{};
-    for (const int s : {8, 11, 100, 256}) {
+    for (const int s : {7, 8, 11, 100, 256}) {
         std::string str(static_cast<size_t>(s), 'x');
         for (size_t i = 0; i < str.size(); ++i) {
             str[i] = rng.uniform<char>();
