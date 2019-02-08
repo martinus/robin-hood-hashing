@@ -498,8 +498,7 @@ struct hash<uint64_t> {
     size_t operator()(uint64_t const& obj) const {
 #if defined(ROBIN_HOOD_UMULH)
         // 167079903232 masksum, 122791318 ops best: 0xfa1371431ef43ae1 0xfe9b65e7da1b3187
-        return static_cast<size_t>(ROBIN_HOOD_UMULH(UINT64_C(0xfa1371431ef43ae1), obj) *
-                                   UINT64_C(0xfe9b65e7da1b3187));
+        return static_cast<size_t>(ROBIN_HOOD_UMULH(UINT64_C(0xfa1371431ef43ae1), obj));
 #else
         // murmurhash 3 finalizer
         uint64_t h = obj;
@@ -911,10 +910,15 @@ private:
 
     // highly performance relevant code.
     // Lower bits are used for indexing into the array (2^n size)
-    // The upper 5 bits need to be a good hash, to save comparisons.
+    // The upper 1-5 bits need to be a reasonable good hash, to save comparisons.
     template <typename HashKey>
     void keyToIdx(HashKey&& key, size_t& idx, InfoType& info) const {
-        idx = Hash::operator()(key);
+#if ROBIN_HOOD_BITNESS == 32
+        static constexpr size_t bad_hash_prevention = UINT32_C(0xcc9e2d51);
+#else
+        static constexpr size_t bad_hash_prevention = UINT64_C(0xfe9b65e7da1b3187);
+#endif
+        idx = Hash::operator()(key) * bad_hash_prevention;
         info = static_cast<InfoType>(mInfoInc + static_cast<InfoType>(idx >> mInfoHashShift));
         idx &= mMask;
     }
@@ -1607,8 +1611,10 @@ private:
             return;
         }
 
-        ROBIN_HOOD_LOG("mNumElements=" << mNumElements
-                                       << ", maxNumElementsAllowed=" << maxNumElementsAllowed);
+        ROBIN_HOOD_LOG("mNumElements=" << mNumElements << ", maxNumElementsAllowed="
+                                       << maxNumElementsAllowed << ", load="
+                                       << (static_cast<double>(mNumElements) * 100.0 /
+                                           (static_cast<double>(mMask) + 1)));
         // it seems we have a really bad hash function! don't try to resize again
         if (mNumElements * 2 < calcMaxNumElementsAllowed(mMask + 1)) {
             throwOverflowError();
