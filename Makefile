@@ -23,12 +23,12 @@ OBJ_FILES := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRC_FILES))
 # -fsanitize=undefined
 # -fsanitize=address
 # -fsanitize=safe-stack
-debug: CXXFLAGS += -ggdb -Wno-unknown-pragmas -fno-omit-frame-pointer 
-debug: LDFLAGS += -ggdb
+debug: CXXFLAGS+=-ggdb -Wno-unknown-pragmas -fno-omit-frame-pointer 
+debug: LDFLAGS+=-ggdb
 debug: executable
 
-release: CXXFLAGS += -O3 -ggdb -fopenmp
-release: LDFLAGS += -fopenmp
+release: CXXFLAGS+=-O3 -march=native -ggdb -fopenmp
+release: LDFLAGS+=-fopenmp
 release: executable
 
 all: executable
