@@ -610,7 +610,6 @@ private:
     // type needs to be wider than uint8_t.
     using InfoType = int32_t;
 
-private:
     // DataNode ////////////////////////////////////////////////////////
 
     // Primary template for the data node. We have special implementations for small and big
@@ -1417,7 +1416,7 @@ public:
     }
 
     void reserve(size_t count) {
-        auto newSize = (std::max)(InitialNumElements, mMask + 1);
+        auto newSize = InitialNumElements > mMask + 1 ? InitialNumElements : mMask + 1;
         while (calcMaxNumElementsAllowed(newSize) < count && newSize != 0) {
             newSize *= 2;
         }
