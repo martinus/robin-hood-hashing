@@ -177,3 +177,12 @@ TEMPLATE_TEST_CASE("test assignment combinations", "", FlatMap, NodeMap) {
         REQUIRE(a == b);
     }
 }
+
+TEMPLATE_TEST_CASE("reserve", "", FlatMap, NodeMap) {
+    TestType map;
+    REQUIRE(0 == map.mask());
+    map.reserve(819);
+    REQUIRE(1023 == map.mask());
+    map.reserve(820);
+    REQUIRE(2047 == map.mask());
+}
