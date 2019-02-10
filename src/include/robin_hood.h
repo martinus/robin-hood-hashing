@@ -132,6 +132,14 @@
 #    define ROBIN_HOOD_UMULH(a, b) __umulh(a, b)
 #endif
 
+// likely/unlikely
+#if __GNUC__ >= 4
+#    define ROBIN_HOOD_LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
+#    define ROBIN_HOOD_UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
+#else
+#    define ROBIN_HOOD_LIKELY(condition) condition
+#    define ROBIN_HOOD_UNLIKELY(condition) condition
+#endif
 namespace robin_hood {
 
 namespace detail {
@@ -145,7 +153,7 @@ static ROBIN_HOOD_NOINLINE void doThrow(Args&&... args) {
 
 template <typename E, typename T, typename... Args>
 static T* assertNotNull(T* t, Args&&... args) {
-    if (nullptr == t) {
+    if (ROBIN_HOOD_UNLIKELY(nullptr == t)) {
         doThrow<E>(std::forward<Args>(args)...);
     }
     return t;
@@ -885,7 +893,7 @@ private:
 
     size_t calcNumBytesInfo(size_t numElements) const {
         const size_t s = sizeof(uint8_t) * (numElements + 1);
-        if (s / sizeof(uint8_t) != numElements + 1) {
+        if (ROBIN_HOOD_UNLIKELY(s / sizeof(uint8_t) != numElements + 1)) {
             throwOverflowError();
         }
         // make sure it's a bit larger, so we can load 64bit numbers
@@ -893,7 +901,7 @@ private:
     }
     size_t calcNumBytesNode(size_t numElements) const {
         const size_t s = sizeof(Node) * numElements;
-        if (s / sizeof(Node) != numElements) {
+        if (ROBIN_HOOD_UNLIKELY(s / sizeof(Node) != numElements)) {
             throwOverflowError();
         }
         return s;
@@ -902,7 +910,7 @@ private:
         const size_t si = calcNumBytesInfo(numElements);
         const size_t sn = calcNumBytesNode(numElements);
         const size_t s = si + sn;
-        if (s <= si || s <= sn) {
+        if (ROBIN_HOOD_UNLIKELY(s <= si || s <= sn)) {
             throwOverflowError();
         }
         return s;
@@ -948,7 +956,7 @@ private:
                 ::new (static_cast<void*>(mKeyVals + idx)) Node(std::move(mKeyVals[prev_idx]));
             }
             mInfo[idx] = static_cast<uint8_t>(mInfo[prev_idx] + mInfoInc);
-            if (0xFF <= mInfo[idx] + mInfoInc) {
+            if (ROBIN_HOOD_UNLIKELY(0xFF <= mInfo[idx] + mInfoInc)) {
                 mMaxNumElementsAllowed = 0;
             }
             idx = prev_idx;
@@ -1024,7 +1032,7 @@ private:
         // key not found, so we are now exactly where we want to insert it.
         auto const insertion_idx = idx;
         auto const insertion_info = static_cast<uint8_t>(info);
-        if (0xFF <= insertion_info + mInfoInc) {
+        if (ROBIN_HOOD_UNLIKELY(0xFF <= insertion_info + mInfoInc)) {
             mMaxNumElementsAllowed = 0;
         }
 
@@ -1408,6 +1416,44 @@ public:
         return 0;
     }
 
+    void reserve(size_t count) {
+        auto newSize = (std::max)(InitialNumElements, mMask + 1);
+        while (calcMaxNumElementsAllowed(newSize) < count && newSize != 0) {
+            newSize *= 2;
+        }
+        if (ROBIN_HOOD_UNLIKELY(newSize == 0)) {
+            throwOverflowError();
+        }
+
+        rehash(newSize);
+    }
+
+    void rehash(size_t numBuckets) {
+        if (ROBIN_HOOD_UNLIKELY((numBuckets & (numBuckets - 1)) != 0)) {
+            doThrow<std::runtime_error>("rehash only allowed for power of two");
+        }
+
+        Node* const oldKeyVals = mKeyVals;
+        uint8_t const* const oldInfo = mInfo;
+
+        const size_t oldMaxElements = mMask + 1;
+
+        // resize operation: move stuff
+        init_data(numBuckets);
+        if (oldMaxElements > 1) {
+            for (size_t i = 0; i < oldMaxElements; ++i) {
+                if (oldInfo[i] != 0) {
+                    insert_move(std::move(oldKeyVals[i]));
+                    // destroy the node but DON'T destroy the data.
+                    oldKeyVals[i].~Node();
+                }
+            }
+
+            // don't destroy old data: put it into the pool instead
+            DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElements));
+        }
+    }
+
     size_type size() const {
         return mNumElements;
     }
@@ -1450,6 +1496,9 @@ private:
 
         // set sentinel
         mInfo[max_elements] = 1;
+
+        mInfoInc = InitialInfoInc;
+        mInfoHashShift = InitialInfoHashShift;
     }
 
     template <typename Arg>
@@ -1471,7 +1520,7 @@ private:
             }
 
             // unlikely that this evaluates to true
-            if (mNumElements >= mMaxNumElementsAllowed) {
+            if (ROBIN_HOOD_UNLIKELY(mNumElements >= mMaxNumElementsAllowed)) {
                 increase_size();
                 continue;
             }
@@ -1479,7 +1528,7 @@ private:
             // key not found, so we are now exactly where we want to insert it.
             auto const insertion_idx = idx;
             auto const insertion_info = info;
-            if (0xFF <= insertion_info + mInfoInc) {
+            if (ROBIN_HOOD_UNLIKELY(0xFF <= insertion_info + mInfoInc)) {
                 mMaxNumElementsAllowed = 0;
             }
 
@@ -1530,15 +1579,15 @@ private:
             }
 
             // unlikely that this evaluates to true
-            if (mNumElements >= mMaxNumElementsAllowed) {
+            if (ROBIN_HOOD_UNLIKELY(mNumElements >= mMaxNumElementsAllowed)) {
                 increase_size();
                 continue;
             }
 
             // key not found, so we are now exactly where we want to insert it.
-            size_t const insertion_idx = idx;
-            auto const insertion_info = static_cast<uint8_t>(info);
-            if (0xFF <= insertion_info + mInfoInc) {
+            auto const insertion_idx = idx;
+            auto const insertion_info = info;
+            if (ROBIN_HOOD_UNLIKELY(0xFF <= insertion_info + mInfoInc)) {
                 mMaxNumElementsAllowed = 0;
             }
 
@@ -1556,7 +1605,7 @@ private:
             }
 
             // put at empty spot
-            mInfo[insertion_idx] = insertion_info;
+            mInfo[insertion_idx] = static_cast<uint8_t>(insertion_info);
 
             ++mNumElements;
             return std::make_pair(iterator(mKeyVals + insertion_idx, mInfo + insertion_idx), true);
@@ -1600,7 +1649,7 @@ private:
     }
 
     void increase_size() {
-        // nothing allocated yet? just allocate 4 elements
+        // nothing allocated yet? just allocate InitialNumElements
         if (0 == mMask) {
             init_data(InitialNumElements);
             return;
@@ -1620,27 +1669,7 @@ private:
             throwOverflowError();
         }
 
-        // std::cout << (100.0*mNumElements / (mMask + 1)) << "% full, resizing" << std::endl;
-        Node* const oldKeyVals = mKeyVals;
-        uint8_t const* const oldInfo = mInfo;
-
-        const size_t oldMaxElements = mMask + 1;
-
-        // resize operation: move stuff
-        init_data(oldMaxElements * 2);
-
-        mInfoInc = InitialInfoInc;
-        mInfoHashShift = InitialInfoHashShift;
-        for (size_t i = 0; i < oldMaxElements; ++i) {
-            if (oldInfo[i] != 0) {
-                insert_move(std::move(oldKeyVals[i]));
-                // destroy the node but DON'T destroy the data.
-                oldKeyVals[i].~Node();
-            }
-        }
-
-        // don't destroy old data: put it into the pool instead
-        DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElements));
+        rehash((mMask + 1) * 2);
     }
 
     void destroy() {
