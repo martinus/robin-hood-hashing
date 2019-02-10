@@ -267,19 +267,23 @@ static void randomFind() {
 
     Rng rng(123);
 
+    std::array<bool, NumTotal> insertRandom = {{false}};
+    for (size_t i = 0; i < NumRandom; ++i) {
+        insertRandom[i] = true;
+    }
+
     BENCHMARK(ss.str()) {
         Map map;
         size_t i = 0;
         do {
-            for (size_t j = 0; j < std::max(NumSequential, NumRandom); ++j) {
-                if (j < NumSequential) {
-                    map.emplace(i, i);
-                    ++i;
-                }
-                if (j < NumRandom) {
+            std::shuffle(insertRandom.begin(), insertRandom.end(), rng);
+            for (bool isRandomToInsert : insertRandom) {
+                if (isRandomToInsert) {
                     map.emplace(static_cast<size_t>(rng.uniform<size_t>()), i);
-                    ++i;
+                } else {
+                    map.emplace(i, i);
                 }
+                ++i;
             }
 
             for (size_t j = 0; j < NumFindsPerIter; ++j) {
@@ -288,7 +292,7 @@ static void randomFind() {
         } while (i < NumInserts);
     }
     // 100%, 75%, 50%, 25%, 0%
-    size_t results[] = {1000000000, 750017255, 500001803, 249973225, 0};
+    size_t results[] = {1000000000, 750004934, 500038550, 249992050, 0};
     REQUIRE(num_found == results[NumRandom]);
 }
 
