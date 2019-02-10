@@ -1,3 +1,4 @@
+#include "hashes.h"
 #include "test_base.h"
 
 #include <map>
@@ -97,11 +98,34 @@ TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark][map]",
     }
 }
 
+TEMPLATE_TEST_CASE("random insert erase", "[!benchmark][map]",
+                   (robin_hood::unordered_flat_map<uint64_t, uint64_t>),
+                   (robin_hood::unordered_flat_map<uint64_t, uint64_t, std::hash<uint64_t>>)) {
+    Rng rng(123);
+
+    size_t const max_n = 21000;
+
+    size_t verifier = 0;
+    BENCHMARK("Random insert erase") {
+        TestType map;
+
+        for (size_t n = 2; n < max_n; ++n) {
+            for (size_t i = 0; i < max_n; ++i) {
+                map[rng(n)] = i;
+                verifier += map.erase(rng(n));
+            }
+        }
+    }
+    REQUIRE(verifier == 220534004);
+}
+
 // benchmark adapted from https://github.com/attractivechaos/udb2
 // this implementation should have less overhead, because sfc64 and it's uniform() is extremely
 // fast.
-TEMPLATE_TEST_CASE("distinctness", "[!benchmark][map]", (robin_hood::unordered_map<int, int>),
-                   (std::unordered_map<int, int>)) {
+TEMPLATE_TEST_CASE("distinctness", "[!benchmark][map]",
+                   (robin_hood::unordered_map<int, int, hash::Null<int>>),
+                   (robin_hood::unordered_map<int, int, hash::FNV1a<int>>),
+                   (robin_hood::unordered_map<int, int, robin_hood::hash<int>>)) {
     static size_t const upper = 50'000'000;
     static size_t const lower = 10'000'000;
     static size_t const num_steps = 5;
@@ -222,6 +246,59 @@ TEMPLATE_TEST_CASE("random find 50%", "[!benchmark][map]",
         }
     }
     REQUIRE(num_found == 500787924);
+}
+
+template <typename Map, size_t NumRandom>
+static void randomFind() {
+    size_t constexpr NumTotal = 4;
+    size_t constexpr NumSequential = NumTotal - NumRandom;
+
+    size_t constexpr NumInserts = 1000000;
+    size_t constexpr NumFindsPerIter = 1000 * NumTotal;
+
+    size_t constexpr Percent = (NumSequential * 100 / NumTotal);
+
+    std::stringstream ss;
+    ss << std::setw(3) << Percent << "% find success";
+
+    size_t num_found = 0;
+
+    Rng rng(123);
+
+    BENCHMARK(ss.str()) {
+        Map map;
+        size_t i = 0;
+        do {
+            for (size_t j = 0; j < std::max(NumSequential, NumRandom); ++j) {
+                if (j < NumSequential) {
+                    map.emplace(i, i);
+                    ++i;
+                }
+                if (j < NumRandom) {
+                    map.emplace(static_cast<size_t>(rng.uniform<size_t>()), i);
+                    ++i;
+                }
+            }
+
+            for (size_t j = 0; j < NumFindsPerIter; ++j) {
+                num_found += map.count(static_cast<size_t>(rng.uniform<size_t>(i)));
+            }
+        } while (i < NumInserts);
+    }
+    // 100%, 75%, 50%, 25%, 0%
+    size_t results[] = {1000000000, 750017255, 500001803, 249973225, 0};
+    REQUIRE(num_found == results[NumRandom]);
+}
+
+TEMPLATE_TEST_CASE("rfind", "[!benchmark][map]",
+                   (robin_hood::unordered_flat_map<size_t, size_t, hash::Null<size_t>>),
+                   (robin_hood::unordered_flat_map<size_t, size_t, robin_hood::hash<size_t>>),
+                   (robin_hood::unordered_flat_map<size_t, size_t, hash::FNV1a<size_t>>)) {
+    randomFind<TestType, 4>();
+    randomFind<TestType, 3>();
+    randomFind<TestType, 2>();
+    randomFind<TestType, 1>();
+    randomFind<TestType, 0>();
 }
 
 TEMPLATE_TEST_CASE("iterate", "[!benchmark][map]",
