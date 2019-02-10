@@ -81,6 +81,8 @@ private:
 };
 
 TEMPLATE_TEST_CASE("insert & erase & clear", "[!benchmark][map]",
+                   (robin_hood::unordered_flat_map<int, int, hash::Null<int>>),
+                   (robin_hood::unordered_flat_map<int, int, hash::FNV1a<int>>),
                    (robin_hood::unordered_flat_map<int, int>),
                    (robin_hood::unordered_node_map<int, int>), (std::unordered_map<int, int>)) {
     Rng rng(123);
