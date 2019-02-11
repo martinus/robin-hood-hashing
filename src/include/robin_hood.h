@@ -506,7 +506,8 @@ struct hash<uint64_t> {
     size_t operator()(uint64_t const& obj) const {
 #if defined(ROBIN_HOOD_UMULH)
         // 167079903232 masksum, 122791318 ops best: 0xfa1371431ef43ae1 0xfe9b65e7da1b3187
-        return static_cast<size_t>(ROBIN_HOOD_UMULH(UINT64_C(0xfa1371431ef43ae1), obj));
+        return static_cast<size_t>(ROBIN_HOOD_UMULH(UINT64_C(0xfa1371431ef43ae1), obj) *
+                                   UINT64_C(0xfe9b65e7da1b3187));
 #else
         // murmurhash 3 finalizer
         uint64_t h = obj;
@@ -921,9 +922,13 @@ private:
     template <typename HashKey>
     void keyToIdx(HashKey&& key, size_t& idx, InfoType& info) const {
 #if ROBIN_HOOD_BITNESS == 32
-        static constexpr size_t bad_hash_prevention = UINT32_C(0xcc9e2d51);
+        static constexpr size_t bad_hash_prevention =
+            std::is_same<::robin_hood::hash<key_type>, hasher>::value ? 1 : UINT32_C(0xcc9e2d51);
 #else
-        static constexpr size_t bad_hash_prevention = UINT64_C(0xfe9b65e7da1b3187);
+        static constexpr size_t bad_hash_prevention =
+            std::is_same<::robin_hood::hash<key_type>, hasher>::value
+                ? 1
+                : UINT64_C(0xfe9b65e7da1b3187);
 #endif
         idx = Hash::operator()(key) * bad_hash_prevention;
         info = static_cast<InfoType>(mInfoInc + static_cast<InfoType>(idx >> mInfoHashShift));
