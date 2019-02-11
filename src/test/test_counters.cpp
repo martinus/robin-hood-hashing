@@ -539,11 +539,13 @@ void showHash(size_t val) {
     auto sh = std::hash<size_t>{}(val);
     auto rh = robin_hood::hash<size_t>{}(val);
     std::cout << hex(ROBIN_HOOD_BITNESS) << val << " ->  " << hex(ROBIN_HOOD_BITNESS) << sh << "   "
-              << hex(ROBIN_HOOD_BITNESS) << rh << std::endl;
+              << hex(ROBIN_HOOD_BITNESS) << rh << "   " << std::bitset<ROBIN_HOOD_BITNESS>{rh}
+              << std::endl;
 }
 
 TEST_CASE("show hash distribution", "[display]") {
-    std::cout << "input                  std::hash            robin_hood::hash" << std::endl;
+    std::cout << "input                  std::hash            robin_hood::hash     binary"
+              << std::endl;
     for (size_t i = 0; i < 16; ++i) {
         showHash(i);
     }

@@ -503,11 +503,14 @@ struct hash<std::string> {
 // specialization used for uint64_t and int64_t. Uses 128bit multiplication
 template <>
 struct hash<uint64_t> {
+    // see https://godbolt.org/z/bsn4rd
     size_t operator()(uint64_t const& obj) const {
 #if defined(ROBIN_HOOD_UMULH)
         // 167079903232 masksum, 122791318 ops best: 0xfa1371431ef43ae1 0xfe9b65e7da1b3187
         return static_cast<size_t>(ROBIN_HOOD_UMULH(UINT64_C(0xfa1371431ef43ae1), obj) *
                                    UINT64_C(0xfe9b65e7da1b3187));
+#elif ROBIN_HOOD_BITNESS == 32
+        return ((static_cast<uint64_t>(obj) * UINT32_C(0x1ef43ae1)) >> 32) * UINT32_C(0xda1b3187);
 #else
         // murmurhash 3 finalizer
         uint64_t h = obj;
