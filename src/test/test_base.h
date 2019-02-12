@@ -38,6 +38,7 @@ void mutate(std::array<uint64_t, S>& vals, Rng& rng, RandomBool& rbool) {
     } while (rbool(rng));
     for (auto& v : vals) {
         v |= UINT64_C(1);
+        v |= (UINT64_C(1) << 63);
     }
 #if 0
 	do {
