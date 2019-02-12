@@ -2,6 +2,7 @@
 #include "test_base.h"
 
 #include <map>
+#include <sstream>
 #include <unordered_map>
 
 TEMPLATE_TEST_CASE("hash std::string", "[!benchmark][hash]", (robin_hood::hash<std::string>),
