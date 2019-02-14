@@ -581,16 +581,25 @@ struct ConfigurableCounterHash {
         return *this;
     }
 
+    // 167079903232 masksum, 133853041 ops best: 0xfa2f2eef662c03e7
+    // 167079903232 masksum, 133660376 ops best: 0x8127f0f4be8afcc9
     size_t operator()(size_t const& obj) const {
-#if defined(ROBIN_HOOD_UMULH)
-        uint64_t h = obj;
-        h = ROBIN_HOOD_UMULH(h, m_values[0]) * m_values[1];
-        auto result = static_cast<size_t>(h);
-#else
-        uint64_t h = obj;
-        uint64_t const factor = m_values[0];
-        auto result = static_cast<size_t>((h * factor) >> 32);
-#endif
+        unsigned __int128 const k = m_values[0];
+        auto m = obj * k;
+        auto h = static_cast<uint64_t>(m);
+        auto l = static_cast<uint64_t>(m >> 64);
+        auto result = h + l;
+        /*
+        #if defined(ROBIN_HOOD_UMULH)
+                uint64_t h = obj;
+                h = ROBIN_HOOD_UMULH(h, m_values[0]) * m_values[0];
+                auto result = static_cast<size_t>(h);
+        #else
+                uint64_t h = obj;
+                uint64_t const factor = m_values[0];
+                auto result = static_cast<size_t>((h * factor) >> 32);
+        #endif
+        */
         return result >> m_shift;
     }
 
@@ -599,7 +608,7 @@ struct ConfigurableCounterHash {
     }
 
 #if ROBIN_HOOD_BITNESS == 64
-    std::array<uint64_t, 2> m_values;
+    std::array<uint64_t, 1> m_values;
 #else
     std::array<uint64_t, 2> m_values;
 #endif
@@ -794,13 +803,16 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
         ++num_unsuccessful_tries;
 
         // also assign when we are equally good, should lead to a bit more exploration
-        if (num_unsuccessful_tries == 1000 ||
-            ge(current_mask_sum, current_ops_sum, best_mask_sum, best_ops_sum)) {
+        if (ge(current_mask_sum, current_ops_sum, best_mask_sum, best_ops_sum) &&
+            (current_values != best_values)) {
+
             best_mask_sum = current_mask_sum;
             best_ops_sum = current_ops_sum;
             best_values = current_values;
 
-            if (ge(best_mask_sum, best_ops_sum, global_best_mask_sum, global_best_ops_sum)) {
+            if (ge(best_mask_sum, best_ops_sum, global_best_mask_sum, global_best_ops_sum) &&
+                (global_best_values != best_values)) {
+
                 global_best_mask_sum = best_mask_sum;
                 global_best_ops_sum = best_ops_sum;
                 global_best_values = best_values;
@@ -833,9 +845,20 @@ TEST_CASE("quickmixoptimizer", "[!hide]") {
             std::cout << std::endl;
         }
 
-        // mutate *after* evaluation & setting best, so initial value is tried too
-        current_values = best_values;
-        mutate(current_values, factorRng, rbool);
+        if (num_unsuccessful_tries == 800) {
+            std::cout << "reinint after " << num_unsuccessful_tries << " tries" << std::endl;
+            for (size_t i = 0; i < current_values.size(); ++i) {
+                current_values[i] = factorRng();
+            }
+            best_values = current_values;
+            best_mask_sum = (std::numeric_limits<uint64_t>::max)();
+            best_ops_sum = (std::numeric_limits<uint64_t>::max)();
+            num_unsuccessful_tries = 0;
+        } else {
+            // mutate *after* evaluation & setting best, so initial value is tried too
+            current_values = best_values;
+            mutate(current_values, factorRng, rbool);
+        }
     }
 }
 
