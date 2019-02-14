@@ -14,6 +14,16 @@ struct Null {
     }
 };
 
+// Linux uses a noop hash
+template <typename T>
+struct Mult {
+    size_t operator()(T const& o) const {
+        static constexpr unsigned __int128 const k = 0x81deb5c9396a2081;
+        auto m = o * k;
+        return static_cast<size_t>(m ^ (m >> 64));
+    }
+};
+
 // Visual Studio uses a FNV1a implementation.
 template <typename T>
 struct FNV1a {

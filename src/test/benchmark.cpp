@@ -27,35 +27,46 @@ TEMPLATE_TEST_CASE("hash std::string", "[!benchmark][hash]", (robin_hood::hash<s
     INFO(h);
 }
 
-TEMPLATE_TEST_CASE("hash integers", "[!benchmark][hash]", uint8_t, int8_t, uint16_t, int16_t,
-                   uint32_t, int32_t, uint64_t, int64_t) {
-    size_t a = 0;
-    size_t b = 0;
-    size_t c = 0;
-    size_t d = 0;
+TEST_CASE("hash integers", "[!benchmark][hash]") {
 
     Rng rng(123);
+    // add a (neglectible) bit of randomization so the compiler can't optimize this away
+    uint64_t const numIters = (2000000000 + rng(2)) * 31;
+    size_t a = 0;
     BENCHMARK("robin_hood::hash") {
-        robin_hood::hash<TestType> hasher;
-        for (int i = 0; i < 1000000000; i += 4) {
-            a += hasher(static_cast<TestType>(i));
-            b += hasher(static_cast<TestType>(i + 1));
-            c += hasher(static_cast<TestType>(i + 2));
-            d += hasher(static_cast<TestType>(i + 3));
+        robin_hood::hash<uint64_t> hasher;
+        for (uint64_t i = 0; i < numIters; i += 31) {
+            a += hasher(i);
         }
     }
-    INFO(a + b + c + d);
+    std::cout << a;
 
-    BENCHMARK("std::hash") {
-        std::hash<TestType> hasher;
-        for (int i = 0; i < 1000000000; i += 4) {
-            a += hasher(static_cast<TestType>(i));
-            b += hasher(static_cast<TestType>(i + 1));
-            c += hasher(static_cast<TestType>(i + 2));
-            d += hasher(static_cast<TestType>(i + 3));
+    a = 0;
+    BENCHMARK("hash::Mult") {
+        hash::Mult<uint64_t> hasher;
+        for (uint64_t i = 0; i < numIters; i += 31) {
+            a += hasher(i);
         }
     }
-    INFO(a + b + c + d);
+    std::cout << a;
+
+    a = 0;
+    BENCHMARK("hash::FNV1a") {
+        hash::FNV1a<uint64_t> hasher;
+        for (uint64_t i = 0; i < numIters; i += 31) {
+            a += hasher(i);
+        }
+    }
+    std::cout << a;
+
+    a = 0;
+    BENCHMARK("std::hash") {
+        std::hash<uint64_t> hasher;
+        for (uint64_t i = 0; i < numIters; i += 31) {
+            a += hasher(i);
+        }
+    }
+    std::cout << a;
 }
 
 // dummy map for overhead calculation. Makes use of key so it can't be optimized away.
@@ -260,6 +271,7 @@ static void randomFind() {
     size_t constexpr NumFindsPerIter = 1000 * NumTotal;
 
     size_t constexpr Percent = (NumSequential * 100 / NumTotal);
+    size_t constexpr NotSequentialFactor = 31;
 
     std::stringstream ss;
     ss << std::setw(3) << Percent << "% find success";
@@ -277,18 +289,21 @@ static void randomFind() {
         Map map;
         size_t i = 0;
         do {
+            // insert NumTotal entries: some random, some sequential.
             std::shuffle(insertRandom.begin(), insertRandom.end(), rng);
             for (bool isRandomToInsert : insertRandom) {
                 if (isRandomToInsert) {
-                    map.emplace(static_cast<size_t>(rng.uniform<size_t>()), i);
+                    // [1..30], [32..61], ...
+                    map.emplace(NotSequentialFactor * i + rng(NotSequentialFactor - 1) + 1, i);
                 } else {
-                    map.emplace(i, i);
+                    // 0, 31, 62, ...
+                    map.emplace(NotSequentialFactor * i, i);
                 }
                 ++i;
             }
 
             for (size_t j = 0; j < NumFindsPerIter; ++j) {
-                num_found += map.count(static_cast<size_t>(rng.uniform<size_t>(i)));
+                num_found += map.count(static_cast<size_t>(NotSequentialFactor * rng(i)));
             }
         } while (i < NumInserts);
     }
@@ -298,14 +313,15 @@ static void randomFind() {
 }
 
 TEMPLATE_TEST_CASE("rfind", "[!benchmark][map]",
-                   (robin_hood::unordered_flat_map<size_t, size_t, hash::Null<size_t>>),
                    (robin_hood::unordered_flat_map<size_t, size_t, robin_hood::hash<size_t>>),
+                   (robin_hood::unordered_flat_map<size_t, size_t, hash::Mult<size_t>>),
+                   (robin_hood::unordered_flat_map<size_t, size_t, hash::Null<size_t>>),
                    (robin_hood::unordered_flat_map<size_t, size_t, hash::FNV1a<size_t>>)) {
-    randomFind<TestType, 4>();
-    randomFind<TestType, 3>();
-    randomFind<TestType, 2>();
-    randomFind<TestType, 1>();
     randomFind<TestType, 0>();
+    randomFind<TestType, 1>();
+    randomFind<TestType, 2>();
+    randomFind<TestType, 3>();
+    randomFind<TestType, 4>();
 }
 
 TEMPLATE_TEST_CASE("iterate", "[!benchmark][map]",
