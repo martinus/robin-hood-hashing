@@ -121,16 +121,32 @@
 #    endif
 #endif
 
-// umulh
+// umul
+namespace robin_hood {
+namespace detail {
 #if defined(__SIZEOF_INT128__)
 #    define ROBIN_HOOD_UMULH(a, b) \
         static_cast<uint64_t>(     \
             (static_cast<unsigned __int128>(a) * static_cast<unsigned __int128>(b)) >> 64u)
+
+#    define ROBIN_HOOD_HAS_UMUL128 1
+inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
+    auto result = static_cast<unsigned __int128>(a) * static_cast<unsigned __int128>(b);
+    *high = static_cast<uint64_t>(result >> 64);
+    return static_cast<uint64_t>(result);
+}
 #elif (defined(_WIN32) && ROBIN_HOOD_BITNESS == 64)
+#    define ROBIN_HOOD_HAS_UMUL128 1
 #    include <intrin.h> // for __umulh
 #    pragma intrinsic(__umulh)
+#    pragma intrinsic(_umul128)
 #    define ROBIN_HOOD_UMULH(a, b) __umulh(a, b)
+inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
+    return _umul128(a, b, high);
+}
 #endif
+} // namespace detail
+} // namespace robin_hood
 
 // likely/unlikely
 #if __GNUC__ >= 4
@@ -503,15 +519,19 @@ struct hash<std::string> {
 // specialization used for uint64_t and int64_t. Uses 128bit multiplication
 template <>
 struct hash<uint64_t> {
-    // see https://godbolt.org/z/bsn4rd
     size_t operator()(uint64_t const& obj) const {
-#if defined(ROBIN_HOOD_UMULH)
-        // 167079903232 masksum, 122791318 ops best: 0xfa1371431ef43ae1 0xfe9b65e7da1b3187
-        return static_cast<size_t>(ROBIN_HOOD_UMULH(UINT64_C(0xfa1371431ef43ae1), obj) *
-                                   UINT64_C(0xfe9b65e7da1b3187));
+#if defined(ROBIN_HOOD_HAS_UMUL128)
+        // 167079903232 masksum, 120428523 ops best: 0xde5fb9d2630458e9
+        static constexpr uint64_t k = UINT64_C(0xde5fb9d2630458e9);
+        uint64_t h;
+        uint64_t l = detail::umul128(obj, k, &h);
+        return h + l;
 #elif ROBIN_HOOD_BITNESS == 32
-        return static_cast<uint32_t>((static_cast<uint64_t>(obj) * UINT32_C(0xfa137143)) >> 32) *
-               UINT32_C(0xda1b3187);
+        static constexpr uint32_t k = UINT32_C(0x9a0ecda7);
+        uint64_t const r = obj * k;
+        uint32_t h = static_cast<uint32_t>(r >> 32);
+        uint32_t l = static_cast<uint32_t>(r);
+        return h + r;
 #else
         // murmurhash 3 finalizer
         uint64_t h = obj;
@@ -925,15 +945,10 @@ private:
     // The upper 1-5 bits need to be a reasonable good hash, to save comparisons.
     template <typename HashKey>
     void keyToIdx(HashKey&& key, size_t& idx, InfoType& info) const {
-#if ROBIN_HOOD_BITNESS == 32
-        static constexpr size_t bad_hash_prevention =
-            std::is_same<::robin_hood::hash<key_type>, hasher>::value ? 1 : UINT32_C(0xcc9e2d51);
-#else
         static constexpr size_t bad_hash_prevention =
             std::is_same<::robin_hood::hash<key_type>, hasher>::value
                 ? 1
-                : UINT64_C(0xfe9b65e7da1b3187);
-#endif
+                : (ROBIN_HOOD_BITNESS == 64 ? UINT64_C(0xb3727c1f779b8d8b) : UINT32_C(0xda4afe47));
         idx = Hash::operator()(key) * bad_hash_prevention;
         info = static_cast<InfoType>(mInfoInc + static_cast<InfoType>(idx >> mInfoHashShift));
         idx &= mMask;
