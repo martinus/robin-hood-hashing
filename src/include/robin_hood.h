@@ -531,7 +531,7 @@ struct hash<uint64_t> {
         uint64_t const r = obj * k;
         uint32_t h = static_cast<uint32_t>(r >> 32);
         uint32_t l = static_cast<uint32_t>(r);
-        return h + r;
+        return h + l;
 #else
         // murmurhash 3 finalizer
         uint64_t h = obj;
