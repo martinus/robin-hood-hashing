@@ -285,7 +285,9 @@ static void randomFind() {
             for (bool isRandomToInsert : insertRandom) {
                 if (isRandomToInsert) {
                     // [1..30], [32..61], ...
-                    map.emplace(NotSequentialFactor * i + rng(NotSequentialFactor - 1) + 1, i);
+                    map.emplace(static_cast<size_t>(NotSequentialFactor * i +
+                                                    rng(NotSequentialFactor - 1) + 1),
+                                i);
                 } else {
                     // 0, 31, 62, ...
                     map.emplace(NotSequentialFactor * i, i);
