@@ -164,8 +164,10 @@ struct hash<CtorDtorVerifier> {
 
 } // namespace std
 
-using FlatMapVerifier = robin_hood::unordered_flat_map<CtorDtorVerifier, CtorDtorVerifier>;
-using NodeMapVerifier = robin_hood::unordered_node_map<CtorDtorVerifier, CtorDtorVerifier>;
+using FlatMapVerifier =
+    robin_hood::unordered_flat_map<CtorDtorVerifier, CtorDtorVerifier, std::hash<CtorDtorVerifier>>;
+using NodeMapVerifier =
+    robin_hood::unordered_node_map<CtorDtorVerifier, CtorDtorVerifier, std::hash<CtorDtorVerifier>>;
 
 TEMPLATE_TEST_CASE("random insert & erase", "", FlatMapVerifier, NodeMapVerifier) {
     using Map = TestType;
