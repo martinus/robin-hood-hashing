@@ -2,7 +2,7 @@
 # make CXX='ccache g++' -j
 # to build with ccache
 
-#BITNESS = -m32
+BITNESS = -m32
 CXXFLAGS := $(BITNESS) -fdiagnostics-color -std=c++14 \
 	-Werror -Wall -Wextra -Weffc++ \
 	-Wconversion -Wunreachable-code -Wuninitialized -Wshadow -Wfloat-equal -Wmissing-braces \
@@ -24,12 +24,12 @@ OBJ_FILES := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRC_FILES))
 # -fsanitize=undefined
 # -fsanitize=address
 # -fsanitize=safe-stack
-debug: CXXFLAGS+=-ggdb -Wno-unknown-pragmas -fno-omit-frame-pointer -fsanitize=undefined
-debug: LDFLAGS+=-ggdb -fsanitize=undefined $(BITNESS)
+debug: CXXFLAGS+=-ggdb -Wno-unknown-pragmas -fno-omit-frame-pointer
+debug: LDFLAGS+=-ggdb $(BITNESS)
 debug: executable
 
 release: CXXFLAGS+=-O3 -march=native -ggdb -fopenmp
-release: LDFLAGS+=-fopenmp
+release: LDFLAGS+=-fopenmp $(BITNESS)
 release: executable
 
 all: executable
