@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "robin_hood.h"
+
 namespace hash {
 
 // Linux uses a noop hash
@@ -11,16 +13,6 @@ template <typename T>
 struct Null {
     size_t operator()(T const& key) const {
         return static_cast<size_t>(key);
-    }
-};
-
-// Linux uses a noop hash
-template <typename T>
-struct Mult {
-    size_t operator()(T const& o) const {
-        static constexpr unsigned __int128 const k = 0x81deb5c9396a2081;
-        auto m = o * k;
-        return static_cast<size_t>(m ^ (m >> 64));
     }
 };
 

@@ -42,15 +42,6 @@ TEST_CASE("hash integers", "[!benchmark][hash]") {
     std::cout << a;
 
     a = 0;
-    BENCHMARK("hash::Mult") {
-        hash::Mult<uint64_t> hasher;
-        for (uint64_t i = 0; i < numIters; i += 31) {
-            a += hasher(i);
-        }
-    }
-    std::cout << a;
-
-    a = 0;
     BENCHMARK("hash::FNV1a") {
         hash::FNV1a<uint64_t> hasher;
         for (uint64_t i = 0; i < numIters; i += 31) {
@@ -314,7 +305,6 @@ static void randomFind() {
 
 TEMPLATE_TEST_CASE("rfind", "[!benchmark][map]",
                    (robin_hood::unordered_flat_map<size_t, size_t, robin_hood::hash<size_t>>),
-                   (robin_hood::unordered_flat_map<size_t, size_t, hash::Mult<size_t>>),
                    (robin_hood::unordered_flat_map<size_t, size_t, hash::Null<size_t>>),
                    (robin_hood::unordered_flat_map<size_t, size_t, hash::FNV1a<size_t>>)) {
     randomFind<TestType, 0>();
