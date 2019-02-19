@@ -308,19 +308,22 @@ TEMPLATE_TEST_CASE("random insert & erase with Verifier", "", FlatMapVerifier, N
     REQUIRE(hash(map) == UINT64_C(0x9e3779f8));
 }
 
-// Dummy hash for testing collisions
-template <class T>
-struct DummyHash {
-    std::size_t operator()(const T&) const {
+// Dummy hash for testing collisions. Make sure to use robin_hood::hash, because this doesn't use a
+// bad_hash_prevention multiplier.
+namespace robin_hood {
+
+template <>
+struct hash<CtorDtorVerifier> {
+    std::size_t operator()(const CtorDtorVerifier&) const {
         return 123;
     }
 };
 
+} // namespace robin_hood
+
 TEMPLATE_TEST_CASE("collisions", "",
-                   (robin_hood::unordered_flat_map<CtorDtorVerifier, CtorDtorVerifier,
-                                                   DummyHash<CtorDtorVerifier>>),
-                   (robin_hood::unordered_node_map<CtorDtorVerifier, CtorDtorVerifier,
-                                                   DummyHash<CtorDtorVerifier>>)) {
+                   (robin_hood::unordered_flat_map<CtorDtorVerifier, CtorDtorVerifier>),
+                   (robin_hood::unordered_node_map<CtorDtorVerifier, CtorDtorVerifier>)) {
 
     static const uint64_t max_val = 127;
 
@@ -328,6 +331,7 @@ TEMPLATE_TEST_CASE("collisions", "",
     {
         TestType m;
         for (uint64_t i = 0; i < max_val; ++i) {
+            INFO(i);
             m[i];
         }
         REQUIRE(m.size() == max_val);
