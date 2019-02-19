@@ -2,7 +2,7 @@
 # make CXX='ccache g++' -j
 # to build with ccache
 
-BITNESS = -m32
+#BITNESS = -m32
 CXXFLAGS := $(BITNESS) -fdiagnostics-color -std=c++14 \
 	-Werror -Wall -Wextra -Weffc++ \
 	-Wconversion -Wunreachable-code -Wuninitialized -Wshadow -Wfloat-equal -Wmissing-braces \
