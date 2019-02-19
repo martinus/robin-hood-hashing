@@ -584,22 +584,28 @@ struct ConfigurableCounterHash {
     // 167079903232 masksum, 133853041 ops best: 0xfa2f2eef662c03e7
     // 167079903232 masksum, 133660376 ops best: 0x8127f0f4be8afcc9
     size_t operator()(size_t const& obj) const {
-        unsigned __int128 const k = m_values[0];
-        auto m = obj * k;
+#if defined(ROBIN_HOOD_HAS_UMUL128)
+        // 167079903232 masksum, 120428523 ops best: 0xde5fb9d2630458e9
+        uint64_t h;
+        uint64_t l = robin_hood::detail::umul128(obj, m_values[0], &h);
+        auto result = h + l;
+#elif ROBIN_HOOD_BITNESS == 32
+        uint64_t const r = obj * m_values[0];
+        uint32_t h = static_cast<uint32_t>(r >> 32);
+        uint32_t l = static_cast<uint32_t>(r);
+        auto result = h + l;
+#else
+        // murmurhash 3 finalizer
+        uint64_t h = obj;
+        h ^= h >> 33;
+        h *= 0xff51afd7ed558ccd;
+        h ^= h >> 33;
+        h *= 0xc4ceb9fe1a85ec53;
+        h ^= h >> 33;
         auto h = static_cast<uint64_t>(m);
         auto l = static_cast<uint64_t>(m >> 64);
         auto result = h + l;
-        /*
-        #if defined(ROBIN_HOOD_UMULH)
-                uint64_t h = obj;
-                h = ROBIN_HOOD_UMULH(h, m_values[0]) * m_values[0];
-                auto result = static_cast<size_t>(h);
-        #else
-                uint64_t h = obj;
-                uint64_t const factor = m_values[0];
-                auto result = static_cast<size_t>((h * factor) >> 32);
-        #endif
-        */
+#endif
         return result >> m_shift;
     }
 
@@ -607,11 +613,7 @@ struct ConfigurableCounterHash {
         return operator()(c.getForHash());
     }
 
-#if ROBIN_HOOD_BITNESS == 64
     std::array<uint64_t, 1> m_values;
-#else
-    std::array<uint64_t, 2> m_values;
-#endif
     int m_shift = 0;
 };
 
