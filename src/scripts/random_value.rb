@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 
 def rn(bitness)
     rand(2**bitness) | 1 | (2**(bitness-1))
