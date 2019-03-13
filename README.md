@@ -43,7 +43,7 @@ If the map gets very full but just below it's resizing limit, continuously inser
 
 ### The Ugly
 
-This map is obviously not as well tested as `std::unorderered_map`. It shoud be very stable for most use cases, but there might still be untested corner cases, where the map simply gives incorrect results! As far as I know, none of these bugs should be left. But I wouldn't bet my house on it.
+This map is obviously not as well tested as `std::unordered_map`. It shoud be very stable for most use cases, but there might still be untested corner cases, where the map simply gives incorrect results! As far as I know, none of these bugs should be left. But I wouldn't bet my house on it.
 
 ## Alternatives
 
