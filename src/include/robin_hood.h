@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.1
+// version 3.2.2
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 2 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 2 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstring>
@@ -979,7 +979,7 @@ private:
                 ::new (static_cast<void*>(mKeyVals + idx)) Node(std::move(mKeyVals[prev_idx]));
             }
             mInfo[idx] = static_cast<uint8_t>(mInfo[prev_idx] + mInfoInc);
-            if (ROBIN_HOOD_UNLIKELY(0x100 < mInfo[idx] + mInfoInc)) {
+            if (ROBIN_HOOD_UNLIKELY(mInfo[idx] + mInfoInc > 0xFF)) {
                 mMaxNumElementsAllowed = 0;
             }
             idx = prev_idx;
@@ -1055,7 +1055,7 @@ private:
         // key not found, so we are now exactly where we want to insert it.
         auto const insertion_idx = idx;
         auto const insertion_info = static_cast<uint8_t>(info);
-        if (ROBIN_HOOD_UNLIKELY(0xFF < insertion_info + mInfoInc)) {
+        if (ROBIN_HOOD_UNLIKELY(insertion_info + mInfoInc > 0xFF)) {
             mMaxNumElementsAllowed = 0;
         }
 
@@ -1551,7 +1551,7 @@ private:
             // key not found, so we are now exactly where we want to insert it.
             auto const insertion_idx = idx;
             auto const insertion_info = info;
-            if (ROBIN_HOOD_UNLIKELY(0xFF < insertion_info + mInfoInc)) {
+            if (ROBIN_HOOD_UNLIKELY(insertion_info + mInfoInc > 0xFF)) {
                 mMaxNumElementsAllowed = 0;
             }
 
@@ -1610,7 +1610,7 @@ private:
             // key not found, so we are now exactly where we want to insert it.
             auto const insertion_idx = idx;
             auto const insertion_info = info;
-            if (ROBIN_HOOD_UNLIKELY(0x100 <= insertion_info + mInfoInc)) {
+            if (ROBIN_HOOD_UNLIKELY(insertion_info + mInfoInc > 0xFF)) {
                 mMaxNumElementsAllowed = 0;
             }
 
