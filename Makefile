@@ -1,5 +1,5 @@
 # use
-# make CXX='ccache g++' -j
+# make CXX='ccache g++-8' -j release
 # to build with ccache
 
 #BITNESS = -m32

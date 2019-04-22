@@ -458,61 +458,64 @@ struct hash : public std::hash<T> {
     }
 };
 
-// Murmur2 hash without caring about big endianness. Generally much faster than the standard
-// std::hash for std::string, and the code is quite simple.
+// Hash an arbitrary amount of bytes. This is basically Murmur2 hash without caring about big
+// endianness. TODO add a fallback for very large strings?
+inline size_t hash_bytes(void const* ptr, size_t const len) {
+    static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
+    static constexpr uint64_t seed = UINT64_C(0xe17a1465);
+    static constexpr unsigned int r = 47;
+
+    auto const data64 = reinterpret_cast<uint64_t const*>(ptr);
+    uint64_t h = seed ^ (len * m);
+
+    size_t const n_blocks = len / 8;
+    for (size_t i = 0; i < n_blocks; ++i) {
+        uint64_t k = detail::unaligned_load<uint64_t>(data64 + i);
+
+        k *= m;
+        k ^= k >> r;
+        k *= m;
+
+        h ^= k;
+        h *= m;
+    }
+
+    auto const data8 = reinterpret_cast<uint8_t const*>(data64 + n_blocks);
+    switch (len & 7u) {
+    case 7:
+        h ^= static_cast<uint64_t>(data8[6]) << 48u;
+        // fallthrough
+    case 6:
+        h ^= static_cast<uint64_t>(data8[5]) << 40u;
+        // fallthrough
+    case 5:
+        h ^= static_cast<uint64_t>(data8[4]) << 32u;
+        // fallthrough
+    case 4:
+        h ^= static_cast<uint64_t>(data8[3]) << 24u;
+        // fallthrough
+    case 3:
+        h ^= static_cast<uint64_t>(data8[2]) << 16u;
+        // fallthrough
+    case 2:
+        h ^= static_cast<uint64_t>(data8[1]) << 8u;
+        // fallthrough
+    case 1:
+        h ^= static_cast<uint64_t>(data8[0]);
+        h *= m;
+    };
+
+    h ^= h >> r;
+    h *= m;
+    h ^= h >> r;
+
+    return static_cast<size_t>(h);
+}
+
 template <>
 struct hash<std::string> {
     size_t operator()(std::string const& str) const {
-        static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
-        static constexpr uint64_t seed = UINT64_C(0xe17a1465);
-        static constexpr unsigned int r = 47;
-
-        size_t const len = str.size();
-        auto const data64 = reinterpret_cast<uint64_t const*>(str.data());
-        uint64_t h = seed ^ (len * m);
-
-        size_t const n_blocks = len / 8;
-        for (size_t i = 0; i < n_blocks; ++i) {
-            uint64_t k = detail::unaligned_load<uint64_t>(data64 + i);
-
-            k *= m;
-            k ^= k >> r;
-            k *= m;
-
-            h ^= k;
-            h *= m;
-        }
-
-        auto const data8 = reinterpret_cast<uint8_t const*>(data64 + n_blocks);
-        switch (len & 7u) {
-        case 7:
-            h ^= static_cast<uint64_t>(data8[6]) << 48u;
-            // fallthrough
-        case 6:
-            h ^= static_cast<uint64_t>(data8[5]) << 40u;
-            // fallthrough
-        case 5:
-            h ^= static_cast<uint64_t>(data8[4]) << 32u;
-            // fallthrough
-        case 4:
-            h ^= static_cast<uint64_t>(data8[3]) << 24u;
-            // fallthrough
-        case 3:
-            h ^= static_cast<uint64_t>(data8[2]) << 16u;
-            // fallthrough
-        case 2:
-            h ^= static_cast<uint64_t>(data8[1]) << 8u;
-            // fallthrough
-        case 1:
-            h ^= static_cast<uint64_t>(data8[0]);
-            h *= m;
-        };
-
-        h ^= h >> r;
-        h *= m;
-        h ^= h >> r;
-
-        return static_cast<size_t>(h);
+        return hash_bytes(str.data(), str.size());
     }
 };
 

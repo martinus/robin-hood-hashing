@@ -10,15 +10,18 @@ TEMPLATE_TEST_CASE("hash std::string", "[!benchmark][hash]", (robin_hood::hash<s
     size_t h = 0;
     Rng rng(123);
     auto hasher = TestType{};
-    for (const int s : {7, 8, 11, 100, 256}) {
-        std::string str(static_cast<size_t>(s), 'x');
+
+    for (auto s_runtime : {std::make_pair(7, 250058138u), std::make_pair(8, 310857313u),
+                           std::make_pair(13, 225620314u), std::make_pair(100, 68319310u),
+                           std::make_pair(1000, 6458275u)}) {
+        std::string str(static_cast<size_t>(s_runtime.first), 'x');
         for (size_t i = 0; i < str.size(); ++i) {
             str[i] = rng.uniform<char>();
         }
         BENCHMARK("std::string length " + std::to_string(str.size())) {
-            for (size_t i = 0; i < 100000000u; ++i) {
+            for (size_t i = 0; i < s_runtime.second; ++i) {
                 // modify string to prevent optimization
-                *reinterpret_cast<uint64_t*>(&str[0]) = rng();
+                ++*reinterpret_cast<uint64_t*>(&str[0]);
                 h += hasher(str);
             }
         }
@@ -28,7 +31,6 @@ TEMPLATE_TEST_CASE("hash std::string", "[!benchmark][hash]", (robin_hood::hash<s
 }
 
 TEST_CASE("hash integers", "[!benchmark][hash]") {
-
     Rng rng(123);
     // add a (neglectible) bit of randomization so the compiler can't optimize this away
     uint64_t const numIters = (2000000000 + rng(2)) * 31;
