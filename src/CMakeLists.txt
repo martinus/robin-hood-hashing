@@ -7,11 +7,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(robinhood-test
     include/robin_hood.h
+    test/avalanche.h
     test/catch.hpp
     test/hashes.h
+    test/hash_map.h
     test/sfc64.h
-    test/avalanche.h
     test/test_base.h
+    
     test/include_only.cpp
     test/test_empty.cpp
     test/test_avalanche.cpp
@@ -23,6 +25,7 @@ add_executable(robinhood-test
     test/test.cpp
     test/test_random_insert_erase.cpp
     test/test_counters.cpp    
+    test/test_overflow.cpp
 )
 target_include_directories( robinhood-test PRIVATE "include" "test")
 
