@@ -10,7 +10,7 @@ struct BadHash {
     }
 };
 
-TEST_CASE("bug overflow", "[!hide]") {
+TEST_CASE("bug overflow") {
     robin_hood::unordered_flat_map<uint64_t, uint64_t, BadHash<uint64_t>> rh;
     std::unordered_map<uint64_t, uint64_t> uo;
 

@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.2
+// version 3.2.3
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 2 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 2 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 3 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstring>
@@ -1654,12 +1654,12 @@ private:
         ROBIN_HOOD_LOG("mInfoInc=" << mInfoInc << ", numElements=" << mNumElements
                                    << ", maxNumElementsAllowed="
                                    << calcMaxNumElementsAllowed(mMask + 1));
-        // we got space left, try to make info smaller
-        mInfoInc = static_cast<uint8_t>(mInfoInc >> 1);
-        if (1 == mInfoInc) {
-            // need to be > 1 so that shift works (otherwise undefined behavior!)
+        if (mInfoInc <= 2) {
+            // need to be > 2 so that shift works (otherwise undefined behavior!)
             return false;
         }
+        // we got space left, try to make info smaller
+        mInfoInc = static_cast<uint8_t>(mInfoInc >> 1);
 
         // remove one bit of the hash, leaving more space for the distance info.
         // This is extremely fast because we can operate on 8 bytes at once.
