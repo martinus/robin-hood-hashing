@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.4
+// version 3.2.5
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -1094,29 +1094,29 @@ public:
     // ignore it.
     explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
                            const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
-        : Hash{h}
-        , KeyEqual{equal} {}
+        : Hash(h)
+        , KeyEqual(equal) {}
 
     template <typename Iter>
     unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
                   const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
-        : Hash{h}
-        , KeyEqual{equal} {
+        : Hash(h)
+        , KeyEqual(equal) {
         insert(first, last);
     }
 
     unordered_map(std::initializer_list<value_type> init,
                   size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
                   const KeyEqual& equal = KeyEqual{})
-        : Hash{h}
-        , KeyEqual{equal} {
+        : Hash(h)
+        , KeyEqual(equal) {
         insert(init.begin(), init.end());
     }
 
     unordered_map(unordered_map&& o)
-        : Hash{std::move(static_cast<Hash&>(o))}
-        , KeyEqual{std::move(static_cast<KeyEqual&>(o))}
-        , DataPool{std::move(static_cast<DataPool&>(o))}
+        : Hash(std::move(static_cast<Hash&>(o)))
+        , KeyEqual(std::move(static_cast<KeyEqual&>(o)))
+        , DataPool(std::move(static_cast<DataPool&>(o)))
         , mKeyVals{std::move(o.mKeyVals)}
         , mInfo{std::move(o.mInfo)}
         , mNumElements{std::move(o.mNumElements)}
@@ -1149,9 +1149,9 @@ public:
     }
 
     unordered_map(const unordered_map& o)
-        : Hash{static_cast<const Hash&>(o)}
-        , KeyEqual{static_cast<const KeyEqual&>(o)}
-        , DataPool{static_cast<const DataPool&>(o)} {
+        : Hash(static_cast<const Hash&>(o))
+        , KeyEqual(static_cast<const KeyEqual&>(o))
+        , DataPool(static_cast<const DataPool&>(o)) {
 
         if (!o.empty()) {
             // not empty: create an exact copy. it is also possible to just iterate through all
