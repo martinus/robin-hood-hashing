@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.5
+// version 3.2.6
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 2 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 4 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 6 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -363,16 +363,6 @@ struct NodeAllocator<T, MinSize, MaxSize, true> {
 template <typename T, size_t MinSize, size_t MaxSize>
 struct NodeAllocator<T, MinSize, MaxSize, false> : public BulkPoolAllocator<T, MinSize, MaxSize> {};
 
-// All empty maps initial mInfo point to this infobyte. That way lookup in an empty map
-// always returns false, and this is a very hot byte.
-//
-// we have to use data >1byte (at least 2 bytes), because initially we set mShift to 63 (has to be
-// <63), so initial index will be 0 or 1.
-namespace DummyInfoByte {
-
-static uint64_t b = 0;
-
-} // namespace DummyInfoByte
 } // namespace detail
 
 struct is_transparent_tag {};
@@ -846,6 +836,8 @@ private:
 
     // Iter ////////////////////////////////////////////////////////////
 
+    struct fast_forward_tag {};
+
     // generic iterator for both const_iterator and iterator.
     template <bool IsConst>
     class Iter {
@@ -874,21 +866,18 @@ private:
             : mKeyVals(valPtr)
             , mInfo(infoPtr) {}
 
+        Iter(NodePtr valPtr, uint8_t const* infoPtr,
+             fast_forward_tag ROBIN_HOOD_UNUSED(tag) /*unused*/)
+            : mKeyVals(valPtr)
+            , mInfo(infoPtr) {
+            fastForward();
+        }
+
         // prefix increment. Undefined behavior if we are at end()!
         Iter& operator++() {
             mInfo++;
             mKeyVals++;
-            int inc;
-            do {
-                auto const n = detail::unaligned_load<size_t>(mInfo);
-#if ROBIN_HOOD_LITTLE_ENDIAN
-                inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
-#else
-                inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / 8;
-#endif
-                mInfo += inc;
-                mKeyVals += inc;
-            } while (inc == sizeof(size_t));
+            fastForward();
             return *this;
         }
 
@@ -911,6 +900,21 @@ private:
         }
 
     private:
+        // fast forward to the next non-free info byte
+        void fastForward() {
+            int inc;
+            do {
+                auto const n = detail::unaligned_load<size_t>(mInfo);
+#if ROBIN_HOOD_LITTLE_ENDIAN
+                inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
+#else
+                inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / 8;
+#endif
+                mInfo += inc;
+                mKeyVals += inc;
+            } while (inc == sizeof(size_t));
+        }
+
         friend class unordered_map<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher,
                                    key_equal>;
         NodePtr mKeyVals;
@@ -1030,7 +1034,7 @@ private:
         } while (info <= mInfo[idx]);
 
         // nothing found!
-        return mMask + 1;
+        return mMask == 0 ? 0 : mMask + 1;
     }
 
     void cloneData(const unordered_map& o) {
@@ -1189,10 +1193,12 @@ public:
             // clear also resets mInfo to 0, that's sometimes not necessary.
             destroy();
 
-            // we assign an invalid pointer, but this is ok because we never dereference it.
-            using detail::DummyInfoByte::b;
-            mKeyVals = reinterpret_cast<Node*>(&b) - 1; // lgtm [cpp/suspicious-pointer-scaling]
-            mInfo = reinterpret_cast<uint8_t*>(&b);
+            // we assign invalid pointer, but this is ok because we never dereference it.
+            // The worst that can happen is that find() is called, which will return an iterator but
+            // it will be the end() iterator.
+            mKeyVals = reinterpret_cast<Node*>(&mMask);
+            // we need to point somewhere thats 0 as long as we're empty
+            mInfo = reinterpret_cast<uint8_t*>(mMask);
             Hash::operator=(static_cast<const Hash&>(o));
             KeyEqual::operator=(static_cast<const KeyEqual&>(o));
             DataPool::operator=(static_cast<DataPool const&>(o));
@@ -1378,7 +1384,7 @@ public:
         if (empty()) {
             return end();
         }
-        return ++iterator(mKeyVals - 1, mInfo - 1);
+        return iterator(mKeyVals, mInfo, fast_forward_tag{});
     }
     const_iterator begin() const {
         return cbegin();
@@ -1387,7 +1393,7 @@ public:
         if (empty()) {
             return cend();
         }
-        return ++const_iterator(mKeyVals - 1, mInfo - 1);
+        return const_iterator(mKeyVals, mInfo, fast_forward_tag{});
     }
 
     iterator end() {
@@ -1701,7 +1707,7 @@ private:
 
     void destroy() {
         if (0 == mMask) {
-            // don't deallocate! we are pointing to DummyInfoByte::b.
+            // don't deallocate!
             return;
         }
 
@@ -1711,15 +1717,14 @@ private:
     }
 
     // members are sorted so no padding occurs
-    Node* mKeyVals = reinterpret_cast<Node*>(reinterpret_cast<uint8_t*>(&detail::DummyInfoByte::b) -
-                                             sizeof(Node));                 // 8 byte  8
-    uint8_t* mInfo = reinterpret_cast<uint8_t*>(&detail::DummyInfoByte::b); // 8 byte 16
-    size_t mNumElements = 0;                                                // 8 byte 24
-    size_t mMask = 0;                                                       // 8 byte 32
-    size_t mMaxNumElementsAllowed = 0;                                      // 8 byte 40
-    InfoType mInfoInc = InitialInfoInc;                                     // 4 byte 44
-    InfoType mInfoHashShift = InitialInfoHashShift;                         // 4 byte 48
-                                                    // 16 byte 56 if NodeAllocator
+    Node* mKeyVals = reinterpret_cast<Node*>(&mMask);    // 8 byte  8
+    uint8_t* mInfo = reinterpret_cast<uint8_t*>(&mMask); // 8 byte 16
+    size_t mNumElements = 0;                             // 8 byte 24
+    size_t mMask = 0;                                    // 8 byte 32
+    size_t mMaxNumElementsAllowed = 0;                   // 8 byte 40
+    InfoType mInfoInc = InitialInfoInc;                  // 4 byte 44
+    InfoType mInfoHashShift = InitialInfoHashShift;      // 4 byte 48
+                                                         // 16 byte 56 if NodeAllocator
 };
 
 } // namespace detail
