@@ -291,16 +291,33 @@ TEMPLATE_TEST_CASE("assign, iterate, clear", "", FlatMapVerifier, NodeMapVerifie
     REQUIRE(CtorDtorVerifier::mapSize() == 0);
 }
 
+// make sure RNG is deterministic
+TEST_CASE("rng") {
+    Rng rng(123);
+    uint64_t h = 0;
+    for (size_t i = 1; i < 10000; ++i) {
+        h = hash_combine(h, rng(i));
+        h = hash_combine(h, rng(i));
+        h = hash_combine(h, rng(i));
+    }
+    REQUIRE(h == UINT64_C(0x3d7c20fe1135733e));
+    REQUIRE(rng() == UINT64_C(0x4001279087d5fe55));
+}
+
 TEMPLATE_TEST_CASE("random insert & erase with Verifier", "", FlatMapVerifier, NodeMapVerifier,
                    (std::unordered_map<CtorDtorVerifier, CtorDtorVerifier>)) {
     Rng rng(123);
 
+    REQUIRE(CtorDtorVerifier::mapSize() == 0);
     TestType map;
     for (size_t i = 1; i < 10000; ++i) {
-        map[rng(i)] = rng(i);
+        auto v = rng(i);
+        auto k = rng(i);
+        map[k] = v;
         map.erase(rng(i));
     }
 
+    std::cout << "map.size()=" << map.size() << std::endl;
     INFO("map size is " << CtorDtorVerifier::mapSize());
     REQUIRE(CtorDtorVerifier::mapSize() == 6572);
     REQUIRE(hash(map) == UINT64_C(0xd665be038c0ed434));
@@ -310,8 +327,23 @@ TEMPLATE_TEST_CASE("random insert & erase with Verifier", "", FlatMapVerifier, N
     REQUIRE(hash(map) == UINT64_C(0x9e3779f8));
 }
 
-// Dummy hash for testing collisions. Make sure to use robin_hood::hash, because this doesn't use a
-// bad_hash_prevention multiplier.
+TEMPLATE_TEST_CASE("randins", "", (std::unordered_map<uint64_t, uint64_t>)) {
+    Rng rng(123);
+
+    TestType map;
+    for (size_t i = 1; i < 10; ++i) {
+        auto v = rng(i);
+        auto k = rng(i);
+        map[k] = v;
+        map.erase(rng(i));
+    }
+
+    std::cout << "map.size()=" << map.size() << std::endl;
+    map.clear();
+}
+
+// Dummy hash for testing collisions. Make sure to use robin_hood::hash, because this doesn't
+// use a bad_hash_prevention multiplier.
 namespace robin_hood {
 
 template <>
