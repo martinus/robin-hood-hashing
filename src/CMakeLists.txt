@@ -36,8 +36,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
     target_compile_options(robinhood-test PRIVATE -Werror -Wall -Wextra -Weffc++ -Wconversion -Wunreachable-code -Wuninitialized -Wshadow -Wfloat-equal -Wmissing-braces)
 
     # make sure OpenMP in the tests work
-    target_compile_options( robinhood-test PRIVATE -fopenmp)
-    target_link_libraries( robinhood-test PRIVATE -fopenmp)
+    target_compile_options(robinhood-test PRIVATE -fopenmp)
+    target_link_libraries(robinhood-test PRIVATE -fopenmp)
+
+    target_compile_options(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
+    target_link_libraries(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)    
 endif()
 if ( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
     target_compile_options( vector-test PRIVATE /W4 /w44265 /w44061 /w44062 )
