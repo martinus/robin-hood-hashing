@@ -4,7 +4,8 @@
 #include "doctest.h"
 #include "sfc64.h"
 
-TEST_CASE_TEMPLATE("bench robin_hood::hash" * doctest::test_suite("bench"), T, uint64_t, int32_t) {
+TEST_CASE_TEMPLATE("bench robin_hood::hash" * doctest::test_suite("bench") * doctest::skip(), T,
+                   uint64_t, int32_t) {
     sfc64 rng(123);
 
     // add a (neglectible) bit of randomization so the compiler can't optimize this away

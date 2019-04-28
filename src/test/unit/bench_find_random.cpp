@@ -9,7 +9,8 @@
 TYPE_TO_STRING(robin_hood::unordered_flat_map<size_t, size_t>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<size_t, size_t>);
 
-TEST_CASE_TEMPLATE("bench find random", Map, robin_hood::unordered_flat_map<size_t, size_t>,
+TEST_CASE_TEMPLATE("bench find random" * doctest::test_suite("bench") * doctest::skip(), Map,
+                   robin_hood::unordered_flat_map<size_t, size_t>,
                    robin_hood::unordered_node_map<size_t, size_t>) {
 
     static constexpr size_t numTotal = 4;

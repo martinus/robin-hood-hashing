@@ -4,7 +4,7 @@
 #include "doctest.h"
 #include "sfc64.h"
 
-TEST_CASE("bench robin_hood::hash<std::string>" * doctest::test_suite("bench")) {
+TEST_CASE("bench robin_hood::hash<std::string>" * doctest::test_suite("bench") * doctest::skip()) {
     size_t h = 0;
     sfc64 rng(123);
     robin_hood::hash<std::string> hasher;

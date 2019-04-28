@@ -10,7 +10,7 @@ TYPE_TO_STRING(robin_hood::unordered_node_map<int, int>);
 // benchmark adapted from https://github.com/attractivechaos/udb2
 // this implementation should have less overhead, because sfc64 and it's uniform() is extremely
 // fast.
-TEST_CASE_TEMPLATE("bench distinctness" * doctest::test_suite("bench"), Map,
+TEST_CASE_TEMPLATE("bench distinctness" * doctest::test_suite("bench") * doctest::skip(), Map,
                    robin_hood::unordered_flat_map<int, int>,
                    robin_hood::unordered_node_map<int, int>) {
     using mt = typename Map::mapped_type;
