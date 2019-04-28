@@ -18,8 +18,7 @@ M createMap(int numElements) {
 TYPE_TO_STRING(robin_hood::unordered_flat_map<int, int>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<int, int>);
 
-TEST_CASE_TEMPLATE("copy and assign maps" * doctest::test_suite("unit"), Map,
-                   robin_hood::unordered_flat_map<int, int>,
+TEST_CASE_TEMPLATE("copy and assign maps", Map, robin_hood::unordered_flat_map<int, int>,
                    robin_hood::unordered_node_map<int, int>) {
 
     { Map a = createMap<Map>(15); }
