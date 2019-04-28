@@ -11,6 +11,14 @@ add_executable(robinhood-test
 
     test/unit/main.cpp # first because its slowest
 
+    test/app/benchmark.h
+    test/app/benchmark.cpp
+    test/app/doctest.h
+    test/app/sfc64.h
+    test/app/streamstate.h
+    test/app/streamstate.cpp
+    
+
     test/unit/assignments.cpp
     test/unit/bench_distinctness.cpp
     test/unit/bench_find_random.cpp
@@ -18,13 +26,9 @@ add_executable(robinhood-test
     test/unit/bench_hash_string.cpp
     test/unit/bench_iterate.cpp
     test/unit/bench_random_insert_erase.cpp
-    test/unit/benchmark.h
-    test/unit/doctest.h
-    test/unit/sfc64.h
-    test/unit/types.cpp
 )
 
-target_include_directories( robinhood-test PRIVATE "include" "test" "test/unit")
+target_include_directories( robinhood-test PRIVATE "include" "test" "test/unit" "test/app")
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
     target_compile_options( robinhood-test PRIVATE -fdiagnostics-color -ggdb)

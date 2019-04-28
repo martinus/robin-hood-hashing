@@ -27,34 +27,38 @@ TEST_CASE_TEMPLATE("bench distinctness" * doctest::test_suite("bench"), Map,
     SUBCASE("5%") {
         divisor = 20;
         title = "  5% distinct";
-        required_checksum = 1979978125;
+        required_checksum = 1799978125;
     }
     SUBCASE("25%") {
         divisor = 4;
         title = " 25% distinct";
-        required_checksum = 539977283;
+        required_checksum = 359977283;
     }
     SUBCASE("50%") {
         divisor = 2;
         title = " 50% distinct";
-        required_checksum = 359988809;
+        required_checksum = 179988809;
     }
     SUBCASE("100%") {
         divisor = 0;
         title = "100% distinct";
-        required_checksum = 181516798;
+        required_checksum = 1516798;
     }
 
     sfc64 rng(123);
     int checksum = 0;
-    BENCHMARK(title, 1, "op") {
+    {
+        Benchmark bench(title);
+        mt count = 0;
         for (mt n = lower; n <= upper; n += step_width) {
             mt const max_rng = divisor == 0 ? (std::numeric_limits<mt>::max)() : n / divisor;
             Map map;
             for (mt i = 0; i < n; ++i) {
-                checksum += ++map[rng.uniform(max_rng)];
+                checksum += map[rng.uniform(max_rng)]++;
             }
+            count += n;
         }
+        bench.count(count);
     }
     REQUIRE(checksum == required_checksum);
 }

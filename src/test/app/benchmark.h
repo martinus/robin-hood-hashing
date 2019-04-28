@@ -10,18 +10,17 @@ public:
         std::conditional<std::chrono::high_resolution_clock::is_steady,
                          std::chrono::high_resolution_clock, std::chrono::steady_clock>::type;
 
+    Benchmark(std::string const& msg)
+        : Benchmark(msg, 1, "op") {}
+
     template <typename T>
-    Benchmark(std::string const& msg, T divisor, std::string const& opName)
+    Benchmark(std::string const& msg, T c, std::string const& opName)
         : mMsg(msg)
-        , mDivisor(static_cast<double>(divisor))
+        , mCount(static_cast<double>(c))
         , mOpName(opName)
         , mStartTime(clock::now()) {}
 
-    ~Benchmark() {
-        auto runtime_sec = std::chrono::duration<double>(clock::now() - mStartTime).count();
-        std::cerr << (runtime_sec / mDivisor * 1e9) << " ns/" << mOpName << " (" << runtime_sec
-                  << " s total) " << mMsg << std::endl;
-    }
+    ~Benchmark();
 
     bool operator()() {
         if (mHasRun) {
@@ -31,14 +30,19 @@ public:
         return true;
     }
 
+    template <typename T>
+    void count(T c) {
+        mCount = c;
+    }
+
 private:
     std::string const mMsg;
-    double const mDivisor;
+    double mCount;
     std::string const mOpName;
     clock::time_point mStartTime;
     bool mHasRun = false;
 };
 
-#define BENCHMARK(x, divisor, opname) for (Benchmark b(x, divisor, opname); b();)
+#define BENCHMARK(x, count, opname) for (Benchmark b(x, count, opname); b();)
 
 #endif

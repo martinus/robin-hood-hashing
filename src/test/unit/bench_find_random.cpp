@@ -40,7 +40,8 @@ TEST_CASE_TEMPLATE("bench find random", Map, robin_hood::unordered_flat_map<size
         requiredChecksum = 99994482;
     }
 
-    std::string const title = std::to_string(numFound * 100 / numTotal) + "% success";
+    std::string const title =
+        "random find " + std::to_string(numFound * 100 / numTotal) + "% success";
 
     sfc64 rng(123);
 
