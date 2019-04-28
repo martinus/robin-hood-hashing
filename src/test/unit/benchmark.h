@@ -19,8 +19,8 @@ public:
 
     ~Benchmark() {
         auto runtime_sec = std::chrono::duration<double>(clock::now() - mStartTime).count();
-        std::cerr << (runtime_sec / mDivisor * 1e9) << " ns/" << mOpName << " " << mMsg
-                  << std::endl;
+        std::cerr << (runtime_sec / mDivisor * 1e9) << " ns/" << mOpName << " (" << runtime_sec
+                  << " s total) " << mMsg << std::endl;
     }
 
     bool operator()() {

@@ -13,6 +13,7 @@ add_executable(robinhood-test
 
     test/unit/assignments.cpp
     test/unit/bench_distinctness.cpp
+    test/unit/bench_find_random.cpp
     test/unit/bench_hash_int.cpp
     test/unit/bench_hash_string.cpp
     test/unit/bench_random_insert_erase.cpp

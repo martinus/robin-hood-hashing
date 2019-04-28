@@ -29,17 +29,17 @@ TEST_CASE_TEMPLATE("bench distinctness" * doctest::test_suite("bench"), Map,
         title = "  5% distinct";
         required_checksum = 1979978125;
     }
-    SUBCASE("") {
+    SUBCASE("25%") {
         divisor = 4;
         title = " 25% distinct";
         required_checksum = 539977283;
     }
-    SUBCASE("") {
+    SUBCASE("50%") {
         divisor = 2;
         title = " 50% distinct";
         required_checksum = 359988809;
     }
-    SUBCASE("") {
+    SUBCASE("100%") {
         divisor = 0;
         title = "100% distinct";
         required_checksum = 181516798;
