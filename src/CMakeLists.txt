@@ -17,15 +17,18 @@ add_executable(robinhood-test
     test/app/sfc64.h
     test/app/streamstate.h
     test/app/streamstate.cpp
-    
 
     test/unit/assignments.cpp
+
     test/unit/bench_distinctness.cpp
     test/unit/bench_find_random.cpp
     test/unit/bench_hash_int.cpp
     test/unit/bench_hash_string.cpp
     test/unit/bench_iterate.cpp
     test/unit/bench_random_insert_erase.cpp
+    test/unit/include_only.h
+    test/unit/include_only.cpp
+    test/unit/include_only_test.cpp
 )
 
 target_include_directories( robinhood-test PRIVATE "include" "test" "test/unit" "test/app")
