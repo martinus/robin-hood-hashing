@@ -6,16 +6,7 @@
 
 #include <unordered_map>
 
-#include "doctest.h"
-
-using cnt = Counter::Obj;
-
-TYPE_TO_STRING(robin_hood::unordered_flat_map<cnt, cnt, std::hash<cnt>>);
-TYPE_TO_STRING(robin_hood::unordered_flat_map<cnt, cnt, robin_hood::hash<cnt>>);
-TYPE_TO_STRING(robin_hood::unordered_node_map<cnt, cnt, std::hash<cnt>>);
-TYPE_TO_STRING(robin_hood::unordered_node_map<cnt, cnt, robin_hood::hash<cnt>>);
-TYPE_TO_STRING(std::unordered_map<cnt, cnt, std::hash<cnt>>);
-TYPE_TO_STRING(std::unordered_map<cnt, cnt, robin_hood::hash<cnt>>);
+#include "counter_defaults.h"
 
 TEST_CASE_TEMPLATE("count random insert erase" * doctest::test_suite("count") * doctest::skip(),
                    Map, robin_hood::unordered_flat_map<cnt, cnt, std::hash<cnt>>,

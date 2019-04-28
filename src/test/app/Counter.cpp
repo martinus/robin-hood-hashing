@@ -6,7 +6,7 @@ void Counter::printHeaderOnce() {
     static bool isFirst = true;
     if (isFirst) {
         printf("     ctor  defctor  cpyctor     dtor   assign    swaps      get  cnstget     "
-               "hash   equals     less   ctormv assignmv | total\n");
+               "hash   equals     less   ctormv assignmv |    total\n");
         isFirst = false;
     }
 }

@@ -13,6 +13,7 @@ add_executable(robinhood-test
 
     test/app/benchmark.h
     test/app/benchmark.cpp
+    test/app/counter_defaults.h
     test/app/Counter.h
     test/app/Counter.cpp
     test/app/doctest.h
@@ -29,6 +30,8 @@ add_executable(robinhood-test
     test/unit/bench_iterate.cpp
     test/unit/bench_random_insert_erase.cpp
     test/unit/count_random_insert_erase.cpp
+    test/unit/count_find_random.cpp
+    test/unit/count_one_emplace.cpp
     test/unit/include_only.h
     test/unit/include_only.cpp
     test/unit/include_only_test.cpp
