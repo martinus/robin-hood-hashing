@@ -28,12 +28,11 @@ TEST_CASE_TEMPLATE("count random insert erase" * doctest::test_suite("count") * 
 
     Counter counts;
 
-    size_t verifier = 0;
     Map map;
-    for (size_t n = 1; n < 1000; ++n) {
-        for (size_t i = 0; i < 1000; ++i) {
+    for (size_t n = 100; n < 10000; ++n) {
+        for (size_t i = 0; i < 100; ++i) {
             map[counts(rng.uniform(n))] = counts(i);
-            verifier += map.erase(counts(rng.uniform(n)));
+            map.erase(counts(rng.uniform(n)));
         }
     }
     counts.printCounts(std::string("random insert erase ") +
