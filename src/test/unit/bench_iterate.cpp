@@ -8,12 +8,10 @@
 
 TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, uint64_t>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<uint64_t, uint64_t>);
-TYPE_TO_STRING(std::unordered_map<uint64_t, uint64_t>);
 
 TEST_CASE_TEMPLATE("bench iterate" * doctest::test_suite("bench"), Map,
                    robin_hood::unordered_flat_map<uint64_t, uint64_t>,
-                   robin_hood::unordered_node_map<uint64_t, uint64_t>,
-                   std::unordered_map<uint64_t, uint64_t>) {
+                   robin_hood::unordered_node_map<uint64_t, uint64_t>) {
 
     sfc64 rng(123);
 
