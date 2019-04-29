@@ -4,15 +4,15 @@
 
 #include <memory>
 
-TYPE_TO_STRING(robin_hood::unordered_flat_map<int, std::unique_ptr<int>>);
-TYPE_TO_STRING(robin_hood::unordered_node_map<int, std::unique_ptr<int>>);
+TYPE_TO_STRING(robin_hood::unordered_flat_map<size_t, std::unique_ptr<int>>);
+TYPE_TO_STRING(robin_hood::unordered_node_map<size_t, std::unique_ptr<int>>);
 
-TEST_CASE_TEMPLATE("unique_ptr", Map, robin_hood::unordered_flat_map<int, std::unique_ptr<int>>,
-                   robin_hood::unordered_node_map<int, std::unique_ptr<int>>) {
+TEST_CASE_TEMPLATE("unique_ptr", Map, robin_hood::unordered_flat_map<size_t, std::unique_ptr<int>>,
+                   robin_hood::unordered_node_map<size_t, std::unique_ptr<int>>) {
     Map m;
     REQUIRE(m.end() == m.find(123));
     REQUIRE(m.end() == m.begin());
-    m[32] = std::make_unique<int>(123);
+    m[static_cast<size_t>(32)] = std::make_unique<int>(123);
     REQUIRE(m.end() != m.begin());
     REQUIRE(m.end() == m.find(123));
     REQUIRE(m.end() != m.find(32));
@@ -27,7 +27,7 @@ TEST_CASE_TEMPLATE("unique_ptr", Map, robin_hood::unordered_flat_map<int, std::u
     REQUIRE(m3.end() == m3.begin());
     REQUIRE(m3.end() == m3.find(123));
     REQUIRE(m3.end() == m3.find(32));
-    m3[32];
+    m3[static_cast<size_t>(32)];
     REQUIRE(m3.end() != m3.begin());
     REQUIRE(m3.end() == m3.find(123));
     REQUIRE(m3.end() != m3.find(32));
@@ -47,12 +47,12 @@ TEST_CASE_TEMPLATE("unique_ptr", Map, robin_hood::unordered_flat_map<int, std::u
 }
 
 TEST_CASE_TEMPLATE("unique_ptr fill", Map,
-                   robin_hood::unordered_flat_map<int, std::unique_ptr<int>>,
-                   robin_hood::unordered_node_map<int, std::unique_ptr<int>>) {
+                   robin_hood::unordered_flat_map<size_t, std::unique_ptr<int>>,
+                   robin_hood::unordered_node_map<size_t, std::unique_ptr<int>>) {
 
     Map m;
     for (int i = 0; i < 1000; ++i) {
         // m.emplace(i % 500, std::make_unique<int>(i));
-        m.emplace(123, new int(i));
+        m.emplace(static_cast<size_t>(123), new int(i));
     }
 }

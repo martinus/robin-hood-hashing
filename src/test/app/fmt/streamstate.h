@@ -5,8 +5,13 @@
 
 namespace fmt {
 
+#if defined(__clang__)
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wpadded"
+#endif
+
 // add explicit alignas() so -Wpadded doesn't warn
-class alignas(sizeof(size_t)) streamstate {
+class streamstate {
 public:
     explicit streamstate(std::ostream& s);
     ~streamstate();
@@ -20,8 +25,11 @@ private:
     std::streamsize const mWidth;
     std::ostream::fmtflags const mFmtFlags;
     std::ostream::char_type const mFill;
-    char padding[3];
 };
+
+#if defined(__clang__)
+#    pragma clang diagnostic pop
+#endif
 
 } // namespace fmt
 

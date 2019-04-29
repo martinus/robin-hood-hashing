@@ -4,7 +4,11 @@
 #include <chrono>
 #include <iostream>
 
-// add explicit alignas() so -Wpadded doesn't warn
+#if defined(__clang__)
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wpadded"
+#endif
+
 class Benchmark {
 public:
     using clock =
@@ -43,6 +47,10 @@ private:
     clock::time_point mStartTime;
     bool mHasRun = false;
 };
+
+#if defined(__clang__)
+#    pragma clang diagnostic pop
+#endif
 
 #define BENCHMARK(x, count, opname) for (Benchmark b(x, count, opname); b();)
 
