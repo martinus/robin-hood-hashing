@@ -4,14 +4,17 @@
 
 #include <iostream>
 #include <string>
+#include <type_traits>
 
 template <typename K, typename V>
-void check(bool result) {
-    REQUIRE(std::is_trivially_copyable<
-                typename robin_hood::unordered_flat_map<K, V>::value_type>::value == result);
-    REQUIRE(std::is_trivially_destructible<
-                typename robin_hood::unordered_node_map<K, V>::value_type>::value == result);
+void nothrow_trivially(bool is_nothrow, bool is_trivially) {
+    REQUIRE(std::is_nothrow_move_constructible<robin_hood::pair<K, V>>::value == is_nothrow);
+    REQUIRE(std::is_nothrow_move_assignable<robin_hood::pair<K, V>>::value == is_nothrow);
 
+    REQUIRE(std::is_trivially_copyable<robin_hood::pair<K, V>>::value == is_trivially);
+    REQUIRE(std::is_trivially_destructible<robin_hood::pair<K, V>>::value == is_trivially);
+
+    REQUIRE(sizeof(robin_hood::pair<K, V>) == sizeof(std::pair<K, V>));
     /*
     std::cout << std::is_trivially_copyable<std::pair<K, V>>::value << " "
               << std::is_trivially_destructible<std::pair<K, V>>::value << ", expected: " << result
@@ -19,23 +22,14 @@ void check(bool result) {
     */
 }
 
-template <typename K, typename V>
-void yes() {
-    check<K, V>(true);
-}
-
-template <typename K, typename V>
-void no() {
-    check<K, V>(false);
-}
-
 TEST_CASE("pair trivially copy/destructible") {
-    yes<int, int>();
-    yes<float, float>();
-    no<size_t, std::string>();
-    no<std::string, size_t>();
-    yes<char const*, size_t>();
-    yes<size_t, char const*>();
-    yes<uint64_t, uint64_t>();
-    yes<uint32_t, uint32_t>();
+    nothrow_trivially<int, int>(true, true);
+    nothrow_trivially<float, float>(true, true);
+    nothrow_trivially<size_t, std::string>(true, false);
+    nothrow_trivially<std::string, size_t>(true, false);
+    nothrow_trivially<char const*, size_t>(true, true);
+    nothrow_trivially<size_t, char const*>(true, true);
+    nothrow_trivially<uint64_t, uint64_t>(true, true);
+    nothrow_trivially<uint32_t, uint32_t>(true, true);
+    nothrow_trivially<char, char>(true, true);
 }
