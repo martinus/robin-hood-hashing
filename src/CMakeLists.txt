@@ -50,6 +50,7 @@ add_executable(robinhood-test
     test/unit/unit_not_copyable.cpp
     test/unit/unit_not_moveable.cpp
     test/unit/unit_reserve.cpp
+    test/unit/unit_sizeof.cpp
 )
 
 target_include_directories( robinhood-test PRIVATE "include" "test" "test/unit" "test/app")
