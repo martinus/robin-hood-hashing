@@ -21,9 +21,6 @@ add_executable(robinhood-test
     test/app/streamstate.h
     test/app/streamstate.cpp
 
-    test/unit/assignments.cpp
-    test/unit/assignment_combinations.cpp
-    test/unit/at.cpp
     test/unit/bench_distinctness.cpp
     test/unit/bench_find_random.cpp
     test/unit/bench_hash_int.cpp
@@ -33,13 +30,16 @@ add_executable(robinhood-test
     test/unit/count_random_insert_erase.cpp
     test/unit/count_find_random.cpp
     test/unit/count_one_emplace.cpp
-    test/unit/count.cpp
+    test/unit/unit_assignments.cpp
+    test/unit/unit_assignment_combinations.cpp
+    test/unit/unit_at.cpp
+    test/unit/unit_count.cpp
     test/unit/include_only.h
     test/unit/include_only.cpp
-    test/unit/include_only_test.cpp
-    test/unit/not_copyable.cpp
-    test/unit/not_moveable.cpp
-    test/unit/reserve.cpp
+    test/unit/unit_include_only.cpp
+    test/unit/unit_not_copyable.cpp
+    test/unit/unit_not_moveable.cpp
+    test/unit/unit_reserve.cpp
 )
 
 target_include_directories( robinhood-test PRIVATE "include" "test" "test/unit" "test/app")
