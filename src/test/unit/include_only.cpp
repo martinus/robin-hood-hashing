@@ -18,7 +18,7 @@ int include_only() {
     muf[321] = 432.43f;
     muf.emplace(111, 11.132f);
     for (auto const& kv : muf) {
-        s += kv.first + static_cast<size_t>(kv.second);
+        s += static_cast<size_t>(kv.first) + static_cast<size_t>(kv.second);
     }
 
     return static_cast<int>(s);

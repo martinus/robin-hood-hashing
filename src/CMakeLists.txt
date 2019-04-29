@@ -55,12 +55,13 @@ add_executable(robinhood-test
     test/unit/unit_not_moveable.cpp
     test/unit/unit_reserve.cpp
     test/unit/unit_sizeof.cpp
+    test/unit/unit_unique_ptr.cpp
 )
 
 target_include_directories( robinhood-test PRIVATE "include" "test" "test/unit" "test/app")
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
-    target_compile_options( robinhood-test PRIVATE -fdiagnostics-color -ggdb)
+    target_compile_options(robinhood-test PRIVATE -fdiagnostics-color -ggdb -g)
     
     # enable lots of warning checking
     target_compile_options(robinhood-test PRIVATE -Werror -Wall -Wextra -Weffc++ -Wconversion -Wunreachable-code -Wuninitialized -Wshadow -Wfloat-equal -Wmissing-braces)
@@ -70,10 +71,14 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
     target_link_libraries(robinhood-test PRIVATE -fopenmp)
 
     #target_compile_options(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
-    #target_link_libraries(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)    
+    #target_link_libraries(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
     
-    target_compile_options(robinhood-test PRIVATE -fsanitize=address)
-    target_link_libraries(robinhood-test PRIVATE -fsanitize=address)    
+    #target_compile_options(robinhood-test PRIVATE -fsanitize=address)
+    #target_link_libraries(robinhood-test PRIVATE -fsanitize=address)
+
+    #target_compile_options(robinhood-test PRIVATE -fsanitize=memory)
+    #target_link_libraries(robinhood-test PRIVATE -fsanitize=memory)
+
 endif()
 if ( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
     target_compile_options( vector-test PRIVATE /W4 /w44265 /w44061 /w44062 )
