@@ -39,8 +39,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
     target_compile_options(robinhood-test PRIVATE -fopenmp)
     target_link_libraries(robinhood-test PRIVATE -fopenmp)
 
-    target_compile_options(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
-    target_link_libraries(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)    
+    #target_compile_options(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
+    #target_link_libraries(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)    
+
+    target_compile_options(robinhood-test PRIVATE -fsanitize=address)
+    target_link_libraries(robinhood-test PRIVATE -fsanitize=address)    
 endif()
 if ( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
     target_compile_options( vector-test PRIVATE /W4 /w44265 /w44061 /w44062 )
