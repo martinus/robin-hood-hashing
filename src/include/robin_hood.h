@@ -1120,22 +1120,8 @@ public:
     unordered_map(unordered_map&& o)
         : Hash(std::move(static_cast<Hash&>(o)))
         , KeyEqual(std::move(static_cast<KeyEqual&>(o)))
-        , DataPool(std::move(static_cast<DataPool&>(o)))
-        , mKeyVals{std::move(o.mKeyVals)}
-        , mInfo{std::move(o.mInfo)}
-        , mNumElements{std::move(o.mNumElements)}
-        , mMask{std::move(o.mMask)}
-        , mMaxNumElementsAllowed{std::move(o.mMaxNumElementsAllowed)}
-        , mInfoInc{std::move(o.mInfoInc)}
-        , mInfoHashShift{std::move(o.mInfoHashShift)} {
-        // set other's mask to 0 so its destructor won't do anything
-        o.mMask = 0;
-    }
-
-    unordered_map& operator=(unordered_map&& o) {
-        if (&o != this) {
-            // different, move it
-            destroy();
+        , DataPool(std::move(static_cast<DataPool&>(o))) {
+        if (o.mMask) {
             mKeyVals = std::move(o.mKeyVals);
             mInfo = std::move(o.mInfo);
             mNumElements = std::move(o.mNumElements);
@@ -1143,11 +1129,32 @@ public:
             mMaxNumElementsAllowed = std::move(o.mMaxNumElementsAllowed);
             mInfoInc = std::move(o.mInfoInc);
             mInfoHashShift = std::move(o.mInfoHashShift);
-            Hash::operator=(std::move(static_cast<Hash&>(o)));
-            KeyEqual::operator=(std::move(static_cast<KeyEqual&>(o)));
-            DataPool::operator=(std::move(static_cast<DataPool&>(o)));
             // set other's mask to 0 so its destructor won't do anything
             o.mMask = 0;
+        }
+    }
+
+    unordered_map& operator=(unordered_map&& o) {
+        if (&o != this) {
+            if (o.mMask) {
+                // only move stuff if the other map actually has some data
+                destroy();
+                mKeyVals = std::move(o.mKeyVals);
+                mInfo = std::move(o.mInfo);
+                mNumElements = std::move(o.mNumElements);
+                mMask = std::move(o.mMask);
+                mMaxNumElementsAllowed = std::move(o.mMaxNumElementsAllowed);
+                mInfoInc = std::move(o.mInfoInc);
+                mInfoHashShift = std::move(o.mInfoHashShift);
+                Hash::operator=(std::move(static_cast<Hash&>(o)));
+                KeyEqual::operator=(std::move(static_cast<KeyEqual&>(o)));
+                DataPool::operator=(std::move(static_cast<DataPool&>(o)));
+                // set other's mask to 0 so its destructor won't do anything
+                o.mMask = 0;
+            } else {
+                // nothing in the other map => just clear us.
+                clear();
+            }
         }
         return *this;
     }
@@ -1335,18 +1342,18 @@ public:
 
     // Returns 1 if key is found, 0 otherwise.
     size_t count(const key_type& key) const {
-		auto kv = mKeyVals + findIdx(key);
-		if (kv != reinterpret_cast<Node*>(mInfo)) {
-			return 1;
-		}
-		return 0;
+        auto kv = mKeyVals + findIdx(key);
+        if (kv != reinterpret_cast<Node*>(mInfo)) {
+            return 1;
+        }
+        return 0;
     }
 
     // Returns a reference to the value found for key.
     // Throws std::out_of_range if element cannot be found
     mapped_type& at(key_type const& key) {
-		auto kv = mKeyVals + findIdx(key);
-		if (kv == reinterpret_cast<Node*>(mInfo)) {
+        auto kv = mKeyVals + findIdx(key);
+        if (kv == reinterpret_cast<Node*>(mInfo)) {
             doThrow<std::out_of_range>("key not found");
         }
         return kv->getSecond();
@@ -1355,8 +1362,8 @@ public:
     // Returns a reference to the value found for key.
     // Throws std::out_of_range if element cannot be found
     mapped_type const& at(key_type const& key) const {
-		auto kv = mKeyVals + findIdx(key);
-		if (kv == reinterpret_cast<Node*>(mInfo)) {
+        auto kv = mKeyVals + findIdx(key);
+        if (kv == reinterpret_cast<Node*>(mInfo)) {
             doThrow<std::out_of_range>("key not found");
         }
         return kv->getSecond();

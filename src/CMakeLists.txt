@@ -34,6 +34,7 @@ add_executable(robinhood-test
     test/unit/unit_assignment_combinations.cpp
     test/unit/unit_at.cpp
     test/unit/unit_count.cpp
+    test/unit/unit_empty.cpp
     test/unit/include_only.h
     test/unit/include_only.cpp
     test/unit/unit_include_only.cpp

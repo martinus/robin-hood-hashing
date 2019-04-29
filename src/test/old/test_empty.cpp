@@ -36,6 +36,12 @@ TEMPLATE_TEST_CASE("find with empty map", "", FlatMap, NodeMap) {
     REQUIRE(m3.end() != m3.begin());
     REQUIRE(m3.end() == m3.find(123));
     REQUIRE(m3.end() != m3.find(32));
+
+    Map m4(std::move(mEmpty));
+    REQUIRE(m4.count(123) == 0);
+    REQUIRE(m4.end() == m4.begin());
+    REQUIRE(m4.end() == m4.find(123));
+    REQUIRE(m4.end() == m4.find(32));
 }
 
 TEST_CASE("unique ptr") {
