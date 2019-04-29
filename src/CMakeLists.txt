@@ -5,6 +5,13 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# find ccache
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+endif(CCACHE_FOUND)
+
 add_executable(robinhood-test
     include/robin_hood.h
     test/thirdparty/doctest/doctest.h
@@ -27,6 +34,8 @@ add_executable(robinhood-test
     test/unit/bench_hash_string.cpp
     test/unit/bench_iterate.cpp
     test/unit/bench_random_insert_erase.cpp
+    test/unit/count_ctor_dtor.cpp
+    test/unit/count_ctor_dtor_1.cpp
     test/unit/count_random_insert_erase.cpp
     test/unit/count_find_random.cpp
     test/unit/count_one_emplace.cpp
