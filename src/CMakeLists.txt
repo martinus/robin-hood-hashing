@@ -30,6 +30,7 @@ add_executable(robinhood-test
     test/app/doctest.h
     test/app/sfc64.h
 
+    test/unit/bench_copy_iterators.cpp
     test/unit/bench_distinctness.cpp
     test/unit/bench_find_random.cpp
     test/unit/bench_hash_int.cpp
@@ -51,6 +52,8 @@ add_executable(robinhood-test
     test/unit/include_only.cpp
     test/unit/unit_include_only.cpp
     test/unit/unit_initializerlist.cpp
+    test/unit/unit_iterators_insert.cpp
+    test/unit/unit_load_factor.cpp
     test/unit/unit_not_copyable.cpp
     test/unit/unit_not_moveable.cpp
     test/unit/unit_reserve.cpp
