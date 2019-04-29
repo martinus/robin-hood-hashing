@@ -56,6 +56,7 @@ add_executable(robinhood-test
     test/unit/unit_load_factor.cpp
     test/unit/unit_not_copyable.cpp
     test/unit/unit_not_moveable.cpp
+    test/unit/unit_pair_trivial.cpp
     test/unit/unit_reserve.cpp
     test/unit/unit_sizeof.cpp
     test/unit/unit_unique_ptr.cpp
