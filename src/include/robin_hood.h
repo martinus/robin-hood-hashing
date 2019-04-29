@@ -1516,7 +1516,7 @@ public:
 
     // Average number of elements per bucket. Since we allow only 1 per bucket
     float load_factor() const {
-        return static_cast<float>(size()) / (mMask + 1);
+        return static_cast<float>(size()) / static_cast<float>(mMask + 1);
     }
 
     size_t mask() const {
