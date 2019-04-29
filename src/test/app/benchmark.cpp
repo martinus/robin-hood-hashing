@@ -1,11 +1,11 @@
-#include "benchmark.h"
+#include <benchmark.h>
 
-#include "streamstate.h"
+#include <fmt/streamstate.h>
 
 #include <iomanip>
 
 Benchmark::~Benchmark() {
-    streamstate ss(std::cout);
+    fmt::streamstate ss(std::cout);
     auto runtime_sec = std::chrono::duration<double>(clock::now() - mStartTime).count();
     std::cout.precision(3);
     std::cout << std::fixed << std::setw(16) << (runtime_sec / mCount * 1e9) << " ns/" << mOpName

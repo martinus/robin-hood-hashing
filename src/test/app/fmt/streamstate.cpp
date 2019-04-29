@@ -1,17 +1,23 @@
-#include <streamstate.h>
+#include <fmt/streamstate.h>
 
-streamstate::streamstate(state_type& s)
+namespace fmt {
+
+streamstate::streamstate(std::ostream& s)
     : mStream(s)
     , mFmtFlags(s.flags())
     , mPrecision(s.precision())
-    , mWidth(s.width()) {}
+    , mWidth(s.width())
+    , mFill(s.fill()) {}
 
 streamstate::~streamstate() {
     restore();
 }
 
 void streamstate::restore() {
+    mStream.fill(mFill);
     mStream.width(mWidth);
     mStream.precision(mPrecision);
     mStream.flags(mFmtFlags);
 }
+
+} // namespace fmt

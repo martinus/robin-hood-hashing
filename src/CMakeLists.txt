@@ -18,6 +18,10 @@ add_executable(robinhood-test
 
     test/unit/main.cpp # first because its slowest
 
+    test/app/fmt/hex.h
+    test/app/fmt/bin.h
+    test/app/fmt/streamstate.h
+    test/app/fmt/streamstate.cpp
     test/app/benchmark.h
     test/app/benchmark.cpp
     test/app/counter_defaults.h
@@ -25,8 +29,6 @@ add_executable(robinhood-test
     test/app/Counter.cpp
     test/app/doctest.h
     test/app/sfc64.h
-    test/app/streamstate.h
-    test/app/streamstate.cpp
 
     test/unit/bench_distinctness.cpp
     test/unit/bench_find_random.cpp
@@ -39,6 +41,7 @@ add_executable(robinhood-test
     test/unit/count_random_insert_erase.cpp
     test/unit/count_find_random.cpp
     test/unit/count_one_emplace.cpp
+    test/unit/show_hash.cpp
     test/unit/unit_assignments.cpp
     test/unit/unit_assignment_combinations.cpp
     test/unit/unit_at.cpp

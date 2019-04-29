@@ -15,62 +15,6 @@ struct BigObject {
     std::list<int> list;
 };
 
-namespace std {
-
-template <>
-struct hash<BigObject> {
-    size_t operator()(BigObject const&) const {
-        return 0;
-    }
-};
-
-} // namespace std
-
-#define PRINT_SIZEOF(x, A, B)                                                                  \
-    std::cout << sizeof(x<A, A>) << " " << sizeof(x<A, B>) << " " << sizeof(x<B, A>) << " "    \
-              << sizeof(x<B, B>)                                                               \
-              << " bytes for " #x "<" #A ", " #A ">, <" #A ", " #B ">, <" #B ", " #A ">, <" #B \
-                 ", " #B ">"                                                                   \
-              << std::endl
-
-TEST_CASE("show datastructure sizes", "[display]") {
-    PRINT_SIZEOF(std::unordered_map, int, BigObject);
-    PRINT_SIZEOF(robin_hood::unordered_map, int, BigObject);
-    PRINT_SIZEOF(std::map, int, BigObject);
-}
-
-void showHash(size_t val) {
-    auto sh = std::hash<size_t>{}(val);
-    auto fh = hash::FNV1a<size_t>{}(val);
-    auto rh = robin_hood::hash<size_t>{}(val);
-    std::cout << hex(ROBIN_HOOD_BITNESS) << val << " ->  " << hex(ROBIN_HOOD_BITNESS) << sh << "   "
-              << hex(ROBIN_HOOD_BITNESS) << fh << "    " << hex(ROBIN_HOOD_BITNESS) << rh << "   "
-              << std::bitset<ROBIN_HOOD_BITNESS>{rh} << std::endl;
-}
-
-TEST_CASE("show hash distribution", "[display]") {
-    std::cout << "input                  std::hash            hash::FNV1a           "
-                 "robin_hood::hash     robin_hood::hash binary"
-              << std::endl;
-    for (size_t i = 0; i < 100; ++i) {
-        showHash(i);
-    }
-
-    for (size_t i = 0; i < 10; ++i) {
-        size_t s = ((0x23d7 + i) << (ROBIN_HOOD_BITNESS / 2)) + static_cast<size_t>(63);
-        showHash(s);
-    }
-
-    for (size_t i = 1; i < 8; ++i) {
-        showHash(i * (static_cast<size_t>(1) << (ROBIN_HOOD_BITNESS - 4)));
-    }
-
-    for (size_t i = 1; i != 0; i *= 2) {
-        showHash(i);
-        showHash(i + 1);
-    }
-}
-
 struct ConfigurableCounterHash {
     // 234679895032 masksum, 1.17938e+06 geomean for 0xbdcbaec81634e906 0xa309d159626eef52
     ConfigurableCounterHash()
