@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.6
+// version 3.2.7
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 2 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 6 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 7 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -1335,27 +1335,31 @@ public:
 
     // Returns 1 if key is found, 0 otherwise.
     size_t count(const key_type& key) const {
-        return findIdx(key) == (mMask + 1) ? 0 : 1;
+		auto kv = mKeyVals + findIdx(key);
+		if (kv != reinterpret_cast<Node*>(mInfo)) {
+			return 1;
+		}
+		return 0;
     }
 
     // Returns a reference to the value found for key.
     // Throws std::out_of_range if element cannot be found
     mapped_type& at(key_type const& key) {
-        auto idx = findIdx(key);
-        if (idx == mMask + 1) {
+		auto kv = mKeyVals + findIdx(key);
+		if (kv == reinterpret_cast<Node*>(mInfo)) {
             doThrow<std::out_of_range>("key not found");
         }
-        return mKeyVals[idx].getSecond();
+        return kv->getSecond();
     }
 
     // Returns a reference to the value found for key.
     // Throws std::out_of_range if element cannot be found
     mapped_type const& at(key_type const& key) const {
-        auto idx = findIdx(key);
-        if (idx == mMask + 1) {
+		auto kv = mKeyVals + findIdx(key);
+		if (kv == reinterpret_cast<Node*>(mInfo)) {
             doThrow<std::out_of_range>("key not found");
         }
-        return mKeyVals[idx].getSecond();
+        return kv->getSecond();
     }
 
     const_iterator find(const key_type& key) const {
