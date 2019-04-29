@@ -50,6 +50,7 @@ add_executable(robinhood-test
     test/unit/include_only.h
     test/unit/include_only.cpp
     test/unit/unit_include_only.cpp
+    test/unit/unit_initializerlist.cpp
     test/unit/unit_not_copyable.cpp
     test/unit/unit_not_moveable.cpp
     test/unit/unit_reserve.cpp
@@ -71,8 +72,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
     #target_compile_options(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
     #target_link_libraries(robinhood-test PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)    
     
-    #target_compile_options(robinhood-test PRIVATE -fsanitize=address)
-    #target_link_libraries(robinhood-test PRIVATE -fsanitize=address)    
+    target_compile_options(robinhood-test PRIVATE -fsanitize=address)
+    target_link_libraries(robinhood-test PRIVATE -fsanitize=address)    
 endif()
 if ( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
     target_compile_options( vector-test PRIVATE /W4 /w44265 /w44061 /w44062 )
