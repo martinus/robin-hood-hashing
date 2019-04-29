@@ -126,13 +126,18 @@
 namespace robin_hood {
 namespace detail {
 #if defined(__SIZEOF_INT128__)
+#    if defined(__GNUC__)
+#        pragma GCC diagnostic push
+#        pragma GCC diagnostic ignored "-Wpedantic"
+using uint128_t = unsigned __int128;
+#        pragma GCC diagnostic pop
+#    endif
 #    define ROBIN_HOOD_UMULH(a, b) \
-        static_cast<uint64_t>(     \
-            (static_cast<unsigned __int128>(a) * static_cast<unsigned __int128>(b)) >> 64u)
+        static_cast<uint64_t>((static_cast<uint128_t>(a) * static_cast<uint128_t>(b)) >> 64u)
 
 #    define ROBIN_HOOD_HAS_UMUL128 1
 inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
-    auto result = static_cast<unsigned __int128>(a) * static_cast<unsigned __int128>(b);
+    auto result = static_cast<uint128_t>(a) * static_cast<uint128_t>(b);
     *high = static_cast<uint64_t>(result >> 64);
     return static_cast<uint64_t>(result);
 }
@@ -146,13 +151,36 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
     return _umul128(a, b, high);
 }
 #endif
+
+// fallthrough
+#ifndef __has_cpp_attribute // For backwards compatibility
+#    define __has_cpp_attribute(x) 0
+#endif
+#if __has_cpp_attribute(clang::fallthrough)
+#    define FALLTHROUGH [[clang::fallthrough]]
+#else
+#    define FALLTHROUGH
+#endif
+
+// This cast gets rid of warnings like "cast from ‘uint8_t*’ {aka ‘unsigned char*’} to
+// ‘uint64_t*’ {aka ‘long unsigned int*’} increases required alignment of target type". Use with
+// care!
+template <typename T>
+inline T reinterpret_cast_no_cast_align_warning(void* ptr) {
+    return reinterpret_cast<T>(ptr);
+}
+
+template <typename T>
+inline T reinterpret_cast_no_cast_align_warning(void const* ptr) {
+    return reinterpret_cast<T>(ptr);
+}
 } // namespace detail
 } // namespace robin_hood
 
 // likely/unlikely
 #if __GNUC__ >= 4
-#    define ROBIN_HOOD_LIKELY(condition) __builtin_expect(static_cast<bool>(condition), 1)
-#    define ROBIN_HOOD_UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
+#    define ROBIN_HOOD_LIKELY(condition) __builtin_expect(condition, 1)
+#    define ROBIN_HOOD_UNLIKELY(condition) __builtin_expect(condition, 0)
 #else
 #    define ROBIN_HOOD_LIKELY(condition) condition
 #    define ROBIN_HOOD_UNLIKELY(condition) condition
@@ -164,12 +192,12 @@ namespace detail {
 // make sure this is not inlined as it is slow and dramatically enlarges code, thus making other
 // inlinings more difficult. Throws are also generally the slow path.
 template <typename E, typename... Args>
-static ROBIN_HOOD_NOINLINE void doThrow(Args&&... args) {
+ROBIN_HOOD_NOINLINE void doThrow(Args&&... args) {
     throw E(std::forward<Args>(args)...);
 }
 
 template <typename E, typename T, typename... Args>
-static T* assertNotNull(T* t, Args&&... args) {
+T* assertNotNull(T* t, Args&&... args) {
     if (ROBIN_HOOD_UNLIKELY(nullptr == t)) {
         doThrow<E>(std::forward<Args>(args)...);
     }
@@ -230,7 +258,7 @@ public:
         while (mListForFree) {
             T* tmp = *mListForFree;
             free(mListForFree);
-            mListForFree = reinterpret_cast<T**>(tmp);
+            mListForFree = reinterpret_cast_no_cast_align_warning<T**>(tmp);
         }
         mHead = nullptr;
     }
@@ -244,7 +272,7 @@ public:
             tmp = performAllocation();
         }
 
-        mHead = *reinterpret_cast<T**>(tmp);
+        mHead = *reinterpret_cast_no_cast_align_warning<T**>(tmp);
         return tmp;
     }
 
@@ -253,7 +281,7 @@ public:
     //  obj->~T();
     //  pool.deallocate(obj);
     void deallocate(T* obj) {
-        *reinterpret_cast<T**>(obj) = mHead;
+        *reinterpret_cast_no_cast_align_warning<T**>(obj) = mHead;
         mHead = obj;
     }
 
@@ -306,17 +334,20 @@ private:
         mListForFree = data;
 
         // create linked list for newly allocated data
-        auto const headT = reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) + ALIGNMENT);
+        auto const headT =
+            reinterpret_cast_no_cast_align_warning<T*>(reinterpret_cast<char*>(ptr) + ALIGNMENT);
 
         auto const head = reinterpret_cast<char*>(headT);
 
         // Visual Studio compiler automatically unrolls this loop, which is pretty cool
         for (size_t i = 0; i < numElements; ++i) {
-            *reinterpret_cast<char**>(head + i * ALIGNED_SIZE) = head + (i + 1) * ALIGNED_SIZE;
+            *reinterpret_cast_no_cast_align_warning<char**>(head + i * ALIGNED_SIZE) =
+                head + (i + 1) * ALIGNED_SIZE;
         }
 
         // last one points to 0
-        *reinterpret_cast<T**>(head + (numElements - 1) * ALIGNED_SIZE) = mHead;
+        *reinterpret_cast_no_cast_align_warning<T**>(head + (numElements - 1) * ALIGNED_SIZE) =
+            mHead;
         mHead = headT;
     }
 
@@ -406,9 +437,8 @@ struct pair {
 
     // constructor called from the std::piecewise_construct_t ctor
     template <typename... Args1, size_t... Indexes1, typename... Args2, size_t... Indexes2>
-    inline pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2,
-                std::index_sequence<Indexes1...> /*unused*/,
-                std::index_sequence<Indexes2...> /*unused*/)
+    pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2,
+         std::index_sequence<Indexes1...> /*unused*/, std::index_sequence<Indexes2...> /*unused*/)
         : first{std::forward<Args1>(std::get<Indexes1>(tuple1))...}
         , second{std::forward<Args2>(std::get<Indexes2>(tuple2))...} {
         // make visual studio compiler happy about warning about unused tuple1 & tuple2.
@@ -475,32 +505,45 @@ inline size_t hash_bytes(void const* ptr, size_t const len) {
     switch (len & 7u) {
     case 7:
         h ^= static_cast<uint64_t>(data8[6]) << 48u;
+        FALLTHROUGH;
         // fallthrough
     case 6:
         h ^= static_cast<uint64_t>(data8[5]) << 40u;
+        FALLTHROUGH;
         // fallthrough
     case 5:
         h ^= static_cast<uint64_t>(data8[4]) << 32u;
+        FALLTHROUGH;
         // fallthrough
     case 4:
         h ^= static_cast<uint64_t>(data8[3]) << 24u;
+        FALLTHROUGH;
         // fallthrough
     case 3:
         h ^= static_cast<uint64_t>(data8[2]) << 16u;
+        FALLTHROUGH;
         // fallthrough
     case 2:
         h ^= static_cast<uint64_t>(data8[1]) << 8u;
+        FALLTHROUGH;
         // fallthrough
     case 1:
         h ^= static_cast<uint64_t>(data8[0]);
         h *= m;
+        FALLTHROUGH;
+        // fallthrough
+    default:
+        break;
     };
 
     h ^= h >> r;
     h *= m;
     h ^= h >> r;
-
+#if ROBIN_HOOD_BITNESS == 32
     return static_cast<size_t>(h);
+#else
+    return h;
+#endif
 }
 
 template <>
@@ -639,7 +682,7 @@ private:
 
     // Small: just allocate on the stack.
     template <typename M>
-    class DataNode<M, true> {
+    class DataNode<M, true> final {
     public:
         template <typename... Args>
         explicit DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, Args&&... args)
@@ -912,7 +955,7 @@ private:
 #endif
                 mInfo += inc;
                 mKeyVals += inc;
-            } while (inc == sizeof(size_t));
+            } while (inc == static_cast<int>(sizeof(size_t)));
         }
 
         friend class unordered_map<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher,
@@ -958,14 +1001,14 @@ private:
                 ? 1
                 : (ROBIN_HOOD_BITNESS == 64 ? UINT64_C(0xb3727c1f779b8d8b) : UINT32_C(0xda4afe47));
         idx = Hash::operator()(key) * bad_hash_prevention;
-        info = static_cast<InfoType>(mInfoInc + static_cast<InfoType>(idx >> mInfoHashShift));
+        info = mInfoInc + static_cast<InfoType>(idx >> mInfoHashShift);
         idx &= mMask;
     }
 
     // forwards the index by one, wrapping around at the end
     void next(InfoType* info, size_t* idx) const {
         *idx = (*idx + 1) & mMask;
-        *info = static_cast<InfoType>(*info + mInfoInc);
+        *info += mInfoInc;
     }
 
     void nextWhileLess(InfoType* info, size_t* idx) const {
@@ -1057,7 +1100,7 @@ private:
         // skip forward. Use <= because we are certain that the element is not there.
         while (info <= mInfo[idx]) {
             idx = (idx + 1) & mMask;
-            info = static_cast<InfoType>(info + mInfoInc);
+            info += mInfoInc;
         }
 
         // key not found, so we are now exactly where we want to insert it.
@@ -1343,7 +1386,7 @@ public:
     // Returns 1 if key is found, 0 otherwise.
     size_t count(const key_type& key) const {
         auto kv = mKeyVals + findIdx(key);
-        if (kv != reinterpret_cast<Node*>(mInfo)) {
+        if (kv != reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
             return 1;
         }
         return 0;
@@ -1353,7 +1396,7 @@ public:
     // Throws std::out_of_range if element cannot be found
     mapped_type& at(key_type const& key) {
         auto kv = mKeyVals + findIdx(key);
-        if (kv == reinterpret_cast<Node*>(mInfo)) {
+        if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
             doThrow<std::out_of_range>("key not found");
         }
         return kv->getSecond();
@@ -1363,7 +1406,7 @@ public:
     // Throws std::out_of_range if element cannot be found
     mapped_type const& at(key_type const& key) const {
         auto kv = mKeyVals + findIdx(key);
-        if (kv == reinterpret_cast<Node*>(mInfo)) {
+        if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
             doThrow<std::out_of_range>("key not found");
         }
         return kv->getSecond();
@@ -1410,13 +1453,13 @@ public:
     iterator end() {
         // no need to supply valid info pointer: end() must not be dereferenced, and only node
         // pointer is compared.
-        return iterator{reinterpret_cast<Node*>(mInfo), nullptr};
+        return iterator{reinterpret_cast_no_cast_align_warning<Node*>(mInfo), nullptr};
     }
     const_iterator end() const {
         return cend();
     }
     const_iterator cend() const {
-        return const_iterator{reinterpret_cast<Node*>(mInfo), nullptr};
+        return const_iterator{reinterpret_cast_no_cast_align_warning<Node*>(mInfo), nullptr};
     }
 
     iterator erase(const_iterator pos) {
@@ -1682,7 +1725,7 @@ private:
         // remove one bit of the hash, leaving more space for the distance info.
         // This is extremely fast because we can operate on 8 bytes at once.
         ++mInfoHashShift;
-        auto const data = reinterpret_cast<uint64_t*>(mInfo);
+        auto const data = reinterpret_cast_no_cast_align_warning<uint64_t*>(mInfo);
         auto const numEntries = (mMask + 1) / 8;
 
         for (size_t i = 0; i < numEntries; ++i) {

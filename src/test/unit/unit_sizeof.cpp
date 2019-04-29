@@ -11,6 +11,7 @@ struct Foo {
 };
 } // namespace
 
+/*
 namespace std {
 template <>
 struct hash<Foo> {
@@ -19,6 +20,7 @@ struct hash<Foo> {
     }
 };
 } // namespace std
+*/
 
 TEST_CASE("datastructure sizes") {
     size_t s = 6 * sizeof(size_t);

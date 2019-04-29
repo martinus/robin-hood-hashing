@@ -10,12 +10,16 @@
 #include <iomanip>
 #include <iostream>
 
+namespace {
+
 void showHash(size_t val) {
     auto sh = std::hash<size_t>{}(val);
     auto rh = robin_hood::hash<size_t>{}(val);
     std::cout << fmt::hex(val) << " | " << fmt::hex(sh) << " | " << fmt::hex(rh) << " | "
               << fmt::bin(rh) << std::endl;
 }
+
+} // namespace
 
 TEST_CASE("show hash distribution" * doctest::test_suite("show") * doctest::skip()) {
     fmt::streamstate ss(std::cout);

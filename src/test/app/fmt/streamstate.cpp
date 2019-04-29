@@ -4,9 +4,9 @@ namespace fmt {
 
 streamstate::streamstate(std::ostream& s)
     : mStream(s)
-    , mFmtFlags(s.flags())
     , mPrecision(s.precision())
     , mWidth(s.width())
+    , mFmtFlags(s.flags())
     , mFill(s.fill()) {}
 
 streamstate::~streamstate() {

@@ -9,8 +9,9 @@ TEST_CASE("bench robin_hood::hash<std::string>" * doctest::test_suite("bench") *
     sfc64 rng(123);
     robin_hood::hash<std::string> hasher;
 
-    size_t len;
-    size_t iterations;
+    size_t len = 0;
+    size_t iterations = 0;
+
     SUBCASE("7") {
         len = 7;
         iterations = 250058138u;
@@ -39,7 +40,7 @@ TEST_CASE("bench robin_hood::hash<std::string>" * doctest::test_suite("bench") *
     BENCHMARK("std::string length " + std::to_string(len), len * iterations, "B") {
         for (size_t i = 0; i < iterations; ++i) {
             // modify string to prevent optimization
-            ++*reinterpret_cast<uint64_t*>(&str[0]);
+            ++*robin_hood::detail::reinterpret_cast_no_cast_align_warning<uint64_t*>(&str[0]);
             h += hasher(str);
         }
     }

@@ -18,8 +18,8 @@ TEST_CASE_TEMPLATE("bench find random" * doctest::test_suite("bench") * doctest:
     static constexpr size_t numFindsPerInsert = 500;
     static constexpr size_t numFindsPerIter = numFindsPerInsert * numTotal;
 
-    size_t requiredChecksum;
-    size_t numFound;
+    size_t requiredChecksum = 0;
+    size_t numFound = 0;
     SUBCASE("0% found") {
         numFound = 0;
         requiredChecksum = 0;

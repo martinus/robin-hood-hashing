@@ -20,9 +20,9 @@ TEST_CASE_TEMPLATE("bench distinctness" * doctest::test_suite("bench") * doctest
     static mt const num_steps = 5;
     static mt const step_width = (upper - lower) / num_steps;
 
-    mt divisor;
-    char const* title;
-    int required_checksum;
+    mt divisor = 0;
+    char const* title = "";
+    int required_checksum = 0;
 
     SUBCASE("5%") {
         divisor = 20;

@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iostream>
 
+// add explicit alignas() so -Wpadded doesn't warn
 class Benchmark {
 public:
     using clock =
