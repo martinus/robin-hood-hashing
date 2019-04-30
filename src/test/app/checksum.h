@@ -1,8 +1,12 @@
-#include <cstddef>
+#ifndef APP_CHECKSUM_H
+#define APP_CHECKSUM_H
+
 #include <cstdint>
 
+namespace checksum {
+
 // final step from MurmurHash3
-inline uint64_t fmix64(uint64_t k) {
+inline uint64_t mix(uint64_t k) {
     k ^= k >> 33;
     k *= 0xff51afd7ed558ccdULL;
     k ^= k >> 33;
@@ -12,28 +16,27 @@ inline uint64_t fmix64(uint64_t k) {
 }
 
 // from boost::hash_combine, with additional fmix64 of value
-inline uint64_t hash_combine(uint64_t seed, uint64_t value) {
-    return seed ^ (fmix64(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-}
-
-template <class T>
-inline uint64_t hash_value(T const& value) {
-    return value;
+inline uint64_t combine(uint64_t seed, uint64_t value) {
+    return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }
 
 // calculates a hash of any iterable map. Order is irrelevant for the hash's result, as it simply
 // xors the elements together.
 template <typename M>
-inline uint64_t hash(const M& map) {
+inline uint64_t map(const M& map) {
     uint64_t combined_hash = 1;
 
-    size_t numElements = 0;
+    uint64_t numElements = 0;
     for (auto const& entry : map) {
-        auto entry_hash = hash_combine(hash_value(entry.first), hash_value(entry.second));
+        auto entry_hash = combine(mix(entry.first), mix(entry.second));
 
         combined_hash ^= entry_hash;
         ++numElements;
     }
 
-    return hash_combine(combined_hash, numElements);
+    return combine(combined_hash, numElements);
 }
+
+} // namespace checksum
+
+#endif
