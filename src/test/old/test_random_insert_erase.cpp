@@ -3,21 +3,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-// final step from MurmurHash3
-inline uint64_t fmix64(uint64_t k) {
-    k ^= k >> 33;
-    k *= 0xff51afd7ed558ccdULL;
-    k ^= k >> 33;
-    k *= 0xc4ceb9fe1a85ec53ULL;
-    k ^= k >> 33;
-    return k;
-}
-
-// from boost::hash_combine, with additional fmix64 of value
-inline uint64_t hash_combine(uint64_t seed, uint64_t value) {
-    return seed ^ (fmix64(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
-}
-
 template <class T>
 inline uint64_t hash_value(T const& value) {
     return value;
