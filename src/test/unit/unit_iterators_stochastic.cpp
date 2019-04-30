@@ -4,6 +4,7 @@
 
 #include <doctest.h>
 
+#include <random>
 #include <unordered_map>
 
 TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, uint64_t>);
@@ -15,21 +16,23 @@ TEST_CASE_TEMPLATE("iterators stochastic" * doctest::test_suite("stochastic"), M
                    robin_hood::unordered_node_map<uint64_t, uint64_t>) {
 
     size_t totals = 1000;
-    uint64_t seed = 9999;
+
+    std::random_device rd;
+    auto seed = std::uniform_int_distribution<uint64_t>{}(rd);
     INFO("seed=" << seed);
     sfc64 rng(seed);
 
-    uint64_t cks = 0;
-
-    Map map;
+    Map rh;
+    std::unordered_map<uint64_t, uint64_t> uo;
     for (size_t n = 0; n < totals; ++n) {
         // insert a single element
         auto k = rng();
         auto v = rng();
-        map[k] = v;
+        rh[k] = v;
+        uo[k] = v;
 
-        // then iterate everything
-        cks = checksum::combine(cks, checksum::map(map));
+        REQUIRE(rh.size() == uo.size());
+        REQUIRE(checksum::map(rh) == checksum::map(uo));
     }
 
     // now remove element after element until the map is empty
@@ -39,11 +42,11 @@ TEST_CASE_TEMPLATE("iterators stochastic" * doctest::test_suite("stochastic"), M
         // insert a single element
         auto k = rng();
         rng(); // discard value
-        map.erase(k);
+        rh.erase(k);
+        uo.erase(k);
 
         // then iterate everything
-        cks = checksum::combine(cks, checksum::map(map));
+        REQUIRE(rh.size() == uo.size());
+        REQUIRE(checksum::map(rh) == checksum::map(uo));
     }
-    REQUIRE(map.empty());
-    REQUIRE(cks == UINT64_C(11980746028390242716));
 }
