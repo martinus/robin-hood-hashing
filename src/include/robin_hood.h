@@ -534,7 +534,7 @@ inline size_t hash_bytes(void const* ptr, size_t const len) {
         // fallthrough
     default:
         break;
-    };
+    }
 
     h ^= h >> r;
     h *= m;
