@@ -1,8 +1,8 @@
 #include <app/checksum.h>
+#include <app/sfc64.h>
 #include <robin_hood.h>
-#include <sfc64.h>
 
-#include <doctest.h>
+#include <app/doctest.h>
 
 #include <random>
 #include <unordered_map>

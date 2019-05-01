@@ -1,8 +1,8 @@
 #include "robin_hood.h"
 
-#include "benchmark.h"
-#include "counter_defaults.h"
-#include "sfc64.h"
+#include <app/benchmark.h>
+#include <app/counter_defaults.h>
+#include <app/sfc64.h>
 
 #include <array>
 

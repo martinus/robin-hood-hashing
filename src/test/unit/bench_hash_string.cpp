@@ -1,8 +1,8 @@
 #include "robin_hood.h"
 
-#include "benchmark.h"
-#include "doctest.h"
-#include "sfc64.h"
+#include <app/benchmark.h>
+#include <app/doctest.h>
+#include <app/sfc64.h>
 
 TEST_CASE("bench robin_hood::hash<std::string>" * doctest::test_suite("bench") * doctest::skip()) {
     size_t h = 0;

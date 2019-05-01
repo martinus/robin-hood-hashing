@@ -1,8 +1,8 @@
 #ifndef COUNT_DEFAULTS_H
 #define COUNT_DEFAULTS_H
 
-#include "Counter.h"
-#include <doctest.h>
+#include <app/Counter.h>
+#include <app/doctest.h>
 
 #include <unordered_map>
 

@@ -1,7 +1,7 @@
 #include <robin_hood.h>
 
-#include <benchmark.h>
-#include <doctest.h>
+#include <app/benchmark.h>
+#include <app/doctest.h>
 
 #include <unordered_map>
 

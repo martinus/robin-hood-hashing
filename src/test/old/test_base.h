@@ -3,7 +3,7 @@
 
 #include "catch.hpp"
 #include "robin_hood.h"
-#include "sfc64.h"
+#include <app/sfc64.h>
 
 #include <iomanip>
 #include <iostream>

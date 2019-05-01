@@ -1,6 +1,6 @@
 #include <robin_hood.h>
 
-#include <doctest.h>
+#include <app/doctest.h>
 
 #include <iostream>
 #include <string>

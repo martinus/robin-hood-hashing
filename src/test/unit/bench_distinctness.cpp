@@ -1,8 +1,8 @@
 #include "robin_hood.h"
 
-#include "benchmark.h"
-#include "doctest.h"
-#include "sfc64.h"
+#include <app/benchmark.h>
+#include <app/doctest.h>
+#include <app/sfc64.h>
 
 TYPE_TO_STRING(robin_hood::unordered_flat_map<int, int>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<int, int>);

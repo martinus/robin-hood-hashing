@@ -1,6 +1,6 @@
-#include <include_only.h>
+#include <unit/include_only.h>
 
-#include <doctest.h>
+#include <app/doctest.h>
 
 TEST_CASE("include only") {
     REQUIRE(include_only() == 878);

@@ -1,12 +1,12 @@
 #include "robin_hood.h"
 
-#include "Counter.h"
-#include "benchmark.h"
-#include "sfc64.h"
+#include <app/Counter.h>
+#include <app/benchmark.h>
+#include <app/sfc64.h>
 
 #include <unordered_map>
 
-#include "counter_defaults.h"
+#include <app/counter_defaults.h>
 
 TEST_CASE_TEMPLATE("count random insert erase" * doctest::test_suite("count") * doctest::skip(),
                    Map, robin_hood::unordered_flat_map<cnt, cnt, std::hash<cnt>>,

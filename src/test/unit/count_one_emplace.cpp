@@ -1,9 +1,9 @@
 #include "robin_hood.h"
 
-#include "Counter.h"
-#include "benchmark.h"
-#include "counter_defaults.h"
-#include "sfc64.h"
+#include <app/Counter.h>
+#include <app/benchmark.h>
+#include <app/counter_defaults.h>
+#include <app/sfc64.h>
 
 TEST_CASE_TEMPLATE("count one emplace" * doctest::test_suite("count") * doctest::skip(), Map,
                    robin_hood::unordered_flat_map<cnt, cnt, std::hash<cnt>>,

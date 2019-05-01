@@ -1,7 +1,7 @@
 #ifndef FMT_BIN_H
 #define FMT_BIN_H
 
-#include <fmt/streamstate.h>
+#include <app/fmt/streamstate.h>
 
 #include <iomanip>
 #include <iostream>

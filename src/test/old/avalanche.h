@@ -1,7 +1,7 @@
 #ifndef AVALANCHE_H
 #define AVALANCHE_H
 
-#include "sfc64.h"
+#include <app/sfc64.h>
 
 #include <algorithm>
 #include <array>
