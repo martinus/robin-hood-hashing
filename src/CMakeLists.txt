@@ -54,6 +54,7 @@ add_executable(robinhood-test
     test/unit/unit_include_only.cpp
     test/unit/unit_initializerlist.cpp
     test/unit/unit_iterators_ctor.cpp
+    test/unit/unit_iterators_empty.cpp
     test/unit/unit_iterators_insert.cpp
     test/unit/unit_iterators_stochastic.cpp
     test/unit/unit_load_factor.cpp
@@ -195,6 +196,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
     #target_compile_options(robinhood-test PRIVATE -fsanitize=address)
     #target_link_libraries(robinhood-test PRIVATE -fsanitize=address)
 
+    # warns in doctest.h :(
     #target_compile_options(robinhood-test PRIVATE -fsanitize=memory)
     #target_link_libraries(robinhood-test PRIVATE -fsanitize=memory)
 
