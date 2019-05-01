@@ -1,10 +1,10 @@
-#include <app/checksum.h>
-#include <app/sfc64.h>
 #include <robin_hood.h>
 
+#include <app/checksum.h>
 #include <app/doctest.h>
+#include <app/randomseed.h>
+#include <app/sfc64.h>
 
-#include <random>
 #include <unordered_map>
 
 TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, uint64_t>);
@@ -17,8 +17,7 @@ TEST_CASE_TEMPLATE("iterators stochastic" * doctest::test_suite("stochastic"), M
 
     size_t totals = 1000;
 
-    std::random_device rd;
-    auto seed = std::uniform_int_distribution<uint64_t>{}(rd);
+    auto seed = randomseed();
     INFO("seed=" << seed);
     sfc64 rng(seed);
 

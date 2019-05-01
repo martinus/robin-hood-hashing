@@ -1,5 +1,7 @@
-#ifndef SFC64_H
-#define SFC64_H
+#ifndef APP_SFC64_H
+#define APP_SFC64_H
+
+#include <app/randomseed.h>
 
 #include <array>
 #include <cstdint>
@@ -14,7 +16,7 @@ public:
     using result_type = uint64_t;
 
     sfc64()
-        : sfc64(UINT64_C(0x853c49e6748fea9b)) {}
+        : sfc64(randomseed()) {}
 
     sfc64(uint64_t a, uint64_t b, uint64_t c, uint64_t counter)
         : m_a{a}
@@ -55,7 +57,7 @@ public:
     }
 
     void seed() {
-        seed(std::random_device{}());
+        seed(randomseed());
     }
 
     void seed(uint64_t seed) {

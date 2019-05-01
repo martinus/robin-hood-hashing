@@ -28,6 +28,8 @@ add_executable(robinhood-test
     test/app/Counter.h
     test/app/Counter.cpp
     test/app/doctest.h
+    test/app/randomseed.h
+    test/app/randomseed.cpp
     test/app/sfc64.h
 
     test/unit/bench_copy_iterators.cpp
@@ -60,6 +62,7 @@ add_executable(robinhood-test
     test/unit/unit_load_factor.cpp
     test/unit/unit_not_copyable.cpp
     test/unit/unit_not_moveable.cpp
+    test/unit/unit_overflow.cpp
     test/unit/unit_pair_trivial.cpp
     test/unit/unit_reserve.cpp
     test/unit/unit_sizeof.cpp
