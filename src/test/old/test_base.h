@@ -2,8 +2,8 @@
 #define TEST_BASE_H
 
 #include "catch.hpp"
-#include "robin_hood.h"
 #include <app/sfc64.h>
+#include <robin_hood.h>
 
 #include <iomanip>
 #include <iostream>
