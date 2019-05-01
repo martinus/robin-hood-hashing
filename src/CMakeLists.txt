@@ -13,10 +13,10 @@ if(CCACHE_FOUND)
 endif(CCACHE_FOUND)
 
 add_executable(robinhood-test
+    test/unit/main.cpp # first because its slowest
+
     include/robin_hood.h
     test/thirdparty/doctest/doctest.h
-
-    test/unit/main.cpp # first because its slowest
 
     test/app/fmt/hex.h
     test/app/fmt/bin.h
@@ -47,7 +47,11 @@ add_executable(robinhood-test
     test/unit/count_random_insert_erase.cpp
     test/unit/count_find_random.cpp
     test/unit/count_one_emplace.cpp
+
+    test/unit/fuzz_insert_erase.cpp
+
     test/unit/show_hash.cpp
+
     test/unit/unit_assignments.cpp
     test/unit/unit_assignment_combinations.cpp
     test/unit/unit_at.cpp

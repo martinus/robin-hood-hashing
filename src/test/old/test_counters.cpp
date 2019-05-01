@@ -8,13 +8,6 @@
 #include <tuple>
 #include <unordered_map>
 
-struct BigObject {
-    std::string str;
-    std::vector<int> vec;
-    std::shared_ptr<int> ptr;
-    std::list<int> list;
-};
-
 struct ConfigurableCounterHash {
     // 234679895032 masksum, 1.17938e+06 geomean for 0xbdcbaec81634e906 0xa309d159626eef52
     ConfigurableCounterHash()

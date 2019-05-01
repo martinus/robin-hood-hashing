@@ -1,25 +1,27 @@
 #ifndef FMT_HEX_H
 #define FMT_HEX_H
 
-#include <bitset>
+#include <app/fmt/streamstate.h>
+
+#include <iomanip>
 #include <iostream>
 
 namespace fmt {
 
 template <typename T>
-struct Bin {
+struct Hex {
     T value;
 };
 
 template <typename T>
-Bin<T> bin(T value) {
-    return Bin<T>{value};
+Hex<T> hex(T value) {
+    return Hex<T>{value};
 }
 
 template <typename T>
-std::ostream& operator<<(std::ostream& os, Bin<T> const& b) {
+std::ostream& operator<<(std::ostream& os, Hex<T> const& h) {
     streamstate ss(os);
-    os << std::bitset<sizeof(T) * 8>{b.value};
+    os << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << h.value;
     return os;
 }
 
