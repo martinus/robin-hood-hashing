@@ -66,7 +66,7 @@ add_executable(robinhood-test
     test/unit/unit_unique_ptr.cpp
 )
 
-target_include_directories( robinhood-test PRIVATE "include" "test")
+target_include_directories(robinhood-test PRIVATE "include" "test")
 
 macro(add_compiler_flags)
     foreach(flag ${ARGV})
