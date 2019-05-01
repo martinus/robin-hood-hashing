@@ -1,20 +1,10 @@
-#ifndef HASHES_H
-#define HASHES_H
+#ifndef APP_HASH_FNV1A_H
+#define APP_HASH_FNV1A_H
 
 #include <cstddef>
 #include <cstdint>
 
-#include <robin_hood.h>
-
 namespace hash {
-
-// Linux uses a noop hash
-template <typename T>
-struct Null {
-    size_t operator()(T const& key) const {
-        return static_cast<size_t>(key);
-    }
-};
 
 // Visual Studio uses a FNV1a implementation.
 template <typename T>

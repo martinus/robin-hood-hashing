@@ -22,6 +22,9 @@ add_executable(robinhood-test
     test/app/fmt/bin.h
     test/app/fmt/streamstate.h
     test/app/fmt/streamstate.cpp
+    test/app/hash/Bad.h
+    test/app/hash/FNV1a.h
+    test/app/hash/Identity.h
     test/app/benchmark.h
     test/app/benchmark.cpp
     test/app/counter_defaults.h

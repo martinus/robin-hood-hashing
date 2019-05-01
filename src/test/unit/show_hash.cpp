@@ -3,6 +3,8 @@
 #include <app/fmt/bin.h>
 #include <app/fmt/hex.h>
 #include <app/fmt/streamstate.h>
+#include <app/hash/FNV1a.h>
+#include <app/hash/Identity.h>
 
 #include <app/doctest.h>
 
@@ -13,10 +15,12 @@
 namespace {
 
 void showHash(size_t val) {
+    auto id = hash::Identity<size_t>{}(val);
     auto sh = std::hash<size_t>{}(val);
     auto rh = robin_hood::hash<size_t>{}(val);
-    std::cout << fmt::hex(val) << " | " << fmt::hex(sh) << " | " << fmt::hex(rh) << " | "
-              << fmt::bin(rh) << std::endl;
+    auto fn = hash::FNV1a<size_t>{}(val);
+    std::cout << fmt::hex(val) << " | " << fmt::hex(id) << " | " << fmt::hex(sh) << " | "
+              << fmt::hex(fn) << " | " << fmt::hex(rh) << " | " << fmt::bin(rh) << std::endl;
 }
 
 } // namespace
@@ -24,8 +28,10 @@ void showHash(size_t val) {
 TEST_CASE("show hash distribution" * doctest::test_suite("show") * doctest::skip()) {
     fmt::streamstate ss(std::cout);
     int s = sizeof(size_t) * 2;
-    std::cout << std::setw(s) << "input"
+    std::cout << std::left << std::setw(s) << "input"
+              << " | " << std::setw(s) << "Identity"
               << " | " << std::setw(s) << "std::hash"
+              << " | " << std::setw(s) << "FNV1a"
               << " | " << std::setw(s) << "robin_hood::hash"
               << " | " << std::setw(sizeof(size_t) * 8) << "robin_hood::hash binary" << std::endl;
     for (size_t i = 0; i < 100; ++i) {

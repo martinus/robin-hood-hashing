@@ -2,23 +2,17 @@
 
 #include <app/checksum.h>
 #include <app/doctest.h>
+#include <app/hash/Bad.h>
 #include <app/sfc64.h>
 
 #include <unordered_map>
 
-struct BadHash {
-    template <typename T>
-    size_t operator()(T const&) const {
-        return 0;
-    }
-};
-
-TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, uint64_t, BadHash>);
-TYPE_TO_STRING(robin_hood::unordered_node_map<uint64_t, uint64_t, BadHash>);
+TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, uint64_t, hash::Bad<uint64_t>>);
+TYPE_TO_STRING(robin_hood::unordered_node_map<uint64_t, uint64_t, hash::Bad<uint64_t>>);
 
 TEST_CASE_TEMPLATE("bug overflow" * doctest::test_suite("stochastic"), Map,
-                   robin_hood::unordered_flat_map<uint64_t, uint64_t, BadHash>,
-                   robin_hood::unordered_node_map<uint64_t, uint64_t, BadHash>) {
+                   robin_hood::unordered_flat_map<uint64_t, uint64_t, hash::Bad<uint64_t>>,
+                   robin_hood::unordered_node_map<uint64_t, uint64_t, hash::Bad<uint64_t>>) {
     Map rh;
     std::unordered_map<uint64_t, uint64_t> uo;
 
