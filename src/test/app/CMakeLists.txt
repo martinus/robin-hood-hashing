@@ -7,6 +7,8 @@ target_sources_local(rh PRIVATE
     counter_defaults.h
     Counter.cpp
     Counter.h
+    CtorDtorVerifier.h
+    CtorDtorVerifier.cpp
     doctest.h
     randomseed.cpp
     randomseed.h
