@@ -14,7 +14,7 @@ TEST_CASE_TEMPLATE("count one emplace" * doctest::test_suite("count") * doctest:
                    std::unordered_map<cnt, cnt, robin_hood::hash<cnt>>) {
     Counter counts;
     Map map;
-    uint64_t x = 1;
+    size_t x = 1;
     map.emplace(std::piecewise_construct, std::forward_as_tuple(x, counts),
                 std::forward_as_tuple(x, counts));
     counts.printCounts(std::string("one emplace ") + doctest::detail::type_to_string<Map>());

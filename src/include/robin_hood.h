@@ -593,7 +593,7 @@ template <>
 struct hash<uint32_t> {
     size_t operator()(uint32_t const& h) const {
 #if ROBIN_HOOD_BITNESS == 32
-        return static_cast<size_t>((UINT64_C(0xca4bcaa75ec3f625) * (uint64_t)h) >> 32);
+        return static_cast<size_t>((UINT64_C(0xca4bcaa75ec3f625) * static_cast<uint64_t>(h)) >> 32);
 #else
         return hash<uint64_t>{}(static_cast<uint64_t>(h));
 #endif

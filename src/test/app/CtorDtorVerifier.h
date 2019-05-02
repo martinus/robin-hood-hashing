@@ -1,6 +1,8 @@
 #ifndef APP_CTORDTORVERIFIER_H
 #define APP_CTORDTORVERIFIER_H
 
+#include <robin_hood.h>
+
 #include <cstddef>
 #include <cstdint>
 
@@ -27,5 +29,14 @@ public:
 private:
     uint64_t mVal;
 };
+
+namespace robin_hood {
+
+template <>
+struct hash<CtorDtorVerifier> {
+    size_t operator()(CtorDtorVerifier const& t) const;
+};
+
+} // namespace robin_hood
 
 #endif

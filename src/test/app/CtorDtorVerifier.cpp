@@ -98,3 +98,13 @@ bool CtorDtorVerifier::contains(CtorDtorVerifier const* ptr) {
 }
 
 bool CtorDtorVerifier::mDoPrintDebugInfo = false;
+
+namespace robin_hood {
+
+size_t hash<CtorDtorVerifier>::operator()(CtorDtorVerifier const& t) const {
+    // hash is bad on purpose
+    const size_t bitmaskWithoutLastBits = ~static_cast<size_t>(5);
+    return t.val() & bitmaskWithoutLastBits;
+}
+
+} // namespace robin_hood
