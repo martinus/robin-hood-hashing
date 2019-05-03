@@ -159,6 +159,8 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
 #endif
 #if __has_cpp_attribute(clang::fallthrough)
 #    define FALLTHROUGH [[clang::fallthrough]]
+#elif __has_cpp_attribute(gnu::fallthrough)
+#    define FALLTHROUGH [[gnu::fallthrough]]
 #else
 #    define FALLTHROUGH
 #endif
@@ -506,33 +508,26 @@ inline size_t hash_bytes(void const* ptr, size_t const len) {
     switch (len & 7u) {
     case 7:
         h ^= static_cast<uint64_t>(data8[6]) << 48u;
-        FALLTHROUGH;
-        // fallthrough
+        FALLTHROUGH; // FALLTHROUGH
     case 6:
         h ^= static_cast<uint64_t>(data8[5]) << 40u;
-        FALLTHROUGH;
-        // fallthrough
+        FALLTHROUGH; // FALLTHROUGH
     case 5:
         h ^= static_cast<uint64_t>(data8[4]) << 32u;
-        FALLTHROUGH;
-        // fallthrough
+        FALLTHROUGH; // FALLTHROUGH
     case 4:
         h ^= static_cast<uint64_t>(data8[3]) << 24u;
-        FALLTHROUGH;
-        // fallthrough
+        FALLTHROUGH; // FALLTHROUGH
     case 3:
         h ^= static_cast<uint64_t>(data8[2]) << 16u;
-        FALLTHROUGH;
-        // fallthrough
+        FALLTHROUGH; // FALLTHROUGH
     case 2:
         h ^= static_cast<uint64_t>(data8[1]) << 8u;
-        FALLTHROUGH;
-        // fallthrough
+        FALLTHROUGH; // FALLTHROUGH
     case 1:
         h ^= static_cast<uint64_t>(data8[0]);
         h *= m;
-        FALLTHROUGH;
-        // fallthrough
+        FALLTHROUGH; // FALLTHROUGH
     default:
         break;
     }
