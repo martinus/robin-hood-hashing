@@ -101,10 +101,11 @@
 #    endif
 #    include <intrin.h>
 #    pragma intrinsic(ROBIN_HOOD_BITSCANFORWARD)
-#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                          \
-        [](size_t mask) -> int {                                                         \
-            unsigned long index;                                                         \
-            return ROBIN_HOOD_BITSCANFORWARD(&index, mask) ? static_cast<int>(index) : ROBIN_HOOD_BITNESS; \
+#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                      \
+        [](size_t mask) -> int {                                                     \
+            unsigned long index;                                                     \
+            return ROBIN_HOOD_BITSCANFORWARD(&index, mask) ? static_cast<int>(index) \
+                                                           : ROBIN_HOOD_BITNESS;     \
         }(x)
 #else
 #    if __GNUC__ >= 4
