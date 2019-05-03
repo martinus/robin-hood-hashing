@@ -83,7 +83,7 @@ script:
 
   # build
   - cd build
-  - cmake .. ${CMAKE_OPTIONS} && cmake --build . --config Release -j4
+  - cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_OPTIONS} && cmake --build . -- -j4
   
   # check file
   - file ./rh
