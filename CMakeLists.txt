@@ -42,6 +42,9 @@ if (RH_sanitizer)
         target_compile_options(rh PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
         target_link_libraries(rh PRIVATE -fsanitize=undefined,float-divide-by-zero,float-cast-overflow)
 
+        target_compile_options(rh PRIVATE -fsanitize=pointer-compare,pointer-subtract)
+        target_link_libraries(rh PRIVATE -fsanitize=pointer-compare,pointer-subtract)
+
         target_compile_options(rh PRIVATE -fsanitize=address)
         target_link_libraries(rh PRIVATE -fsanitize=address)
     endif()
