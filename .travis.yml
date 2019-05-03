@@ -82,10 +82,13 @@ script:
   - $CXX --version
 
   # build
-  - make -j4 all
-
+  - cd build
+  - cmake .. ${CMAKE_OPTIONS} && cmake --build . --config Release -j4
+  
   # check file
-  - file ./build/robinhood-test
+  - file ./rh
 
   # run test
-  - ./build/robinhood-test
+  - ./rh -ns -ts=show
+  - ./rh -ns -ts=count
+  - ./rh
