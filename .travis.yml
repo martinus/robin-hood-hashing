@@ -8,7 +8,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CXXFLAGS="-Wno-unknown-pragmas -O2"
+    - CMAKE_OPTIONS=-DRH_sanitizer=ON
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -19,7 +19,8 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CXXFLAGS="-Wno-unknown-pragmas -O2 -m32"
+    - CMAKE_OPTIONS=-DRH_sanitizer=ON
+    - CXXFLAGS="-m32"
     - LDFLAGS="-m32"
     addons:
       apt:
@@ -31,19 +32,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CXXFLAGS="-Wno-unknown-pragmas -O2 -std=c++17"
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8']
-
-  # -fsanitize=undefined
-  - os: linux
-    compiler: gcc
-    env:
-    - COMPILER=g++-8
-    - CXXFLAGS="-Wno-unknown-pragmas -O2 -fsanitize=undefined"
-    - LDFLAGS="-fuse-ld=gold -fsanitize=undefined"
+    - CXXFLAGS="-O2 -std=c++17"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -54,8 +43,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CXXFLAGS="-Wno-unknown-pragmas -O2 -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=address"
-    - LDFLAGS="-fuse-ld=gold -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=address"
+    - CMAKE_OPTIONS=-DRH_sanitizer=ON
     - ASAN_OPTIONS=verbosity=1:detect_invalid_pointer_pairs=2
     addons:
       apt:
@@ -67,7 +55,7 @@ matrix:
     compiler: clang
     env:
     - COMPILER=clang++-6.0
-    - CXXFLAGS="-Wno-unknown-pragmas -O2"
+    - CMAKE_OPTIONS=-DRH_sanitizer=ON
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
@@ -82,10 +70,13 @@ script:
   - $CXX --version
 
   # build
-  - make -j4 all
-
+  - cd build
+  - cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_OPTIONS} && cmake --build . -- -j4
+  
   # check file
-  - file ./build/robinhood-test
+  - file ./rh
 
   # run test
-  - ./build/robinhood-test
+  - ./rh -ns -ts=show
+  - ./rh -ns -ts=count
+  - ./rh
