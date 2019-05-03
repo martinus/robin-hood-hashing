@@ -141,6 +141,7 @@ function(add_compile_flags_target target)
             /wd5026 # move constructor was implicitly defined as deleted
             /wd4623 # default constructor was implicitly defined as deleted
             /wd4774 # 'swprintf_s' : format string expected in argument 3 is not a string literal
+            /wd4577 # C4577: 'noexcept' used with no exception handling mode specified.
         )
     endif()
 
