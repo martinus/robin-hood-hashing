@@ -18,6 +18,6 @@ build_script:
 - cmake --build . --config Release
 
 test_script:
-- rh.exe -ns -ts=show
-- rh.exe -ns -ts=count
-- rh.exe
+- Release\rh.exe -ns -ts=show
+- Release\rh.exe -ns -ts=count
+- Release\rh.exe
