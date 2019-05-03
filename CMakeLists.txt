@@ -35,6 +35,9 @@ if (RH_sanitizer)
         target_link_libraries(rh PRIVATE -fsanitize=nullability)
     endif()
     if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        # need to use gold linker, otherwise travis gets '/usr/bin/ld: --push-state: unknown option' error
+        target_link_libraries(rh PRIVATE -fuse-ld=gold)
+
         target_compile_options(rh PRIVATE -g) 
         target_compile_options(rh PRIVATE -O2)
         target_compile_options(rh PRIVATE -fno-omit-frame-pointer)
