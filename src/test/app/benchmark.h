@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <string>
 
 #if defined(__clang__)
 #    pragma clang diagnostic push

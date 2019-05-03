@@ -2,6 +2,8 @@
 
 #include <app/doctest.h>
 
+#include <array>
+
 namespace {
 
 int clz(void const* data) {

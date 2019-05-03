@@ -104,7 +104,7 @@
 #    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                          \
         [](size_t mask) -> int {                                                         \
             unsigned long index;                                                         \
-            return ROBIN_HOOD_BITSCANFORWARD(&index, mask) ? index : ROBIN_HOOD_BITNESS; \
+            return ROBIN_HOOD_BITSCANFORWARD(&index, mask) ? static_cast<int>(index) : ROBIN_HOOD_BITNESS; \
         }(x)
 #else
 #    if __GNUC__ >= 4
@@ -178,7 +178,7 @@ inline T reinterpret_cast_no_cast_align_warning(void const* ptr) {
 } // namespace robin_hood
 
 // likely/unlikely
-#if __GNUC__ >= 4
+#if !defined(_WIN32) && (__GNUC__ >= 4)
 #    define ROBIN_HOOD_LIKELY(condition) __builtin_expect(condition, 1)
 #    define ROBIN_HOOD_UNLIKELY(condition) __builtin_expect(condition, 0)
 #else

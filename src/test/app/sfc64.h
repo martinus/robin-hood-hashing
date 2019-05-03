@@ -90,7 +90,7 @@ public:
         do {
             x = operator()();
             r = x % boundExcluded;
-        } while (x - r > (-boundExcluded));
+        } while (x - r > (UINT64_C(0)-boundExcluded));
         return r;
     }
 

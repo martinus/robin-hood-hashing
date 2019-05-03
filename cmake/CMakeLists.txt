@@ -134,12 +134,13 @@ function(add_compile_flags_target target)
             /wd4616 # invalid compiler warnings - https://msdn.microsoft.com/en-us/library/t7ab6xtd.aspx
             /wd4619 # invalid compiler warnings - https://msdn.microsoft.com/en-us/library/tacee08d.aspx
             
-            #/wd4820 # padding in structs
-            #/wd4625 # copy constructor was implicitly defined as deleted
-            #/wd4626 # assignment operator was implicitly defined as deleted
-            #/wd5027 # move assignment operator was implicitly defined as deleted
-            #/wd5026 # move constructor was implicitly defined as deleted
-            #/wd4623 # default constructor was implicitly defined as deleted
+            /wd4820 # padding in structs
+            /wd4625 # copy constructor was implicitly defined as deleted
+            /wd4626 # assignment operator was implicitly defined as deleted
+            /wd5027 # move assignment operator was implicitly defined as deleted
+            /wd5026 # move constructor was implicitly defined as deleted
+            /wd4623 # default constructor was implicitly defined as deleted
+            /wd4774 # 'swprintf_s' : format string expected in argument 3 is not a string literal
         )
     endif()
 
