@@ -120,6 +120,7 @@ function(add_compile_flags_target target)
     endif()
 
     if(MSVC)
+        target_compile_options(${target} PRIVATE /EHsc) # exception handling
         target_compile_options(${target} PRIVATE /std:c++latest) # for post c++14 updates in MSVC
         target_compile_options(${target} PRIVATE /permissive-)   # force standard conformance - this is the better flag than /Za
         target_compile_options(${target} PRIVATE /WX)
@@ -141,7 +142,6 @@ function(add_compile_flags_target target)
             /wd5026 # move constructor was implicitly defined as deleted
             /wd4623 # default constructor was implicitly defined as deleted
             /wd4774 # 'swprintf_s' : format string expected in argument 3 is not a string literal
-            /wd4577 # C4577: 'noexcept' used with no exception handling mode specified.
         )
     endif()
 
