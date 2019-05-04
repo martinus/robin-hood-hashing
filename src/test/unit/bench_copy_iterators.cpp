@@ -12,15 +12,17 @@ TEST_CASE_TEMPLATE("bench copy by iterating" * doctest::test_suite("bench") * do
                    robin_hood::unordered_flat_map<uint64_t, uint64_t>,
                    robin_hood::unordered_node_map<uint64_t, uint64_t>) {
 
-    static constexpr size_t size = 800000;
+    static constexpr size_t size = 1000000;
+    static constexpr size_t iters = 20;
+
     Map map;
     for (size_t i = 0; i < size; ++i) {
         map.emplace(i, i);
     }
-    std::cout << map.load_factor() << std::endl;
-
-    BENCHMARK("copy", map.size(), "op") {
-        Map map_copy(map.begin(), map.end());
-        REQUIRE(map_copy.size() == map.size());
+    BENCHMARK("copy", map.size() * iters, "op") {
+        for (size_t i = 0; i < 20; ++i) {
+            Map map_copy(map.begin(), map.end());
+            REQUIRE(map_copy.size() == map.size());
+        }
     }
 }
