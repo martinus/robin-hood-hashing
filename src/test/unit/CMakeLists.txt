@@ -17,6 +17,8 @@ target_sources_local(rh PRIVATE
     count_find_random.cpp
     count_one_emplace.cpp
 
+    example.cpp
+
     # fuzzers
     fuzz_insert_erase.cpp
 
