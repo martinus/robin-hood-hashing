@@ -481,12 +481,12 @@ struct pair {
     Second second;
 };
 
-// A thin wrapper around std::hash, performing a single multiplication to (hopefully) get nicely
-// randomized upper bits, which are used by the unordered_map.
+// Fallback: use std::hash when no robin_hood::hash is available. Performing an additional mixing to
+// prevent bad hashes
 template <typename T>
 struct hash : public std::hash<T> {
     size_t operator()(T const& obj) const {
-        return std::hash<T>::operator()(obj);
+        return ::robin_hood::hash<size_t>{}(std::hash<T>::operator()(obj));
     }
 };
 
@@ -1000,12 +1000,13 @@ private:
     // The upper 1-5 bits need to be a reasonable good hash, to save comparisons.
     template <typename HashKey>
     void keyToIdx(HashKey&& key, size_t& idx, InfoType& info) const {
-        // when we have any hash that's *not* robin_hood::hash, apply robin_hood::hash as an
+        // for a user-specified hash that is *not* robin_hood::hash, apply robin_hood::hash as an
         // additional mixing step. This serves as a bad hash prevention, if the given data is badly
         // mixed.
         using Mix =
             typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
-                                      detail::identity_hash<size_t>, hash<size_t>>::type;
+                                      ::robin_hood::detail::identity_hash<size_t>,
+                                      ::robin_hood::hash<size_t>>::type;
         idx = Mix{}(Hash::operator()(key));
 
         info = mInfoInc + static_cast<InfoType>(idx >> mInfoHashShift);
