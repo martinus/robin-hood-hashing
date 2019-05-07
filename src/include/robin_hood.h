@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.7
+// version 3.2.8
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -396,6 +396,14 @@ struct NodeAllocator<T, MinSize, MaxSize, true> {
 
 template <typename T, size_t MinSize, size_t MaxSize>
 struct NodeAllocator<T, MinSize, MaxSize, false> : public BulkPoolAllocator<T, MinSize, MaxSize> {};
+
+// dummy hash, unsed as mixer when robin_hood::hash is already used
+template <typename T>
+struct identity_hash {
+    constexpr size_t operator()(T const& obj) const noexcept {
+        return static_cast<size_t>(obj);
+    }
+};
 
 } // namespace detail
 
@@ -992,11 +1000,14 @@ private:
     // The upper 1-5 bits need to be a reasonable good hash, to save comparisons.
     template <typename HashKey>
     void keyToIdx(HashKey&& key, size_t& idx, InfoType& info) const {
-        static constexpr size_t bad_hash_prevention =
-            std::is_same<::robin_hood::hash<key_type>, hasher>::value
-                ? 1
-                : (ROBIN_HOOD_BITNESS == 64 ? UINT64_C(0xb3727c1f779b8d8b) : UINT32_C(0xda4afe47));
-        idx = Hash::operator()(key) * bad_hash_prevention;
+        // when we have any hash that's *not* robin_hood::hash, apply robin_hood::hash as an
+        // additional mixing step. This serves as a bad hash prevention, if the given data is badly
+        // mixed.
+        using Mix =
+            typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
+                                      detail::identity_hash<size_t>, hash<size_t>>::type;
+        idx = Mix{}(Hash::operator()(key));
+
         info = mInfoInc + static_cast<InfoType>(idx >> mInfoHashShift);
         idx &= mMask;
     }
