@@ -24,13 +24,10 @@ namespace {
 
 size_t do_something(size_t numIters) {
     sfc64 rng(231);
-    std::unordered_map<uint64_t, uint64_t> map;
     for (size_t i = 0; i < numIters; ++i) {
-        auto k = rng();
-        auto v = rng();
-        map[k] = v;
+        rng();
     }
-    return map.size();
+    return rng.uniform<size_t>();
 }
 
 class PerformanceCounters {
@@ -71,10 +68,16 @@ public:
     void fetch() {
         auto const numBytes = sizeof(uint64_t) * mReadFormat.size();
         auto ret = read(mFd, mReadFormat.data(), numBytes);
-        if (ret != static_cast<ssize_t>(numBytes)) {
+        if (ret % 8 != 0) {
             throw std::runtime_error("not enough bytes read - maybe monitor the same thing twice?");
         }
-
+        /*
+        if (ret != static_cast<ssize_t>(numBytes)) {
+            std::cout << mReadFormat[0] << std::endl;
+            REQUIRE(ret == static_cast<ssize_t>(numBytes));
+            throw std::runtime_error("not enough bytes read - maybe monitor the same thing twice?");
+        }
+*/
         // clear old data
         for (auto& id_value : mIdToValue) {
             id_value.second = 0;
@@ -144,9 +147,9 @@ private:
 TEST_CASE("measure times new") {
     PerformanceCounters pc;
 
-    auto contextSwitches = pc.monitor(PERF_COUNT_SW_CONTEXT_SWITCHES);
     auto swPageFaults = pc.monitor(PERF_COUNT_SW_PAGE_FAULTS);
     auto cycles = pc.monitor(PERF_COUNT_HW_CPU_CYCLES);
+    // auto contextSwitches = pc.monitor(PERF_COUNT_SW_CONTEXT_SWITCHES);
     auto instructions = pc.monitor(PERF_COUNT_HW_INSTRUCTIONS);
     auto branches = pc.monitor(PERF_COUNT_HW_BRANCH_INSTRUCTIONS);
     auto misses = pc.monitor(PERF_COUNT_HW_BRANCH_MISSES);
@@ -163,21 +166,19 @@ TEST_CASE("measure times new") {
     pc.disable();
 
     pc.fetch();
-    std::cout << (static_cast<double>(*timeEnabled) * 1e-9) << " time enabled" << std::endl
-              << (static_cast<double>(*timeRunning) * 1e-9) << " time running" << std::endl
-              << *contextSwitches << " context-switches" << std::endl
-              << *swPageFaults << " page-faults" << std::endl
-              << *cycles << " cycles" << std::endl
-              << *instructions << " instructions" << std::endl
-              << *branches << " branches" << std::endl
-              << *misses << " branch-misses" << std::endl
-              << std::endl;
-
+    std::cout << (static_cast<double>(*timeEnabled) * 1e-9) << " time enabled" << std::endl;
+    std::cout << (static_cast<double>(*timeRunning) * 1e-9) << " time running" << std::endl;
+    // std::cout << *contextSwitches << " context-switches" << std::endl;
+    std::cout << *swPageFaults << " page-faults" << std::endl;
+    std::cout << (static_cast<double>(*cycles) / 1000000.0) << " cycles" << std::endl;
+    std::cout << (static_cast<double>(*instructions) / 1000000.0) << " instructions" << std::endl;
+    std::cout << *branches << " branches" << std::endl;
+    std::cout << *misses << " branch-misses" << std::endl;
+    std::cout << std::endl;
     std::cout << (static_cast<double>(*instructions) / static_cast<double>(*cycles))
               << " insn per cycle" << std::endl;
 
     std::cout << (static_cast<double>(*misses) * 100.0 / static_cast<double>(*branches))
               << "% of all branches" << std::endl;
-
     std::cout << s << std::endl;
 }
