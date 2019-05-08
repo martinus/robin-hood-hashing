@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 2 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 7 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 8 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -54,6 +54,15 @@
 #    define ROBIN_HOOD_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
 #else
 #    define ROBIN_HOOD_LOG(x)
+#endif
+
+// #define ROBIN_HOOD_TRACE_ENABLED
+#ifdef ROBIN_HOOD_TRACE_ENABLED
+#    include <iostream>
+#    define ROBIN_HOOD_TRACE(x) \
+        std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
+#else
+#    define ROBIN_HOOD_TRACE(x)
 #endif
 
 // mark unused members with this macro
@@ -481,15 +490,6 @@ struct pair {
     Second second;
 };
 
-// Fallback: use std::hash when no robin_hood::hash is available. Performing an additional mixing to
-// prevent bad hashes
-template <typename T>
-struct hash : public std::hash<T> {
-    size_t operator()(T const& obj) const {
-        return ::robin_hood::hash<size_t>{}(std::hash<T>::operator()(obj));
-    }
-};
-
 // Hash an arbitrary amount of bytes. This is basically Murmur2 hash without caring about big
 // endianness. TODO add a fallback for very large strings?
 inline size_t hash_bytes(void const* ptr, size_t const len) {
@@ -550,6 +550,41 @@ inline size_t hash_bytes(void const* ptr, size_t const len) {
 #endif
 }
 
+inline size_t hash_int(uint64_t obj) {
+#if defined(ROBIN_HOOD_HAS_UMUL128)
+    // 167079903232 masksum, 120428523 ops best: 0xde5fb9d2630458e9
+    static constexpr uint64_t k = UINT64_C(0xde5fb9d2630458e9);
+    uint64_t h;
+    uint64_t l = detail::umul128(obj, k, &h);
+    return h + l;
+#elif ROBIN_HOOD_BITNESS == 32
+    uint64_t const r = obj * UINT64_C(0xca4bcaa75ec3f625);
+    uint32_t h = static_cast<uint32_t>(r >> 32);
+    uint32_t l = static_cast<uint32_t>(r);
+    return h + l;
+#else
+    // murmurhash 3 finalizer
+    uint64_t h = obj;
+    h ^= h >> 33;
+    h *= 0xff51afd7ed558ccd;
+    h ^= h >> 33;
+    h *= 0xc4ceb9fe1a85ec53;
+    h ^= h >> 33;
+    return static_cast<size_t>(h);
+#endif
+}
+
+// A thin wrapper around std::hash, performing an additional simple mixing step of the result.
+template <typename T>
+struct hash : public std::hash<T> {
+    size_t operator()(T const& obj) const {
+        // call base hash
+        auto result = std::hash<T>::operator()(obj);
+        // return mixed of that, to be save against identity has
+        return hash_int(static_cast<uint64_t>(result));
+    }
+};
+
 template <>
 struct hash<std::string> {
     size_t operator()(std::string const& str) const {
@@ -557,57 +592,45 @@ struct hash<std::string> {
     }
 };
 
-// specialization used for uint64_t and int64_t. Uses 128bit multiplication
 template <>
-struct hash<uint64_t> {
-    size_t operator()(uint64_t const& obj) const {
-#if defined(ROBIN_HOOD_HAS_UMUL128)
-        // 167079903232 masksum, 120428523 ops best: 0xde5fb9d2630458e9
-        static constexpr uint64_t k = UINT64_C(0xde5fb9d2630458e9);
-        uint64_t h;
-        uint64_t l = detail::umul128(obj, k, &h);
-        return h + l;
-#elif ROBIN_HOOD_BITNESS == 32
-        static constexpr uint32_t k = UINT32_C(0x9a0ecda7);
-        uint64_t const r = obj * k;
-        uint32_t h = static_cast<uint32_t>(r >> 32);
-        uint32_t l = static_cast<uint32_t>(r);
-        return h + l;
-#else
-        // murmurhash 3 finalizer
-        uint64_t h = obj;
-        h ^= h >> 33;
-        h *= 0xff51afd7ed558ccd;
-        h ^= h >> 33;
-        h *= 0xc4ceb9fe1a85ec53;
-        h ^= h >> 33;
-        return static_cast<size_t>(h);
-#endif
+struct hash<int> {
+    size_t operator()(int const& obj) const {
+        return hash_int(static_cast<uint64_t>(obj));
     }
 };
 
 template <>
-struct hash<int64_t> {
-    size_t operator()(int64_t const& obj) const {
-        return hash<uint64_t>{}(static_cast<uint64_t>(obj));
+struct hash<unsigned int> {
+    size_t operator()(unsigned int const& obj) const {
+        return hash_int(static_cast<uint64_t>(obj));
     }
 };
 
 template <>
-struct hash<uint32_t> {
-    size_t operator()(uint32_t const& h) const {
-#if ROBIN_HOOD_BITNESS == 32
-        return static_cast<size_t>((UINT64_C(0xca4bcaa75ec3f625) * static_cast<uint64_t>(h)) >> 32);
-#else
-        return hash<uint64_t>{}(static_cast<uint64_t>(h));
-#endif
+struct hash<long> {
+    size_t operator()(long const& obj) const {
+        return hash_int(static_cast<uint64_t>(obj));
     }
 };
 
 template <>
-struct hash<int32_t> {
-    size_t operator()(int32_t const& obj) const {
-        return hash<uint32_t>{}(static_cast<uint32_t>(obj));
+struct hash<unsigned long> {
+    size_t operator()(unsigned long const& obj) const {
+        return hash_int(static_cast<uint64_t>(obj));
+    }
+};
+
+template <>
+struct hash<long long> {
+    size_t operator()(long long const& obj) const {
+        return hash_int(static_cast<uint64_t>(obj));
+    }
+};
+
+template <>
+struct hash<unsigned long long> {
+    size_t operator()(unsigned long long const& obj) const {
+        return hash_int(static_cast<uint64_t>(obj));
     }
 };
 
@@ -1150,13 +1173,16 @@ public:
     explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
                            const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
         : Hash(h)
-        , KeyEqual(equal) {}
+        , KeyEqual(equal) {
+        ROBIN_HOOD_TRACE(this);
+    }
 
     template <typename Iter>
     unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
                   const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
         : Hash(h)
         , KeyEqual(equal) {
+        ROBIN_HOOD_TRACE(this);
         insert(first, last);
     }
 
@@ -1165,6 +1191,7 @@ public:
                   const KeyEqual& equal = KeyEqual{})
         : Hash(h)
         , KeyEqual(equal) {
+        ROBIN_HOOD_TRACE(this);
         insert(init.begin(), init.end());
     }
 
@@ -1172,6 +1199,7 @@ public:
         : Hash(std::move(static_cast<Hash&>(o)))
         , KeyEqual(std::move(static_cast<KeyEqual&>(o)))
         , DataPool(std::move(static_cast<DataPool&>(o))) {
+        ROBIN_HOOD_TRACE(this);
         if (o.mMask) {
             mKeyVals = std::move(o.mKeyVals);
             mInfo = std::move(o.mInfo);
@@ -1186,6 +1214,7 @@ public:
     }
 
     unordered_map& operator=(unordered_map&& o) {
+        ROBIN_HOOD_TRACE(this);
         if (&o != this) {
             if (o.mMask) {
                 // only move stuff if the other map actually has some data
@@ -1215,6 +1244,7 @@ public:
         , KeyEqual(static_cast<const KeyEqual&>(o))
         , DataPool(static_cast<const DataPool&>(o)) {
 
+        ROBIN_HOOD_TRACE(this);
         if (!o.empty()) {
             // not empty: create an exact copy. it is also possible to just iterate through all
             // elements and insert them, but copying is probably faster.
@@ -1234,6 +1264,7 @@ public:
 
     // Creates a copy of the given map. Copy constructor of each entry is used.
     unordered_map& operator=(unordered_map const& o) {
+        ROBIN_HOOD_TRACE(this);
         if (&o == this) {
             // prevent assigning of itself
             return *this;
@@ -1299,6 +1330,7 @@ public:
 
     // Swaps everything between the two maps.
     void swap(unordered_map& o) {
+        ROBIN_HOOD_TRACE(this);
         using std::swap;
         swap(mKeyVals, o.mKeyVals);
         swap(mInfo, o.mInfo);
@@ -1315,6 +1347,7 @@ public:
 
     // Clears all data, without resizing.
     void clear() {
+        ROBIN_HOOD_TRACE(this);
         if (empty()) {
             // don't do anything! also important because we don't want to write to DummyInfoByte::b,
             // even though we would just write 0 to it.
@@ -1334,11 +1367,13 @@ public:
 
     // Destroys the map and all it's contents.
     ~unordered_map() {
+        ROBIN_HOOD_TRACE(this);
         destroy();
     }
 
     // Checks if both maps contain the same entries. Order is irrelevant.
     bool operator==(const unordered_map& other) const {
+        ROBIN_HOOD_TRACE(this);
         if (other.size() != size()) {
             return false;
         }
@@ -1353,14 +1388,17 @@ public:
     }
 
     bool operator!=(const unordered_map& other) const {
+        ROBIN_HOOD_TRACE(this);
         return !operator==(other);
     }
 
     mapped_type& operator[](const key_type& key) {
+        ROBIN_HOOD_TRACE(this);
         return doCreateByKey(key);
     }
 
     mapped_type& operator[](key_type&& key) {
+        ROBIN_HOOD_TRACE(this);
         return doCreateByKey(std::move(key));
     }
 
@@ -1374,6 +1412,7 @@ public:
 
     template <typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args) {
+        ROBIN_HOOD_TRACE(this);
         Node n{*this, std::forward<Args>(args)...};
         auto r = doInsert(std::move(n));
         if (!r.second) {
@@ -1384,6 +1423,7 @@ public:
     }
 
     std::pair<iterator, bool> insert(const value_type& keyval) {
+        ROBIN_HOOD_TRACE(this);
         return doInsert(keyval);
     }
 
@@ -1393,6 +1433,7 @@ public:
 
     // Returns 1 if key is found, 0 otherwise.
     size_t count(const key_type& key) const {
+        ROBIN_HOOD_TRACE(this);
         auto kv = mKeyVals + findIdx(key);
         if (kv != reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
             return 1;
@@ -1403,6 +1444,7 @@ public:
     // Returns a reference to the value found for key.
     // Throws std::out_of_range if element cannot be found
     mapped_type& at(key_type const& key) {
+        ROBIN_HOOD_TRACE(this);
         auto kv = mKeyVals + findIdx(key);
         if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
             doThrow<std::out_of_range>("key not found");
@@ -1413,6 +1455,7 @@ public:
     // Returns a reference to the value found for key.
     // Throws std::out_of_range if element cannot be found
     mapped_type const& at(key_type const& key) const {
+        ROBIN_HOOD_TRACE(this);
         auto kv = mKeyVals + findIdx(key);
         if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
             doThrow<std::out_of_range>("key not found");
@@ -1421,37 +1464,44 @@ public:
     }
 
     const_iterator find(const key_type& key) const {
+        ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return const_iterator{mKeyVals + idx, mInfo + idx};
     }
 
     template <typename OtherKey>
     const_iterator find(const OtherKey& key, is_transparent_tag /*unused*/) const {
+        ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return const_iterator{mKeyVals + idx, mInfo + idx};
     }
 
     iterator find(const key_type& key) {
+        ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return iterator{mKeyVals + idx, mInfo + idx};
     }
 
     template <typename OtherKey>
     iterator find(const OtherKey& key, is_transparent_tag /*unused*/) {
+        ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return iterator{mKeyVals + idx, mInfo + idx};
     }
 
     iterator begin() {
+        ROBIN_HOOD_TRACE(this);
         if (empty()) {
             return end();
         }
         return iterator(mKeyVals, mInfo, fast_forward_tag{});
     }
     const_iterator begin() const {
+        ROBIN_HOOD_TRACE(this);
         return cbegin();
     }
     const_iterator cbegin() const {
+        ROBIN_HOOD_TRACE(this);
         if (empty()) {
             return cend();
         }
@@ -1459,24 +1509,29 @@ public:
     }
 
     iterator end() {
+        ROBIN_HOOD_TRACE(this);
         // no need to supply valid info pointer: end() must not be dereferenced, and only node
         // pointer is compared.
         return iterator{reinterpret_cast_no_cast_align_warning<Node*>(mInfo), nullptr};
     }
     const_iterator end() const {
+        ROBIN_HOOD_TRACE(this);
         return cend();
     }
     const_iterator cend() const {
+        ROBIN_HOOD_TRACE(this);
         return const_iterator{reinterpret_cast_no_cast_align_warning<Node*>(mInfo), nullptr};
     }
 
     iterator erase(const_iterator pos) {
+        ROBIN_HOOD_TRACE(this);
         // its safe to perform const cast here
         return erase(iterator{const_cast<Node*>(pos.mKeyVals), const_cast<uint8_t*>(pos.mInfo)});
     }
 
     // Erases element at pos, returns iterator to the next element.
     iterator erase(iterator pos) {
+        ROBIN_HOOD_TRACE(this);
         // we assume that pos always points to a valid entry, and not end().
         auto const idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
 
@@ -1493,6 +1548,7 @@ public:
     }
 
     size_t erase(const key_type& key) {
+        ROBIN_HOOD_TRACE(this);
         size_t idx;
         InfoType info;
         keyToIdx(key, idx, info);
@@ -1512,6 +1568,7 @@ public:
     }
 
     void reserve(size_t count) {
+        ROBIN_HOOD_TRACE(this);
         auto newSize = InitialNumElements > mMask + 1 ? InitialNumElements : mMask + 1;
         while (calcMaxNumElementsAllowed(newSize) < count && newSize != 0) {
             newSize *= 2;
@@ -1524,6 +1581,7 @@ public:
     }
 
     void rehash(size_t numBuckets) {
+        ROBIN_HOOD_TRACE(this);
         if (ROBIN_HOOD_UNLIKELY((numBuckets & (numBuckets - 1)) != 0)) {
             doThrow<std::runtime_error>("rehash only allowed for power of two");
         }
@@ -1550,27 +1608,33 @@ public:
     }
 
     size_type size() const {
+        ROBIN_HOOD_TRACE(this);
         return mNumElements;
     }
 
     size_type max_size() const {
+        ROBIN_HOOD_TRACE(this);
         return static_cast<size_type>(-1);
     }
 
     bool empty() const {
+        ROBIN_HOOD_TRACE(this);
         return 0 == mNumElements;
     }
 
     float max_load_factor() const {
+        ROBIN_HOOD_TRACE(this);
         return MaxLoadFactor100 / 100.0f;
     }
 
     // Average number of elements per bucket. Since we allow only 1 per bucket
     float load_factor() const {
+        ROBIN_HOOD_TRACE(this);
         return static_cast<float>(size()) / static_cast<float>(mMask + 1);
     }
 
     size_t mask() const {
+        ROBIN_HOOD_TRACE(this);
         return mMask;
     }
 
