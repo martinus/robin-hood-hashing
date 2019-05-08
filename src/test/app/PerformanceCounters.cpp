@@ -6,17 +6,57 @@
 #include <map>
 #include <vector>
 
+#include <linux/perf_event.h>
+#include <sys/ioctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
 const uint64_t PerformanceCounters::no_data = static_cast<uint64_t>(-1);
 
-uint64_t const* PerformanceCounters::monitor(perf_hw_id id) {
+uint64_t const* PerformanceCounters::monitor(Event e) {
+    switch (e) {
+    case Event::time_total_enabled:
+        return &mTimeEnabledNanos;
+    case Event::time_total_running:
+        return mTimeRunningNanos;
+        /*
+    case cpu_cycles:
+
+    case instructions:
+    case cache_references:
+    case cache_misses:
+    case branch_instructions:
+    case branch_misses:
+    case bus_cycles:
+    case stalled_cycles_frontend:
+    case stalled_cycles_backend:
+    case ref_cpu_cycles:
+    case cpu_clock:
+    case task_clock:
+    case page_faults:
+    case context_switches:
+    case cpu_migrations:
+    case page_faults_minor:
+    case page_faults_major:
+    case alignment_faults:
+    case emulation_faults:
+        * /
+    }
     return monitor(PERF_TYPE_HARDWARE, id);
 }
 
 uint64_t const* PerformanceCounters::monitor(perf_sw_ids id) {
     return monitor(PERF_TYPE_SOFTWARE, id);
+}
+
+// start counting
+void PerformanceCounters::enable() {
+    ioctl(mFd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+}
+
+// stop counting
+void PerformanceCounters::disable() {
+    ioctl(mFd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
 }
 
 uint64_t const* PerformanceCounters::monitor(PerfTime id) {
