@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.9
+// version 3.2.10
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -35,9 +35,9 @@
 #define ROBIN_HOOD_H_INCLUDED
 
 // see https://semver.org/
-#define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 2 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 9 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_MAJOR 3  // for incompatible API changes
+#define ROBIN_HOOD_VERSION_MINOR 2  // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_PATCH 10 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -587,53 +587,49 @@ struct hash : public std::hash<T> {
 
 template <>
 struct hash<std::string> {
-    size_t operator()(std::string const& str) const {
+    size_t operator()(std::string const& str) const noexcept {
         return hash_bytes(str.data(), str.size());
     }
 };
 
-template <>
-struct hash<int> {
-    size_t operator()(int const& obj) const {
-        return hash_int(static_cast<uint64_t>(obj));
+template <class T>
+struct hash<T*> {
+    size_t operator()(T* ptr) const noexcept {
+        return hash_int(reinterpret_cast<size_t>(ptr));
     }
 };
 
-template <>
-struct hash<unsigned int> {
-    size_t operator()(unsigned int const& obj) const {
-        return hash_int(static_cast<uint64_t>(obj));
+#define ROBIN_HOOD_HASH_INT(T)                           \
+    template <>                                          \
+    struct hash<T> {                                     \
+        size_t operator()(T obj) const noexcept {        \
+            return hash_int(static_cast<uint64_t>(obj)); \
+        }                                                \
     }
-};
 
-template <>
-struct hash<long> {
-    size_t operator()(long const& obj) const {
-        return hash_int(static_cast<uint64_t>(obj));
-    }
-};
-
-template <>
-struct hash<unsigned long> {
-    size_t operator()(unsigned long const& obj) const {
-        return hash_int(static_cast<uint64_t>(obj));
-    }
-};
-
-template <>
-struct hash<long long> {
-    size_t operator()(long long const& obj) const {
-        return hash_int(static_cast<uint64_t>(obj));
-    }
-};
-
-template <>
-struct hash<unsigned long long> {
-    size_t operator()(unsigned long long const& obj) const {
-        return hash_int(static_cast<uint64_t>(obj));
-    }
-};
-
+#if defined(__GNUC__)
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wuseless-cast"
+#endif
+// see https://en.cppreference.com/w/cpp/utility/hash
+ROBIN_HOOD_HASH_INT(bool);
+ROBIN_HOOD_HASH_INT(char);
+ROBIN_HOOD_HASH_INT(signed char);
+ROBIN_HOOD_HASH_INT(unsigned char);
+ROBIN_HOOD_HASH_INT(char16_t);
+ROBIN_HOOD_HASH_INT(char32_t);
+ROBIN_HOOD_HASH_INT(wchar_t);
+ROBIN_HOOD_HASH_INT(short);
+ROBIN_HOOD_HASH_INT(unsigned short);
+ROBIN_HOOD_HASH_INT(int);
+ROBIN_HOOD_HASH_INT(unsigned int);
+ROBIN_HOOD_HASH_INT(long);
+ROBIN_HOOD_HASH_INT(long long);
+ROBIN_HOOD_HASH_INT(unsigned long);
+ROBIN_HOOD_HASH_INT(unsigned long long);
+#if defined(__GNUC__)
+#    pragma GCC diagnostic pop
+#endif
 namespace detail {
 
 // A highly optimized hashmap implementation, using the Robin Hood algorithm.
