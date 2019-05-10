@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.8
+// version 3.2.9
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -428,39 +428,39 @@ struct pair {
 
     // pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
     explicit pair(std::pair<First, Second> const& o)
-        : first{o.first}
-        , second{o.second} {}
+        : first(o.first)
+        , second(o.second) {}
 
     // pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
     explicit pair(std::pair<First, Second>&& o)
-        : first{std::move(o.first)}
-        , second{std::move(o.second)} {}
+        : first(std::move(o.first))
+        , second(std::move(o.second)) {}
 
     constexpr pair(const First& firstArg, const Second& secondArg)
-        : first{firstArg}
-        , second{secondArg} {}
+        : first(firstArg)
+        , second(secondArg) {}
 
     constexpr pair(First&& firstArg, Second&& secondArg)
-        : first{std::move(firstArg)}
-        , second{std::move(secondArg)} {}
+        : first(std::move(firstArg))
+        , second(std::move(secondArg)) {}
 
     template <typename FirstArg, typename SecondArg>
     constexpr pair(FirstArg&& firstArg, SecondArg&& secondArg)
-        : first{std::forward<FirstArg>(firstArg)}
-        , second{std::forward<SecondArg>(secondArg)} {}
+        : first(std::forward<FirstArg>(firstArg))
+        , second(std::forward<SecondArg>(secondArg)) {}
 
     template <typename... Args1, typename... Args2>
     pair(std::piecewise_construct_t /*unused*/, std::tuple<Args1...> firstArgs,
          std::tuple<Args2...> secondArgs)
-        : pair{firstArgs, secondArgs, std::index_sequence_for<Args1...>{},
-               std::index_sequence_for<Args2...>{}} {}
+        : pair(firstArgs, secondArgs, std::index_sequence_for<Args1...>(),
+               std::index_sequence_for<Args2...>()) {}
 
     // constructor called from the std::piecewise_construct_t ctor
     template <typename... Args1, size_t... Indexes1, typename... Args2, size_t... Indexes2>
     pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2,
          std::index_sequence<Indexes1...> /*unused*/, std::index_sequence<Indexes2...> /*unused*/)
-        : first{std::forward<Args1>(std::get<Indexes1>(tuple1))...}
-        , second{std::forward<Args2>(std::get<Indexes2>(tuple2))...} {
+        : first(std::forward<Args1>(std::get<Indexes1>(tuple1))...)
+        , second(std::forward<Args2>(std::get<Indexes2>(tuple2))...) {
         // make visual studio compiler happy about warning about unused tuple1 & tuple2.
         // Visual studio's pair implementation disables warning 4100.
         (void)tuple1;
