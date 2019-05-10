@@ -6,6 +6,11 @@
 #include <map>
 #include <vector>
 
+#if defined(__clang__)
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wpadded"
+#endif
+
 // API to C++ Performance counters.
 class PerformanceCounters {
 public:
@@ -102,14 +107,18 @@ public:
 
     ~PerformanceCounters();
 
-private:
     uint64_t const* monitor(uint32_t type, uint64_t event);
 
+private:
     std::map<uint64_t, uint64_t> mIdToValue{};
     std::vector<uint64_t> mReadFormat{};
-    int mFd = -1;
     uint64_t mTimeEnabledNanos = 0;
     uint64_t mTimeRunningNanos = 0;
+    int mFd = -1;
 };
+
+#if defined(__clang__)
+#    pragma clang diagnostic pop
+#endif
 
 #endif

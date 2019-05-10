@@ -1,52 +1,99 @@
 #include <app/PerformanceCounters.h>
 
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <map>
-#include <vector>
-
-#include <linux/perf_event.h>
-#include <sys/ioctl.h>
-#include <sys/syscall.h>
-#include <unistd.h>
-
 const uint64_t PerformanceCounters::no_data = static_cast<uint64_t>(-1);
+
+#ifdef __linux__
+
+// currently only linux is supported.
+
+#    include <cstdlib>
+#    include <cstring>
+#    include <iostream>
+#    include <map>
+#    include <vector>
+
+#    include <linux/perf_event.h>
+#    include <sys/ioctl.h>
+#    include <sys/syscall.h>
+#    include <unistd.h>
+
+namespace {
+
+uint64_t const* mon(PerformanceCounters* const pc, perf_sw_ids id) {
+    return pc->monitor(PERF_TYPE_SOFTWARE, id);
+}
+
+uint64_t const* mon(PerformanceCounters* const pc, perf_hw_id id) {
+    return pc->monitor(PERF_TYPE_HARDWARE, id);
+}
+
+} // namespace
 
 uint64_t const* PerformanceCounters::monitor(Event e) {
     switch (e) {
     case Event::time_total_enabled:
         return &mTimeEnabledNanos;
+
     case Event::time_total_running:
-        return mTimeRunningNanos;
-        /*
-    case cpu_cycles:
+        return &mTimeRunningNanos;
 
-    case instructions:
-    case cache_references:
-    case cache_misses:
-    case branch_instructions:
-    case branch_misses:
-    case bus_cycles:
-    case stalled_cycles_frontend:
-    case stalled_cycles_backend:
-    case ref_cpu_cycles:
-    case cpu_clock:
-    case task_clock:
-    case page_faults:
-    case context_switches:
-    case cpu_migrations:
-    case page_faults_minor:
-    case page_faults_major:
-    case alignment_faults:
-    case emulation_faults:
-        * /
+    case Event::cpu_cycles:
+        return mon(this, PERF_COUNT_HW_CPU_CYCLES);
+
+    case Event::instructions:
+        return mon(this, PERF_COUNT_HW_INSTRUCTIONS);
+
+    case Event::cache_references:
+        return mon(this, PERF_COUNT_HW_CACHE_REFERENCES);
+
+    case Event::cache_misses:
+        return mon(this, PERF_COUNT_HW_CACHE_MISSES);
+
+    case Event::branch_instructions:
+        return mon(this, PERF_COUNT_HW_BRANCH_INSTRUCTIONS);
+
+    case Event::branch_misses:
+        return mon(this, PERF_COUNT_HW_BRANCH_MISSES);
+
+    case Event::bus_cycles:
+        return mon(this, PERF_COUNT_HW_BUS_CYCLES);
+
+    case Event::stalled_cycles_frontend:
+        return mon(this, PERF_COUNT_HW_STALLED_CYCLES_FRONTEND);
+
+    case Event::stalled_cycles_backend:
+        return mon(this, PERF_COUNT_HW_STALLED_CYCLES_BACKEND);
+
+    case Event::ref_cpu_cycles:
+        return mon(this, PERF_COUNT_HW_REF_CPU_CYCLES);
+
+    case Event::cpu_clock:
+        return mon(this, PERF_COUNT_SW_CPU_CLOCK);
+
+    case Event::task_clock:
+        return mon(this, PERF_COUNT_SW_TASK_CLOCK);
+
+    case Event::page_faults:
+        return mon(this, PERF_COUNT_SW_PAGE_FAULTS);
+
+    case Event::context_switches:
+        return mon(this, PERF_COUNT_SW_CONTEXT_SWITCHES);
+
+    case Event::cpu_migrations:
+        return mon(this, PERF_COUNT_SW_CPU_MIGRATIONS);
+
+    case Event::page_faults_minor:
+        return mon(this, PERF_COUNT_SW_PAGE_FAULTS_MIN);
+
+    case Event::page_faults_major:
+        return mon(this, PERF_COUNT_SW_PAGE_FAULTS_MAJ);
+
+    case Event::alignment_faults:
+        return mon(this, PERF_COUNT_SW_ALIGNMENT_FAULTS);
+
+    case Event::emulation_faults:
+        return mon(this, PERF_COUNT_SW_EMULATION_FAULTS);
     }
-    return monitor(PERF_TYPE_HARDWARE, id);
-}
-
-uint64_t const* PerformanceCounters::monitor(perf_sw_ids id) {
-    return monitor(PERF_TYPE_SOFTWARE, id);
 }
 
 // start counting
@@ -59,22 +106,11 @@ void PerformanceCounters::disable() {
     ioctl(mFd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
 }
 
-uint64_t const* PerformanceCounters::monitor(PerfTime id) {
-    switch (id) {
-    case PERF_TIME_ENABLED_NANOS:
-        return &mTimeEnabledNanos;
-    case PERF_TIME_RUNNING_NANOS:
-        return &mTimeRunningNanos;
-    default:
-        return nullptr;
-    }
-}
-
 void PerformanceCounters::reset() {
     ioctl(mFd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
 }
 
-uint64_t const* PerformanceCounters::monitor(perf_type_id type, uint64_t eventid) {
+uint64_t const* PerformanceCounters::monitor(uint32_t type, uint64_t eventid) {
     perf_event_attr pea;
     memset(&pea, 0, sizeof(perf_event_attr));
     pea.type = type;
@@ -142,3 +178,21 @@ PerformanceCounters::~PerformanceCounters() {
         close(mFd);
     }
 }
+
+#else
+
+uint64_t const* PerformanceCounters::monitor(Event /*unused*/) {
+    return &no_data;
+}
+
+uint64_t const* PerformanceCounters::monitor(uint32_t type, uint64_t eventid) {
+    return &no_data;
+}
+
+void PerformanceCounters::enable() {}
+void PerformanceCounters::disable() {}
+void PerformanceCounters::reset() {}
+void PerformanceCounters::fetch() {}
+PerformanceCounters::~PerformanceCounters() = default;
+
+#endif
