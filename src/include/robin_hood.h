@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 2 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 8 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 9 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
