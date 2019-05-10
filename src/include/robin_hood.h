@@ -627,7 +627,7 @@ ROBIN_HOOD_HASH_INT(long);
 ROBIN_HOOD_HASH_INT(long long);
 ROBIN_HOOD_HASH_INT(unsigned long);
 ROBIN_HOOD_HASH_INT(unsigned long long);
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__clang__)
 #    pragma GCC diagnostic pop
 #endif
 namespace detail {
