@@ -94,8 +94,10 @@ uint64_t const* PerformanceCounters::monitor(Event e) {
     case Event::emulation_faults:
         return mon(this, PERF_COUNT_SW_EMULATION_FAULTS);
 
+#    if !defined(__clang__)
     default:
         throw std::runtime_error("unknown event");
+#    endif
     }
 }
 

@@ -20,9 +20,12 @@ std::string fmt(long double v, char symbol) {
         } else {
             ss << std::setprecision(3);
         }
-        ss << std::fixed << v << " " << symbol;
+        ss << std::fixed << v;
+        if (symbol != ' ') {
+            ss << " " << symbol;
+        }
     } else {
-        ss << v << " ";
+        ss << v;
     }
     return ss.str();
 }

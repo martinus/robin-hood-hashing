@@ -23,17 +23,28 @@ Benchmark::~Benchmark() {
     if (isValid(mMisses) && isValid(mBranches)) {
         branchMissesPercent = static_cast<double>(*mMisses) / static_cast<double>(*mBranches);
     }
+    double mInsPerCycle = -1;
+    if (isValid(mInstructions) && isValid(mCycles)) {
+        mInsPerCycle = static_cast<double>(*mInstructions) / static_cast<double>(*mCycles);
+    }
 
     // << mup(*mContextSwitches / mCount) << " context-switches/" << mOpName << ", "
     fmt::streamstate ss(std::cout);
-    std::cout << mup(runtime_sec / mCount) << "s/" << mOpName << ",   "
-              << mup(static_cast<double>(*mSwPageFaults) / mCount) << " page-faults/" << mOpName
-              << ",   " << mup(static_cast<double>(*mCycles) / mCount) << " cycles/" << mOpName
-              << ",   " << mup(static_cast<double>(*mInstructions) / mCount) << " instructions/"
-              << mOpName << ",   " << mup(static_cast<double>(*mBranches) / mCount) << " branches/"
-              << mOpName << ",   " << mup(static_cast<double>(*mMisses) / mCount)
-              << " branch-misses/" << mOpName << " (";
+    std::cout << mup(runtime_sec / mCount) << "s/" << mOpName << ",   ";
+    std::cout << mup(static_cast<double>(*mSwPageFaults) / mCount) << " page-faults/" << mOpName
+              << ",   ";
 
+    std::cout << mup(static_cast<double>(*mInstructions) / mCount) << " instructions/" << mOpName
+              << ",   ";
+
+    std::cout << mup(static_cast<double>(*mCycles) / mCount) << " cycles/" << mOpName << ",   ";
+
+    std::cout << mup(mInsPerCycle) << " ins/cycle,   ";
+
+    std::cout << mup(static_cast<double>(*mBranches) / mCount) << " branches/" << mOpName << ",   ";
+
+    std::cout << mup(static_cast<double>(*mMisses) / mCount) << " branch-misses/" << mOpName
+              << " (";
     std::cout << std::setprecision(4) << std::fixed << (branchMissesPercent * 100) << "%) for "
               << mMsg << std::endl;
 }
