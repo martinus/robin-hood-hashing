@@ -21,19 +21,22 @@ public:
     Benchmark(std::string const& msg)
         : Benchmark(msg, 1, "op") {}
 
+    Benchmark(Benchmark const&) = delete;
+    Benchmark& operator=(Benchmark const&) = delete;
+
     template <typename T>
     Benchmark(std::string const& msg, T c, std::string const& opName)
         : mPc()
+        , mSwPageFaults(mPc.monitor(PerformanceCounters::Event::page_faults))
+        , mCycles(mPc.monitor(PerformanceCounters::Event::cpu_cycles))
+        , mContextSwitches(mPc.monitor(PerformanceCounters::Event::context_switches))
+        , mInstructions(mPc.monitor(PerformanceCounters::Event::instructions))
+        , mBranches(mPc.monitor(PerformanceCounters::Event::branch_instructions))
+        , mMisses(mPc.monitor(PerformanceCounters::Event::branch_misses))
         , mMsg(msg)
         , mCount(static_cast<double>(c))
         , mOpName(opName)
         , mStartTime() {
-        mSwPageFaults = mPc.monitor(PerformanceCounters::Event::page_faults);
-        mCycles = mPc.monitor(PerformanceCounters::Event::cpu_cycles);
-        mContextSwitches = mPc.monitor(PerformanceCounters::Event::context_switches);
-        mInstructions = mPc.monitor(PerformanceCounters::Event::instructions);
-        mBranches = mPc.monitor(PerformanceCounters::Event::branch_instructions);
-        mMisses = mPc.monitor(PerformanceCounters::Event::branch_misses);
 
         // go!
         mStartTime = clock::now();
@@ -57,12 +60,12 @@ public:
 
 private:
     PerformanceCounters mPc;
-    uint64_t const* mSwPageFaults;
-    uint64_t const* mCycles;
-    uint64_t const* mContextSwitches;
-    uint64_t const* mInstructions;
-    uint64_t const* mBranches;
-    uint64_t const* mMisses;
+    uint64_t const* const mSwPageFaults;
+    uint64_t const* const mCycles;
+    uint64_t const* const mContextSwitches;
+    uint64_t const* const mInstructions;
+    uint64_t const* const mBranches;
+    uint64_t const* const mMisses;
     std::string const mMsg;
     double mCount;
     std::string const mOpName;

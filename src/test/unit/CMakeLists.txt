@@ -42,6 +42,7 @@ target_sources_local(rh PRIVATE
     unit_iterators_stochastic.cpp
     unit_load_factor.cpp
     unit_multiple_apis.cpp
+    unit_mup.cpp
     unit_not_copyable.cpp
     unit_not_moveable.cpp
     unit_overflow.cpp
