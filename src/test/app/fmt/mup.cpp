@@ -91,11 +91,10 @@ struct FP {
 std::string mup(char const* format, long double value) {
     (void)format;
 
-    std::array<long double, 18> factors = {
-        1e-24l, 1e-21l, 1e-18l, 1e-15l, 1e-12l, 1e-9l, 1e-6l, 1e-3l, 1e0l,
-        1e3l,   1e6l,   1e9l,   1e12l,  1e15l,  1e18l, 1e21l, 1e24l,
-        1e27l // one additional entry which is only used as a sentinel
-    };
+    // one additional entry which is only used as a sentinel
+    std::array<long double, 18> factors = {{1e-24l, 1e-21l, 1e-18l, 1e-15l, 1e-12l, 1e-9l, 1e-6l,
+                                            1e-3l, 1e0l, 1e3l, 1e6l, 1e9l, 1e12l, 1e15l, 1e18l,
+                                            1e21l, 1e24l, 1e27l}};
     char const* prefix = "yzafpnum kMGTPEZY";
 
     auto u = std::fabs(value);
