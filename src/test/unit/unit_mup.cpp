@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-TEST_CASE("mup format") {
+TEST_CASE("mup format" * doctest::test_suite("show") * doctest::skip()) {
     using martinus::mup;
 
     double a = 1.23456789;
