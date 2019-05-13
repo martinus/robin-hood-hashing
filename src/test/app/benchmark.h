@@ -2,6 +2,7 @@
 #define BENCHMARK_H
 
 #include <app/PerformanceCounters.h>
+#include <app/doctest.h>
 
 #include <chrono>
 #include <iostream>
@@ -59,6 +60,8 @@ public:
     }
 
 private:
+    void showMetric(uint64_t const* const m, char const* name) const;
+
     PerformanceCounters mPc;
     uint64_t const* const mSwPageFaults;
     uint64_t const* const mCycles;

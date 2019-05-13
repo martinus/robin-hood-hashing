@@ -19,7 +19,8 @@ TEST_CASE_TEMPLATE("bench copy by iterating" * doctest::test_suite("bench") * do
     for (size_t i = 0; i < size; ++i) {
         map.emplace(i, i);
     }
-    BENCHMARK("copy", map.size() * iters, "op") {
+
+    BENCHMARK("copy " + type_string(map), map.size() * iters, "op") {
         for (size_t i = 0; i < 20; ++i) {
             Map map_copy(map.begin(), map.end());
             REQUIRE(map_copy.size() == map.size());

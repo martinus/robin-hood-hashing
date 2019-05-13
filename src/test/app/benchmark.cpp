@@ -13,9 +13,15 @@ bool isValid(uint64_t const* val) {
 
 } // namespace
 
-Benchmark::~Benchmark() {
-    using martinus::mup;
+void Benchmark::showMetric(uint64_t const* const m, char const* name) const {
+    if (!isValid(m)) {
+        return;
+    }
+    std::cout << martinus::mup(static_cast<double>(*m) / mCount) << " " << name << "/" << mOpName
+              << ";   ";
+}
 
+Benchmark::~Benchmark() {
     auto runtime_sec = std::chrono::duration<double>(clock::now() - mStartTime).count();
     mPc.disable();
     mPc.fetch();
@@ -28,23 +34,22 @@ Benchmark::~Benchmark() {
         mInsPerCycle = static_cast<double>(*mInstructions) / static_cast<double>(*mCycles);
     }
 
-    // << mup(*mContextSwitches / mCount) << " context-switches/" << mOpName << ", "
     fmt::streamstate ss(std::cout);
-    std::cout << mup(runtime_sec / mCount) << "s/" << mOpName << ",   ";
-    std::cout << mup(static_cast<double>(*mSwPageFaults) / mCount) << " page-faults/" << mOpName
-              << ",   ";
+    std::cout << martinus::mup(runtime_sec / mCount) << "s/" << mOpName << ";   ";
+    showMetric(mContextSwitches, "context-switches");
+    showMetric(mSwPageFaults, "page-faults");
+    showMetric(mInstructions, "instructions");
+    showMetric(mCycles, "cycles");
+    showMetric(mInstructions, "instructions");
+    if (mInsPerCycle > 0) {
+        std::cout << martinus::mup(mInsPerCycle) << " ins/cycle;   ";
+    }
+    showMetric(mBranches, "branches");
+    showMetric(mMisses, "branch-misses");
+    if (branchMissesPercent > 0) {
+        std::cout << "(" << std::setprecision(2) << std::fixed << (branchMissesPercent * 100)
+                  << "% misses)   ";
+    }
 
-    std::cout << mup(static_cast<double>(*mInstructions) / mCount) << " instructions/" << mOpName
-              << ",   ";
-
-    std::cout << mup(static_cast<double>(*mCycles) / mCount) << " cycles/" << mOpName << ",   ";
-
-    std::cout << mup(mInsPerCycle) << " ins/cycle,   ";
-
-    std::cout << mup(static_cast<double>(*mBranches) / mCount) << " branches/" << mOpName << ",   ";
-
-    std::cout << mup(static_cast<double>(*mMisses) / mCount) << " branch-misses/" << mOpName
-              << " (";
-    std::cout << std::setprecision(4) << std::fixed << (branchMissesPercent * 100) << "%) for "
-              << mMsg << std::endl;
+    std::cout << mMsg << std::endl;
 }
