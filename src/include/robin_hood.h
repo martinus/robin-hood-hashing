@@ -928,6 +928,12 @@ private:
             : mKeyVals(other.mKeyVals)
             , mInfo(other.mInfo) {}
 
+        Iter& operator=(Iter<false> const& other) {
+            mKeyVals = other.mKeyVals;
+            mInfo = other.mInfo;
+            return *this;
+        }
+
         Iter(NodePtr valPtr, uint8_t const* infoPtr)
             : mKeyVals(valPtr)
             , mInfo(infoPtr) {}
