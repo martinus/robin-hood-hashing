@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.11
+// version 3.2.12
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3  // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 2  // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 11 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 12 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -167,11 +167,11 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
 #    define __has_cpp_attribute(x) 0
 #endif
 #if __has_cpp_attribute(clang::fallthrough)
-#    define FALLTHROUGH [[clang::fallthrough]]
+#    define ROBIN_HOOD_FALLTHROUGH [[clang::fallthrough]]
 #elif __has_cpp_attribute(gnu::fallthrough)
-#    define FALLTHROUGH [[gnu::fallthrough]]
+#    define ROBIN_HOOD_FALLTHROUGH [[gnu::fallthrough]]
 #else
-#    define FALLTHROUGH
+#    define ROBIN_HOOD_FALLTHROUGH
 #endif
 
 // This cast gets rid of warnings like "cast from ‘uint8_t*’ {aka ‘unsigned char*’} to
@@ -516,26 +516,26 @@ inline size_t hash_bytes(void const* ptr, size_t const len) {
     switch (len & 7u) {
     case 7:
         h ^= static_cast<uint64_t>(data8[6]) << 48u;
-        FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
     case 6:
         h ^= static_cast<uint64_t>(data8[5]) << 40u;
-        FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
     case 5:
         h ^= static_cast<uint64_t>(data8[4]) << 32u;
-        FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
     case 4:
         h ^= static_cast<uint64_t>(data8[3]) << 24u;
-        FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
     case 3:
         h ^= static_cast<uint64_t>(data8[2]) << 16u;
-        FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
     case 2:
         h ^= static_cast<uint64_t>(data8[1]) << 8u;
-        FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
     case 1:
         h ^= static_cast<uint64_t>(data8[0]);
         h *= m;
-        FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
     default:
         break;
     }
