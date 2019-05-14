@@ -190,7 +190,7 @@ uint64_t const* PerformanceCounters::monitor(Event /*unused*/) {
     return &no_data;
 }
 
-uint64_t const* PerformanceCounters::monitor(uint32_t type, uint64_t eventid) {
+uint64_t const* PerformanceCounters::monitor(uint32_t /*unused*/, uint64_t /*unused*/) {
     return &no_data;
 }
 
