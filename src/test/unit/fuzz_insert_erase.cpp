@@ -22,29 +22,39 @@ std::ostream& operator<<(std::ostream& os, decltype(sfc64{}.state()) const& stat
 }
 } // namespace std
 
-TEST_CASE_TEMPLATE("fuzz insert erase" * doctest::test_suite("fuzz") * doctest::skip(), Map,
-                   robin_hood::unordered_flat_map<int, int>,
-                   robin_hood::unordered_node_map<int, int>) {
+TEST_CASE("fuzz insert erase" * doctest::test_suite("fuzz") * doctest::skip()) {
+    sfc64 rng;
     size_t min_ops = 10000;
-    uint64_t const n = 500;
 
-    sfc64 rng(UINT64_C(0x16eb1b56f8dbc55a), UINT64_C(0x5822255f5bf83d8e),
-              UINT64_C(0xa01d66fe68915228), UINT64_C(0x0000000000001a1d));
+    size_t it = 0;
+
     while (true) {
-        size_t op = 0;
         auto state = rng.state();
+
+        auto const n = rng.uniform<int>(1000) + 1;
+        size_t op = 0;
+
         try {
             std::unordered_map<int, int> suo;
             robin_hood::unordered_node_map<int, int> ruo;
 
             while (++op < min_ops) {
+                if (++it == 1000000) {
+                    std::cout << ".";
+                    std::cout.flush();
+                    it = 0;
+                }
                 auto const key = rng.uniform<int>(n);
                 if (op & 1) {
-                    suo.erase(key);
-                    ruo.erase(key);
+                    if (suo.erase(key) != ruo.erase(key)) {
+                        MESSAGE("error after " << op << " ops, rng{" << state << "}");
+                        min_ops = op;
+                    }
                 } else {
-                    suo[key] = key;
-                    ruo[key] = key;
+                    if (suo.emplace(key, key).second != ruo.emplace(key, key).second) {
+                        MESSAGE("error after " << op << " ops, rng{" << state << "}");
+                        min_ops = op;
+                    }
                 }
                 if (suo.size() != ruo.size()) {
                     MESSAGE("error after " << op << " ops, rng{" << state << "}");
