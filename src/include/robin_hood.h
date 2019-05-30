@@ -445,7 +445,9 @@ struct pair {
         , second(std::move(secondArg)) {}
 
     template <typename FirstArg, typename SecondArg>
-    constexpr pair(FirstArg&& firstArg, SecondArg&& secondArg)
+    constexpr pair(FirstArg&& firstArg, SecondArg&& secondArg) noexcept(
+        noexcept(First(std::forward<FirstArg>(firstArg))) &&
+        noexcept(Second(std::forward<SecondArg>(secondArg))))
         : first(std::forward<FirstArg>(firstArg))
         , second(std::forward<SecondArg>(secondArg)) {}
 
