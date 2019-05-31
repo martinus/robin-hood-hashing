@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.12
+// version 3.2.13
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3  // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 2  // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 12 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 13 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -1291,7 +1291,7 @@ public:
             // it will be the end() iterator.
             mKeyVals = reinterpret_cast<Node*>(&mMask);
             // we need to point somewhere thats 0 as long as we're empty
-            mInfo = reinterpret_cast<uint8_t*>(mMask);
+            mInfo = reinterpret_cast<uint8_t*>(&mMask);
             Hash::operator=(static_cast<const Hash&>(o));
             KeyEqual::operator=(static_cast<const KeyEqual&>(o));
             DataPool::operator=(static_cast<DataPool const&>(o));
