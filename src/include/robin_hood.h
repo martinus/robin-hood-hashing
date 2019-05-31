@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.13
+// version 3.2.14
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3  // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 2  // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 13 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 14 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -136,7 +136,7 @@
 namespace robin_hood {
 namespace detail {
 #if defined(__SIZEOF_INT128__)
-#    if defined(__GNUC__)
+#    if defined(__GNUC__) || defined(__clang__)
 #        pragma GCC diagnostic push
 #        pragma GCC diagnostic ignored "-Wpedantic"
 using uint128_t = unsigned __int128;
