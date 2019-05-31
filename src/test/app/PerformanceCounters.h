@@ -110,11 +110,13 @@ public:
     uint64_t const* monitor(uint32_t type, uint64_t event);
 
 private:
+#    ifdef __linux__
     std::map<uint64_t, uint64_t> mIdToValue{};
     std::vector<uint64_t> mReadFormat{};
     uint64_t mTimeEnabledNanos = 0;
     uint64_t mTimeRunningNanos = 0;
     int mFd = -1;
+#endif
 };
 
 #if defined(__clang__)

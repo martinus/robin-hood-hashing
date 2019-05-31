@@ -27,8 +27,10 @@ TEST_CASE("fuzz insert erase" * doctest::test_suite("fuzz") * doctest::skip()) {
     size_t min_ops = 10000;
 
     size_t it = 0;
-
-    while (true) {
+	
+	// no endless loop to prevent warning
+	size_t trials = (std::numeric_limits<size_t>::max)();
+    while (trials--) {
         auto state = rng.state();
 
         auto const n = rng.uniform<int>(1000) + 1;
