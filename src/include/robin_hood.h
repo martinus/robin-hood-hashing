@@ -155,10 +155,17 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
 #    define ROBIN_HOOD_HAS_UMUL128 1
 #    include <intrin.h> // for __umulh
 #    pragma intrinsic(__umulh)
-#    pragma intrinsic(_umul128)
+#    ifndef _M_ARM64
+#        pragma intrinsic(_umul128)
+#    endif
 #    define ROBIN_HOOD_UMULH(a, b) __umulh(a, b)
 inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
+#    ifdef _M_ARM64
+    *high = __umulh(a, b);
+    return ((uint64_t)(a)) * (b);
+#    else
     return _umul128(a, b, high);
+#    endif
 }
 #endif
 
