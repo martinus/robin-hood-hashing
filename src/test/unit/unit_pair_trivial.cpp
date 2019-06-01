@@ -11,22 +11,27 @@ using TestPair = robin_hood::pair<K, V>;
 
 template <typename K, typename V>
 void nothrow_trivially() {
+    static_assert(std::is_nothrow_move_constructible<TestPair<K, V>>::value ==
+                      (std::is_nothrow_move_constructible<K>::value &&
+                       std::is_nothrow_move_constructible<V>::value),
+                  "");
 
-    REQUIRE(std::is_nothrow_move_constructible<TestPair<K, V>>::value ==
-            (std::is_nothrow_move_constructible<K>::value &&
-             std::is_nothrow_move_constructible<V>::value));
+    static_assert(std::is_nothrow_move_assignable<TestPair<K, V>>::value ==
+                      (std::is_nothrow_move_assignable<K>::value &&
+                       std::is_nothrow_move_assignable<V>::value),
+                  "");
 
-    REQUIRE(
-        std::is_nothrow_move_assignable<TestPair<K, V>>::value ==
-        (std::is_nothrow_move_assignable<K>::value && std::is_nothrow_move_assignable<V>::value));
+    static_assert(
+        std::is_trivially_copyable<TestPair<K, V>>::value ==
+            (std::is_trivially_copyable<K>::value && std::is_trivially_copyable<V>::value),
+        "");
 
-    REQUIRE(std::is_trivially_copyable<TestPair<K, V>>::value ==
-            (std::is_trivially_copyable<K>::value && std::is_trivially_copyable<V>::value));
+    static_assert(
+        std::is_trivially_destructible<TestPair<K, V>>::value ==
+            (std::is_trivially_destructible<K>::value && std::is_trivially_destructible<V>::value),
+        "");
 
-    REQUIRE(std::is_trivially_destructible<TestPair<K, V>>::value ==
-            (std::is_trivially_destructible<K>::value && std::is_trivially_destructible<V>::value));
-
-    REQUIRE(sizeof(TestPair<K, V>) == sizeof(std::pair<K, V>));
+    static_assert(sizeof(TestPair<K, V>) == sizeof(std::pair<K, V>), "");
 }
 
 TEST_CASE("pair trivially copy/destructible") {
