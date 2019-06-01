@@ -5,7 +5,7 @@
 struct NoCopyMove {
     NoCopyMove()
         : mData{} {}
-    NoCopyMove(size_t data)
+    explicit NoCopyMove(size_t data)
         : mData(data) {}
 
     NoCopyMove(NoCopyMove const&) = delete;

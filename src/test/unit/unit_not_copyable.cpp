@@ -6,7 +6,7 @@
 struct NoCopy {
     NoCopy()
         : mData{} {}
-    NoCopy(size_t data)
+    explicit NoCopy(size_t data)
         : mData(data) {}
 
     ~NoCopy() = default;
