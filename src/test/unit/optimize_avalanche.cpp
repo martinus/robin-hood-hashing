@@ -18,8 +18,6 @@ TEST_CASE("avalanche image generation" * doctest::test_suite("show") * doctest::
     a.save("robin_hood_hash_uint64_t.ppm");
 }
 
-#if defined(ROBIN_HOOD_UMULH)
-
 namespace {
 
 // Mutates input
@@ -59,7 +57,9 @@ TEST_CASE("avalanche optimizer" * doctest::test_suite("optimize") * doctest::ski
             // h ^= h >> 33;
             // h *= factors[1];
 
-            return ROBIN_HOOD_UMULH(h * factors[0], h * factors[1]);
+            uint64_t high;
+            auto low = robin_hood::detail::umul128(h, factors[0], &high);
+            return high + low;
         });
 
         auto rms = a.rms();
@@ -76,4 +76,3 @@ TEST_CASE("avalanche optimizer" * doctest::test_suite("optimize") * doctest::ski
         mutate(factors, rng, rbool);
     }
 }
-#endif
