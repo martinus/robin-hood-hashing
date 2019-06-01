@@ -142,8 +142,10 @@ namespace detail {
 using uint128_t = unsigned __int128;
 #        pragma GCC diagnostic pop
 #    endif
-#    define ROBIN_HOOD_UMULH(a, b) \
-        static_cast<uint64_t>((static_cast<uint128_t>(a) * static_cast<uint128_t>(b)) >> 64u)
+#    define ROBIN_HOOD_UMULH(a, b)                                                 \
+        static_cast<uint64_t>((static_cast<::robin_hood::detail::uint128_t>(a) *   \
+                               static_cast<::robin_hood::detail::uint128_t>(b)) >> \
+                              64u)
 
 #    define ROBIN_HOOD_HAS_UMUL128 1
 inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
