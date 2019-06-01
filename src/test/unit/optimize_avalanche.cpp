@@ -50,7 +50,8 @@ TEST_CASE("avalanche optimizer" * doctest::test_suite("optimize") * doctest::ski
     auto best_factors = factors;
     size_t best_rms = (std::numeric_limits<size_t>::max)();
 
-    while (true) {
+    size_t looper = (std::numeric_limits<size_t>::max)();
+    while (looper--) {
         Avalanche a;
         a.eval(1000, [&factors](uint64_t h) {
             // https://github.com/ZilongTan/fast-hash/blob/master/fasthash.c
