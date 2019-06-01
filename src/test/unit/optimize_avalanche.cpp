@@ -1,12 +1,17 @@
-#include "avalanche.h"
-#include "test_base.h"
+#include <robin_hood.h>
+
+#include <app/avalanche.h>
+#include <app/doctest.h>
+#include <app/fmt/hex.h>
+#include <app/sfc64.h>
 
 #include <array>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 
-TEST_CASE("avalanche hash", "[!hide]") {
-    Rng rng(std::random_device{}());
+TEST_CASE("avalanche image generation" * doctest::test_suite("show") * doctest::skip()) {
+    sfc64 rng;
 
     Avalanche a;
     a.eval(1000, [](uint64_t h) { return robin_hood::hash<uint64_t>{}(h); });
@@ -14,8 +19,31 @@ TEST_CASE("avalanche hash", "[!hide]") {
 }
 
 #if defined(ROBIN_HOOD_UMULH)
-TEST_CASE("avalanche optimizer", "[!hide]") {
-    Rng rng(std::random_device{}());
+
+namespace {
+
+// Mutates input
+template <size_t S>
+void mutate(std::array<uint64_t, S>& vals, sfc64& rng, RandomBool& rbool) {
+    do {
+        uint64_t mask = 0;
+        do {
+            mask |= UINT64_C(1) << (rng(62) + 1);
+        } while (rng(3));
+        vals[rng.uniform<size_t>(vals.size())] ^= mask;
+
+        // force 1 to lowest byte
+    } while (rbool(rng));
+    for (auto& v : vals) {
+        v |= UINT64_C(1);
+        v |= (UINT64_C(1) << 63);
+    }
+}
+
+} // namespace
+
+TEST_CASE("avalanche optimizer" * doctest::test_suite("optimize") * doctest::skip()) {
+    sfc64 rng;
     RandomBool rbool;
 
     std::array<uint64_t, 2> factors = {};
@@ -31,20 +59,17 @@ TEST_CASE("avalanche optimizer", "[!hide]") {
             // h ^= h >> 33;
             // h *= factors[1];
 
-            h = ROBIN_HOOD_UMULH(h * factors[0], h * factors[1]);
-            return static_cast<size_t>(h);
+            return ROBIN_HOOD_UMULH(h * factors[0], h * factors[1]);
         });
 
         auto rms = a.rms();
         if (rms <= best_rms) {
             best_rms = rms;
             best_factors = factors;
-            std::cout << std::endl;
             for (auto x : factors) {
-                std::cout << hex(64) << x << " ";
+                std::cout << "0x" << fmt::hex(x) << " ";
             }
-            std::cout << std::dec << rms << std::endl;
-
+            std::cout << rms << std::endl;
             a.save("avalanching_optimizer.ppm");
         }
         factors = best_factors;

@@ -20,6 +20,9 @@ target_sources_local(rh PRIVATE
     # fuzzers
     fuzz_insert_erase.cpp
 
+    # optimizations
+    optimize_avalanche.cpp
+
     # show infos
     show_hash.cpp
 
