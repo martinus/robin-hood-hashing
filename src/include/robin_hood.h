@@ -497,12 +497,12 @@ struct pair {
 
 // Hash an arbitrary amount of bytes. This is basically Murmur2 hash without caring about big
 // endianness. TODO add a fallback for very large strings?
-inline size_t hash_bytes(void const* ptr, size_t const len) {
+inline size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
     static constexpr uint64_t seed = UINT64_C(0xe17a1465);
     static constexpr unsigned int r = 47;
 
-    auto const data64 = reinterpret_cast<uint64_t const*>(ptr);
+    auto const data64 = static_cast<uint64_t const*>(ptr);
     uint64_t h = seed ^ (len * m);
 
     size_t const n_blocks = len / 8;
