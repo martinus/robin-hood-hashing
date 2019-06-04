@@ -82,23 +82,15 @@
 #    define ROBIN_HOOD_LITTLE_ENDIAN 1
 #    define ROBIN_HOOD_BIG_ENDIAN 0
 #else
-#    if __GNUC__ >= 4
-#        define ROBIN_HOOD_LITTLE_ENDIAN (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-#        define ROBIN_HOOD_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
-#    else
-#        error cannot determine endianness
-#    endif
+#    define ROBIN_HOOD_LITTLE_ENDIAN (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#    define ROBIN_HOOD_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
 #endif
 
 // inline
 #ifdef _WIN32
 #    define ROBIN_HOOD_NOINLINE __declspec(noinline)
 #else
-#    if __GNUC__ >= 4
-#        define ROBIN_HOOD_NOINLINE __attribute__((noinline))
-#    else
-#        define ROBIN_HOOD_NOINLINE
-#    endif
+#    define ROBIN_HOOD_NOINLINE __attribute__((noinline))
 #endif
 
 // count leading/trailing bits
@@ -117,19 +109,15 @@
                                                            : ROBIN_HOOD_BITNESS;     \
         }(x)
 #else
-#    if __GNUC__ >= 4
-#        if ROBIN_HOOD_BITNESS == 32
-#            define ROBIN_HOOD_CTZ(x) __builtin_ctzl(x)
-#            define ROBIN_HOOD_CLZ(x) __builtin_clzl(x)
-#        else
-#            define ROBIN_HOOD_CTZ(x) __builtin_ctzll(x)
-#            define ROBIN_HOOD_CLZ(x) __builtin_clzll(x)
-#        endif
-#        define ROBIN_HOOD_COUNT_LEADING_ZEROES(x) (x ? ROBIN_HOOD_CLZ(x) : ROBIN_HOOD_BITNESS)
-#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) (x ? ROBIN_HOOD_CTZ(x) : ROBIN_HOOD_BITNESS)
+#    if ROBIN_HOOD_BITNESS == 32
+#        define ROBIN_HOOD_CTZ(x) __builtin_ctzl(x)
+#        define ROBIN_HOOD_CLZ(x) __builtin_clzl(x)
 #    else
-#        error clz not supported
+#        define ROBIN_HOOD_CTZ(x) __builtin_ctzll(x)
+#        define ROBIN_HOOD_CLZ(x) __builtin_clzll(x)
 #    endif
+#    define ROBIN_HOOD_COUNT_LEADING_ZEROES(x) (x ? ROBIN_HOOD_CLZ(x) : ROBIN_HOOD_BITNESS)
+#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) (x ? ROBIN_HOOD_CTZ(x) : ROBIN_HOOD_BITNESS)
 #endif
 
 // umul
@@ -193,7 +181,7 @@ inline T reinterpret_cast_no_cast_align_warning(void const* ptr) {
 } // namespace robin_hood
 
 // likely/unlikely
-#if !defined(_WIN32) && (__GNUC__ >= 4)
+#if !defined(_WIN32)
 #    define ROBIN_HOOD_LIKELY(condition) __builtin_expect(condition, 1)
 #    define ROBIN_HOOD_UNLIKELY(condition) __builtin_expect(condition, 0)
 #else
