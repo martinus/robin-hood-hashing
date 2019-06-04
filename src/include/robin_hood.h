@@ -143,7 +143,7 @@ using uint128_t = unsigned __int128;
 #        pragma GCC diagnostic pop
 #    endif
 #    define ROBIN_HOOD_HAS_UMUL128 1
-inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
+inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
     auto result = static_cast<uint128_t>(a) * static_cast<uint128_t>(b);
     *high = static_cast<uint64_t>(result >> 64);
     return static_cast<uint64_t>(result);
@@ -155,7 +155,7 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
 #    ifndef _M_ARM64
 #        pragma intrinsic(_umul128)
 #    endif
-inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) {
+inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
 #    ifdef _M_ARM64
     *high = __umulh(a, b);
     return ((uint64_t)(a)) * (b);
@@ -220,7 +220,7 @@ T* assertNotNull(T* t, Args&&... args) {
 }
 
 template <typename T>
-inline T unaligned_load(void const* ptr) {
+inline T unaligned_load(void const* ptr) noexcept {
     // using memcpy so we don't get into unaligned load problems.
     // compiler should optimize this very well anyways.
     T t;
@@ -497,12 +497,12 @@ struct pair {
 
 // Hash an arbitrary amount of bytes. This is basically Murmur2 hash without caring about big
 // endianness. TODO add a fallback for very large strings?
-inline size_t hash_bytes(void const* ptr, size_t const len) {
+inline size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
     static constexpr uint64_t seed = UINT64_C(0xe17a1465);
     static constexpr unsigned int r = 47;
 
-    auto const data64 = reinterpret_cast<uint64_t const*>(ptr);
+    auto const data64 = static_cast<uint64_t const*>(ptr);
     uint64_t h = seed ^ (len * m);
 
     size_t const n_blocks = len / 8;
@@ -555,7 +555,7 @@ inline size_t hash_bytes(void const* ptr, size_t const len) {
 #endif
 }
 
-inline size_t hash_int(uint64_t obj) {
+inline size_t hash_int(uint64_t obj) noexcept {
 #if defined(ROBIN_HOOD_HAS_UMUL128)
     // 167079903232 masksum, 120428523 ops best: 0xde5fb9d2630458e9
     static constexpr uint64_t k = UINT64_C(0xde5fb9d2630458e9);
