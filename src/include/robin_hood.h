@@ -806,8 +806,7 @@ private:
         }
 
         void swap(DataNode<M, false>& o) {
-            using std::swap;
-            swap(mData, o.mData);
+            std::swap(mData, o.mData);
         }
 
     private:
@@ -971,9 +970,9 @@ private:
             do {
                 auto const n = detail::unaligned_load<size_t>(mInfo);
 #if ROBIN_HOOD_LITTLE_ENDIAN
-                inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
+                inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / CHAR_BIT;
 #else
-                inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / 8;
+                inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / CHAR_BIT;
 #endif
                 mInfo += inc;
                 mKeyVals += inc;
@@ -1318,8 +1317,7 @@ public:
     // Swaps everything between the two maps.
     void swap(unordered_map& o) {
         ROBIN_HOOD_TRACE(this);
-        using std::swap;
-        swap(o, *this);
+        std::swap(o, *this);
     }
 
     // Clears all data, without resizing.
@@ -1755,9 +1753,9 @@ private:
         // make sure we can't get an overflow; use floatingpoint arithmetic if necessary.
         if (maxElements > overflowLimit) {
             return static_cast<size_t>(static_cast<double>(maxElements) * factor);
-        } else {
-            return (maxElements * MaxLoadFactor100) / 100;
         }
+
+        return (maxElements * MaxLoadFactor100) / 100;
     }
 
     bool try_increase_info() {
