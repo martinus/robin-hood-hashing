@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++14
-// version 3.2.14
+// version 3.2.15
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3  // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 2  // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 14 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 15 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -1204,7 +1204,7 @@ public:
             mInfoInc = std::move(o.mInfoInc);
             mInfoHashShift = std::move(o.mInfoHashShift);
             // set other's mask to 0 so its destructor won't do anything
-            o.mMask = 0;
+            o.init();
         }
     }
 
@@ -1224,8 +1224,9 @@ public:
                 Hash::operator=(std::move(static_cast<Hash&>(o)));
                 KeyEqual::operator=(std::move(static_cast<KeyEqual&>(o)));
                 DataPool::operator=(std::move(static_cast<DataPool&>(o)));
-                // set other's mask to 0 so its destructor won't do anything
-                o.mMask = 0;
+
+                o.init();
+
             } else {
                 // nothing in the other map => just clear us.
                 clear();
@@ -1276,21 +1277,11 @@ public:
             // not empty: destroy what we have there
             // clear also resets mInfo to 0, that's sometimes not necessary.
             destroy();
-
-            // we assign invalid pointer, but this is ok because we never dereference it.
-            // The worst that can happen is that find() is called, which will return an iterator but
-            // it will be the end() iterator.
-            mKeyVals = reinterpret_cast<Node*>(&mMask);
-            // we need to point somewhere thats 0 as long as we're empty
-            mInfo = reinterpret_cast<uint8_t*>(&mMask);
+            init();
             Hash::operator=(static_cast<const Hash&>(o));
             KeyEqual::operator=(static_cast<const KeyEqual&>(o));
             DataPool::operator=(static_cast<DataPool const&>(o));
-            mNumElements = 0;
-            mMask = 0;
-            mMaxNumElementsAllowed = 0;
-            mInfoInc = InitialInfoInc;
-            mInfoHashShift = InitialInfoHashShift;
+
             return *this;
         }
 
@@ -1315,6 +1306,7 @@ public:
         }
         Hash::operator=(static_cast<const Hash&>(o));
         KeyEqual::operator=(static_cast<const KeyEqual&>(o));
+        DataPool::operator=(static_cast<DataPool const&>(o));
         mNumElements = o.mNumElements;
         mMask = o.mMask;
         mMaxNumElementsAllowed = o.mMaxNumElementsAllowed;
@@ -1835,6 +1827,16 @@ private:
         Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}
             .nodesDoNotDeallocate(*this);
         free(mKeyVals);
+    }
+
+    void init() {
+        mKeyVals = reinterpret_cast<Node*>(&mMask);
+        mInfo = reinterpret_cast<uint8_t*>(&mMask);
+        mNumElements = 0;
+        mMask = 0;
+        mMaxNumElementsAllowed = 0;
+        mInfoInc = InitialInfoInc;
+        mInfoHashShift = InitialInfoHashShift;
     }
 
     // members are sorted so no padding occurs

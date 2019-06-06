@@ -27,6 +27,7 @@ target_sources_local(rh PRIVATE
     show_hash.cpp
 
     # unit tests
+    unit_assign_to_move.cpp
     unit_assignments.cpp
     unit_assignment_combinations.cpp
     unit_at.cpp
@@ -43,6 +44,7 @@ target_sources_local(rh PRIVATE
     unit_iterators_insert.cpp
     unit_iterators_stochastic.cpp
     unit_load_factor.cpp
+    unit_maps_of_maps.cpp
     unit_multiple_apis.cpp
     unit_mup.cpp
     unit_not_copyable.cpp

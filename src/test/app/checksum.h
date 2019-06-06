@@ -1,6 +1,8 @@
 #ifndef APP_CHECKSUM_H
 #define APP_CHECKSUM_H
 
+#include <app/CtorDtorVerifier.h>
+
 #include <cstdint>
 
 namespace checksum {
@@ -15,6 +17,10 @@ inline uint64_t mix(uint64_t k) {
     return k;
 }
 
+inline uint64_t mix(CtorDtorVerifier const& cdv) {
+    return mix(cdv.val());
+}
+
 // from boost::hash_combine, with additional fmix64 of value
 inline uint64_t combine(uint64_t seed, uint64_t value) {
     return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
@@ -23,12 +29,28 @@ inline uint64_t combine(uint64_t seed, uint64_t value) {
 // calculates a hash of any iterable map. Order is irrelevant for the hash's result, as it simply
 // xors the elements together.
 template <typename M>
-inline uint64_t map(const M& map) {
+uint64_t map(const M& map) {
     uint64_t combined_hash = 1;
 
     uint64_t numElements = 0;
     for (auto const& entry : map) {
         auto entry_hash = combine(mix(entry.first), mix(entry.second));
+
+        combined_hash ^= entry_hash;
+        ++numElements;
+    }
+
+    return combine(combined_hash, numElements);
+}
+
+// map of maps
+template <typename MM>
+uint64_t mapmap(const MM& mapmap) {
+    uint64_t combined_hash = 1;
+
+    uint64_t numElements = 0;
+    for (auto const& entry : mapmap) {
+        auto entry_hash = combine(mix(entry.first), map(entry.second));
 
         combined_hash ^= entry_hash;
         ++numElements;
