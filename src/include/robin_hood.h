@@ -1319,17 +1319,7 @@ public:
     void swap(unordered_map& o) {
         ROBIN_HOOD_TRACE(this);
         using std::swap;
-        swap(mKeyVals, o.mKeyVals);
-        swap(mInfo, o.mInfo);
-        swap(mNumElements, o.mNumElements);
-        swap(mMask, o.mMask);
-        swap(mMaxNumElementsAllowed, o.mMaxNumElementsAllowed);
-        swap(mInfoInc, o.mInfoInc);
-        swap(mInfoHashShift, o.mInfoHashShift);
-        swap(static_cast<Hash&>(*this), static_cast<Hash&>(o));
-        swap(static_cast<KeyEqual&>(*this), static_cast<KeyEqual&>(o));
-        // no harm done in swapping datapool
-        swap(static_cast<DataPool&>(*this), static_cast<DataPool&>(o));
+        swap(o, *this);
     }
 
     // Clears all data, without resizing.
