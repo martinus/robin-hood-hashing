@@ -806,7 +806,8 @@ private:
         }
 
         void swap(DataNode<M, false>& o) {
-            std::swap(mData, o.mData);
+            using std::swap;
+            swap(mData, o.mData);
         }
 
     private:
@@ -1317,7 +1318,8 @@ public:
     // Swaps everything between the two maps.
     void swap(unordered_map& o) {
         ROBIN_HOOD_TRACE(this);
-        std::swap(o, *this);
+        using std::swap;
+        swap(o, *this);
     }
 
     // Clears all data, without resizing.
