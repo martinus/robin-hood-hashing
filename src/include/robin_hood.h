@@ -1755,9 +1755,9 @@ private:
         // make sure we can't get an overflow; use floatingpoint arithmetic if necessary.
         if (maxElements > overflowLimit) {
             return static_cast<size_t>(static_cast<double>(maxElements) * factor);
-        } else {
-            return (maxElements * MaxLoadFactor100) / 100;
         }
+
+        return (maxElements * MaxLoadFactor100) / 100;
     }
 
     bool try_increase_info() {
