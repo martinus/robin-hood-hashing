@@ -971,9 +971,9 @@ private:
             do {
                 auto const n = detail::unaligned_load<size_t>(mInfo);
 #if ROBIN_HOOD_LITTLE_ENDIAN
-                inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / CHAR_BIT;
+                inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
 #else
-                inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / CHAR_BIT;
+                inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / 8;
 #endif
                 mInfo += inc;
                 mKeyVals += inc;
