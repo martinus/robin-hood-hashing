@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# configuration see .clang-tidy
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(CMAKE_CXX_CLANG_TIDY clang-tidy)
+endif()
 
 option(RH_sanitizer "Address sanitizer" OFF)
 option(RH_coverage, "Enable coverage" OFF)
@@ -85,5 +89,9 @@ endif()
 #set_target_properties(rh PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
 
 add_subdirectory(cmake)
+
 add_compile_flags_target(rh)
 add_subdirectory(src)
+
+target_sources_local(rh PUBLIC .clang-tidy)
+

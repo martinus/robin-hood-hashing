@@ -2,11 +2,13 @@
 
 #include <app/doctest.h>
 
-struct NoCopyMove {
+class NoCopyMove {
+public:
     NoCopyMove()
         : mData{} {}
     explicit NoCopyMove(size_t data)
         : mData(data) {}
+    ~NoCopyMove() = default;
 
     NoCopyMove(NoCopyMove const&) = delete;
     NoCopyMove& operator=(NoCopyMove const&) = delete;
@@ -14,6 +16,11 @@ struct NoCopyMove {
     NoCopyMove(NoCopyMove&&) = delete;
     NoCopyMove& operator=(NoCopyMove&&) = delete;
 
+    size_t data() const {
+        return mData;
+    }
+
+private:
     size_t mData;
 };
 

@@ -103,20 +103,20 @@ uint64_t const* PerformanceCounters::monitor(Event e) {
 
 // start counting
 void PerformanceCounters::enable() {
-    ioctl(mFd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+    ioctl(mFd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP); // NOLINT(hicpp-signed-bitwise)
 }
 
 // stop counting
 void PerformanceCounters::disable() {
-    ioctl(mFd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+    ioctl(mFd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP); // NOLINT(hicpp-signed-bitwise)
 }
 
 void PerformanceCounters::reset() {
-    ioctl(mFd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
+    ioctl(mFd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP); // NOLINT(hicpp-signed-bitwise)
 }
 
 uint64_t const* PerformanceCounters::monitor(uint32_t type, uint64_t eventid) {
-    perf_event_attr pea;
+    perf_event_attr pea{};
     memset(&pea, 0, sizeof(perf_event_attr));
     pea.type = type;
     pea.size = sizeof(perf_event_attr);
@@ -124,6 +124,8 @@ uint64_t const* PerformanceCounters::monitor(uint32_t type, uint64_t eventid) {
     pea.disabled = 1; // start counter as disabled
     pea.exclude_kernel = 1;
     pea.exclude_hv = 1;
+
+    // NOLINTNEXTLINE(hicpp-signed-bitwise)
     pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID | PERF_FORMAT_TOTAL_TIME_ENABLED |
                       PERF_FORMAT_TOTAL_TIME_RUNNING;
 
@@ -140,6 +142,7 @@ uint64_t const* PerformanceCounters::monitor(uint32_t type, uint64_t eventid) {
         mFd = fd;
     }
     uint64_t id = 0;
+    // NOLINTNEXTLINE(hicpp-signed-bitwise)
     if (-1 == ioctl(fd, PERF_EVENT_IOC_ID, &id)) {
         // couldn't get id: return pointer to no_data
         return &no_data;

@@ -10,6 +10,7 @@
 // see http://fmtlib.net/latest/syntax.html
 
 namespace {
+
 std::string fmt(long double v, char symbol) {
     std::stringstream ss;
     if (v >= 1 && v < 1000) {
@@ -29,6 +30,7 @@ std::string fmt(long double v, char symbol) {
     }
     return ss.str();
 }
+
 } // namespace
 
 namespace martinus {
@@ -85,16 +87,16 @@ std::string mup(char const* format, double value) {
 
 struct FP {
     double factor;
-    char prefix;
+    std::string prefix;
 };
 
 std::string mup(char const* format, long double value) {
     (void)format;
 
     // one additional entry which is only used as a sentinel
-    std::array<long double, 18> factors = {{1e-24l, 1e-21l, 1e-18l, 1e-15l, 1e-12l, 1e-9l, 1e-6l,
-                                            1e-3l, 1e0l, 1e3l, 1e6l, 1e9l, 1e12l, 1e15l, 1e18l,
-                                            1e21l, 1e24l, 1e27l}};
+    std::array<long double, 18> factors = {{1e-24L, 1e-21L, 1e-18L, 1e-15L, 1e-12L, 1e-9L, 1e-6L,
+                                            1e-3L, 1e0L, 1e3L, 1e6L, 1e9L, 1e12L, 1e15L, 1e18L,
+                                            1e21L, 1e24L, 1e27L}};
     char const* prefix = "yzafpnum kMGTPEZY";
 
     auto u = std::fabs(value);

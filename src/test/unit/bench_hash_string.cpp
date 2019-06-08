@@ -14,28 +14,28 @@ TEST_CASE("bench robin_hood::hash<std::string>" * doctest::test_suite("bench") *
 
     SUBCASE("7") {
         len = 7;
-        iterations = 250058138u;
+        iterations = 250058138U;
     }
     SUBCASE("8") {
         len = 8;
-        iterations = 310857313u;
+        iterations = 310857313U;
     }
     SUBCASE("13") {
         len = 13;
-        iterations = 225620314u;
+        iterations = 225620314U;
     }
     SUBCASE("100") {
         len = 100;
-        iterations = 68319310u;
+        iterations = 68319310U;
     }
     SUBCASE("1000") {
         len = 1000;
-        iterations = 6458275u;
+        iterations = 6458275U;
     }
 
     std::string str(len, 'x');
-    for (size_t i = 0; i < str.size(); ++i) {
-        str[i] = rng.uniform<char>();
+    for (auto& ch : str) {
+        ch = rng.uniform<char>();
     }
     BENCHMARK("std::string length " + std::to_string(len), len * iterations, "B") {
         for (size_t i = 0; i < iterations; ++i) {

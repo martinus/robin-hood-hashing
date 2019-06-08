@@ -35,6 +35,7 @@ if(CCACHE_FOUND)
     SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif(CCACHE_FOUND)
 
+message("${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 
 function(add_compile_flags_target target)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
