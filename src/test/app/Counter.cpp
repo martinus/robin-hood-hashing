@@ -23,21 +23,21 @@ Counter::Obj::Obj(const size_t& data, Counter& counts)
 Counter::Obj::Obj(const Counter::Obj& o)
     : mData(o.mData)
     , mCounts(o.mCounts) {
-    if (nullptr != mCounts) {
+    if (mCounts) {
         ++mCounts->copyCtor;
     }
 }
 
-Counter::Obj::Obj(Counter::Obj&& o) noexcept
-    : mData(o.mData)
-    , mCounts(o.mCounts) {
-    if (nullptr != mCounts) {
+Counter::Obj::Obj(Counter::Obj&& o)
+    : mData(std::move(o.mData))
+    , mCounts(std::move(o.mCounts)) {
+    if (mCounts) {
         ++mCounts->moveCtor;
     }
 }
 
 Counter::Obj::~Obj() {
-    if (nullptr != mCounts) {
+    if (mCounts) {
         ++mCounts->dtor;
     } else {
         ++staticDtor;
@@ -45,14 +45,14 @@ Counter::Obj::~Obj() {
 }
 
 bool Counter::Obj::operator==(const Counter::Obj& o) const {
-    if (nullptr != mCounts) {
+    if (mCounts) {
         ++mCounts->equals;
     }
     return mData == o.mData;
 }
 
 bool Counter::Obj::operator<(const Obj& o) const {
-    if (nullptr != mCounts) {
+    if (mCounts) {
         ++mCounts->less;
     }
     return mData < o.mData;
@@ -60,33 +60,33 @@ bool Counter::Obj::operator<(const Obj& o) const {
 
 Counter::Obj& Counter::Obj::operator=(const Counter::Obj& o) {
     mCounts = o.mCounts;
-    if (nullptr != mCounts) {
+    if (mCounts) {
         ++mCounts->assign;
     }
     mData = o.mData;
     return *this;
 }
 
-Counter::Obj& Counter::Obj::operator=(Counter::Obj&& o) noexcept {
-    if (nullptr != o.mCounts) {
-        mCounts = o.mCounts;
+Counter::Obj& Counter::Obj::operator=(Counter::Obj&& o) {
+    if (o.mCounts) {
+        mCounts = std::move(o.mCounts);
     }
-    mData = o.mData;
-    if (nullptr != mCounts) {
+    mData = std::move(o.mData);
+    if (mCounts) {
         ++mCounts->moveAssign;
     }
     return *this;
 }
 
 size_t const& Counter::Obj::get() const {
-    if (nullptr != mCounts) {
+    if (mCounts) {
         ++mCounts->constGet;
     }
     return mData;
 }
 
 size_t& Counter::Obj::get() {
-    if (nullptr != mCounts) {
+    if (mCounts) {
         ++mCounts->get;
     }
     return mData;
@@ -96,13 +96,13 @@ void Counter::Obj::swap(Obj& other) {
     using std::swap;
     swap(mData, other.mData);
     swap(mCounts, other.mCounts);
-    if (nullptr != mCounts) {
+    if (mCounts) {
         ++mCounts->swaps;
     }
 }
 
 size_t Counter::Obj::getForHash() const {
-    if (nullptr != mCounts) {
+    if (mCounts) {
         ++mCounts->hash;
     }
     return mData;

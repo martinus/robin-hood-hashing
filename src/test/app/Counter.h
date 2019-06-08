@@ -19,13 +19,13 @@ struct Counter {
         Obj(Counter& counts);
         Obj(const size_t& data, Counter& counts);
         Obj(const Obj& o);
-        Obj(Obj&& o) noexcept;
+        Obj(Obj&& o);
         ~Obj();
 
         bool operator==(const Obj& o) const;
         bool operator<(const Obj& o) const;
         Obj& operator=(const Obj& o);
-        Obj& operator=(Obj&& o) noexcept;
+        Obj& operator=(Obj&& o);
 
         size_t const& get() const;
         size_t& get();

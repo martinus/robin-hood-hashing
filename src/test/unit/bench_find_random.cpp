@@ -48,9 +48,9 @@ TEST_CASE_TEMPLATE("bench find random" * doctest::test_suite("bench") * doctest:
 
     size_t checksum = 0;
 
-    std::array<bool, numTotal> insertRandom{};
+    std::array<bool, numTotal> insertRandom;
     insertRandom.fill(true);
-    for (std::array<bool, numTotal>::size_type i = 0; i < numFound; ++i) {
+    for (size_t i = 0; i < numFound; ++i) {
         insertRandom[i] = false;
     }
 

@@ -14,7 +14,7 @@ TEST_CASE_TEMPLATE("load_factor", Map, robin_hood::unordered_flat_map<int, int>,
     REQUIRE(static_cast<double>(m.load_factor()) == doctest::Approx(0.0));
     for (int i = 0; i < 10000; ++i) {
         m.emplace(i, i);
-        REQUIRE(m.load_factor() > 0.0F);
-        REQUIRE(m.load_factor() <= 0.8F);
+        REQUIRE(m.load_factor() > 0.0f);
+        REQUIRE(m.load_factor() <= 0.8f);
     }
 }

@@ -10,7 +10,6 @@ TYPE_TO_STRING(robin_hood::unordered_node_map<int, int>);
 TEST_CASE_TEMPLATE("insert list", Map, robin_hood::unordered_flat_map<int, int>,
                    robin_hood::unordered_node_map<int, int>) {
     std::vector<typename Map::value_type> v;
-    v.reserve(1000);
     for (int i = 0; i < 1000; ++i) {
         v.emplace_back(i, i);
     }

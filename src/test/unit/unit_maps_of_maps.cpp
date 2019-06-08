@@ -30,7 +30,7 @@ void testMapsOfMaps() {
             REQUIRE(checksum::mapmap(mapsCopied) == checksum::mapmap(maps));
             REQUIRE(mapsCopied == maps);
 
-            // TODO(martinus)
+            // TODO
             // M mapsMoved
         }
         REQUIRE(CtorDtorVerifier::mapSize() == static_cast<size_t>(0));

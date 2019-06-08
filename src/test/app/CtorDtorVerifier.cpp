@@ -45,11 +45,10 @@ CtorDtorVerifier::CtorDtorVerifier(const CtorDtorVerifier& o)
     }
 }
 
-// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
 CtorDtorVerifier& CtorDtorVerifier::operator=(CtorDtorVerifier&& o) {
     REQUIRE(1 == constructedAddresses().count(this));
     REQUIRE(1 == constructedAddresses().count(&o));
-    mVal = o.mVal;
+    mVal = std::move(o.mVal);
     return *this;
 }
 

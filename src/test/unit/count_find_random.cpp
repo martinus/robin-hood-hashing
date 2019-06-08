@@ -28,7 +28,7 @@ TEST_CASE_TEMPLATE("count find random" * doctest::test_suite("count") * doctest:
     sfc64 findRng(anotherUnrelatedRngInitialState);
 
     for (size_t numFound = 0; numFound <= numTotal; ++numFound) {
-        std::array<bool, numTotal> insertRandom{};
+        std::array<bool, numTotal> insertRandom;
         insertRandom.fill(true);
         for (size_t i = 0; i < numFound; ++i) {
             insertRandom[i] = false;

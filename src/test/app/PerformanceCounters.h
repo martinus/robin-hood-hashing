@@ -91,7 +91,7 @@ public:
         emulation_faults
     };
 
-    uint64_t const* monitor(Event e);
+    uint64_t const* monitor(Event id);
 
     // resets the counters
     void reset();
@@ -110,7 +110,7 @@ public:
     uint64_t const* monitor(uint32_t type, uint64_t event);
 
 private:
-#ifdef __linux__
+#    ifdef __linux__
     std::map<uint64_t, uint64_t> mIdToValue{};
     std::vector<uint64_t> mReadFormat{};
     uint64_t mTimeEnabledNanos = 0;

@@ -39,12 +39,12 @@ TEST_CASE("show hash distribution" * doctest::test_suite("show") * doctest::skip
     }
 
     for (size_t i = 0; i < 10; ++i) {
-        size_t x = ((0x23d7U + i) << (ROBIN_HOOD_BITNESS / 2U)) + static_cast<size_t>(63);
+        size_t x = ((0x23d7 + i) << (ROBIN_HOOD_BITNESS / 2)) + static_cast<size_t>(63);
         showHash(x);
     }
 
     for (size_t i = 1; i < 8; ++i) {
-        showHash(i * (static_cast<size_t>(1) << (ROBIN_HOOD_BITNESS - 4U)));
+        showHash(i * (static_cast<size_t>(1) << (ROBIN_HOOD_BITNESS - 4)));
     }
 
     for (size_t i = 1; i != 0; i *= 2) {
