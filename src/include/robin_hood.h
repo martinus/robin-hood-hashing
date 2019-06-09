@@ -899,6 +899,7 @@ private:
 
     // generic iterator for both const_iterator and iterator.
     template <bool IsConst>
+    // NOLINTNEXTLINE(hicpp-special-member-functions,cppcoreguidelines-special-member-functions)
     class Iter {
     private:
         using NodePtr = typename std::conditional<IsConst, Node const*, Node*>::type;
@@ -917,8 +918,8 @@ private:
         // Rule of zero: nothing specified.
 
         // Conversion constructor from iterator to const_iterator
-        template <bool OtherIsConst, std::enable_if_t<IsConst && !OtherIsConst, int> = 0>
-        Iter(Iter<OtherIsConst> const& other) // NOLINT(hicpp-explicit-conversions)
+        // NOLINTNEXTLINE(hicpp-explicit-conversions)
+        Iter(Iter<false> const& other)
             : mKeyVals(other.mKeyVals)
             , mInfo(other.mInfo) {}
 
