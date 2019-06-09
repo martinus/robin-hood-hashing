@@ -3,11 +3,12 @@
 #include <app/doctest.h>
 
 // not copyable, but movable.
-struct NoCopy {
+class NoCopy {
+public:
     NoCopy()
         : mData{} {}
-    explicit NoCopy(size_t data)
-        : mData(data) {}
+    explicit NoCopy(size_t /*unused*/)
+        : mData() {}
 
     ~NoCopy() = default;
     NoCopy(NoCopy const&) = delete;
@@ -16,6 +17,11 @@ struct NoCopy {
     NoCopy(NoCopy&&) = default;
     NoCopy& operator=(NoCopy&&) = default;
 
+    size_t data() const {
+        return mData;
+    }
+
+private:
     size_t mData;
 };
 
@@ -39,6 +45,6 @@ TEST_CASE_TEMPLATE("not copyable", Map, robin_hood::unordered_flat_map<size_t, N
     // movable works
     Map m2 = std::move(m);
     REQUIRE(m2.size() == 199);
-    m.clear();
+    m = Map{};
     REQUIRE(m.size() == 0);
 }

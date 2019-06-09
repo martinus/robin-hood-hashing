@@ -22,19 +22,19 @@ namespace {
 
 // Mutates input
 template <size_t S>
-void mutate(std::array<uint64_t, S>& vals, sfc64& rng, RandomBool& rbool) {
+void mutate(std::array<uint64_t, S>* vals, sfc64* rng, RandomBool* rbool) {
     do {
         uint64_t mask = 0;
         do {
-            mask |= UINT64_C(1) << (rng(62) + 1);
-        } while (rng(3));
-        vals[rng.uniform<size_t>(vals.size())] ^= mask;
+            mask |= UINT64_C(1) << ((*rng)(62) + 1);
+        } while ((*rng)(3));
+        (*vals)[rng->uniform<size_t>(vals->size())] ^= mask;
 
         // force 1 to lowest byte
-    } while (rbool(rng));
-    for (auto& v : vals) {
+    } while ((*rbool)(*rng));
+    for (auto& v : *vals) {
         v |= UINT64_C(1);
-        v |= (UINT64_C(1) << 63);
+        v |= (UINT64_C(1) << 63U);
     }
 }
 
@@ -51,7 +51,7 @@ TEST_CASE("avalanche optimizer" * doctest::test_suite("optimize") * doctest::ski
     size_t best_rms = (std::numeric_limits<size_t>::max)();
 
     size_t looper = (std::numeric_limits<size_t>::max)();
-    while (looper--) {
+    while (0U != looper--) {
         Avalanche a;
         a.eval(1000, [&factors](uint64_t h) {
             // https://github.com/ZilongTan/fast-hash/blob/master/fasthash.c
@@ -76,7 +76,7 @@ TEST_CASE("avalanche optimizer" * doctest::test_suite("optimize") * doctest::ski
             a.save("avalanching_optimizer.ppm");
         }
         factors = best_factors;
-        mutate(factors, rng, rbool);
+        mutate(&factors, &rng, &rbool);
     }
 }
 

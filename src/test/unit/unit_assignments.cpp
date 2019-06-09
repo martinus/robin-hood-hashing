@@ -27,6 +27,7 @@ TEST_CASE_TEMPLATE("copy and assign maps", Map, robin_hood::unordered_flat_map<i
 
     {
         Map a = createMap<Map>(1);
+        // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
         Map b = a;
         REQUIRE(a == b);
     }
@@ -40,6 +41,7 @@ TEST_CASE_TEMPLATE("copy and assign maps", Map, robin_hood::unordered_flat_map<i
 
     {
         Map a = createMap<Map>(100);
+        // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
         Map b = a;
     }
     {

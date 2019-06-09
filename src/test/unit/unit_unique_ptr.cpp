@@ -32,7 +32,7 @@ TEST_CASE_TEMPLATE("unique_ptr", Map, robin_hood::unordered_flat_map<size_t, std
     REQUIRE(m3.end() == m3.find(123));
     REQUIRE(m3.end() != m3.find(32));
 
-    mEmpty.clear();
+    mEmpty = Map{};
     Map m4(std::move(mEmpty));
     REQUIRE(m4.count(123) == 0);
     REQUIRE(m4.end() == m4.begin());
