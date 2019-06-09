@@ -103,7 +103,7 @@
 #    include <intrin.h>
 #    pragma intrinsic(ROBIN_HOOD_BITSCANFORWARD)
 #    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                      \
-        [](size_t mask) -> int {                                                     \
+        [](size_t mask) noexcept -> int {                                                     \
             unsigned long index;                                                     \
             return ROBIN_HOOD_BITSCANFORWARD(&index, mask) ? static_cast<int>(index) \
                                                            : ROBIN_HOOD_BITNESS;     \
@@ -169,12 +169,12 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
 // ‘uint64_t*’ {aka ‘long unsigned int*’} increases required alignment of target type". Use with
 // care!
 template <typename T>
-inline T reinterpret_cast_no_cast_align_warning(void* ptr) {
+inline T reinterpret_cast_no_cast_align_warning(void* ptr) noexcept {
     return reinterpret_cast<T>(ptr);
 }
 
 template <typename T>
-inline T reinterpret_cast_no_cast_align_warning(void const* ptr) {
+inline T reinterpret_cast_no_cast_align_warning(void const* ptr) noexcept {
     return reinterpret_cast<T>(ptr);
 }
 } // namespace detail
@@ -222,23 +222,23 @@ inline T unaligned_load(void const* ptr) noexcept {
 template <typename T, size_t MinNumAllocs = 4, size_t MaxNumAllocs = 256>
 class BulkPoolAllocator {
 public:
-    BulkPoolAllocator()
+    BulkPoolAllocator() noexcept
         : mHead(nullptr)
         , mListForFree(nullptr) {}
 
     // does not copy anything, just creates a new allocator.
-    BulkPoolAllocator(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/)
+    BulkPoolAllocator(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/) noexcept
         : mHead(nullptr)
         , mListForFree(nullptr) {}
 
-    BulkPoolAllocator(BulkPoolAllocator&& o)
+    BulkPoolAllocator(BulkPoolAllocator&& o) noexcept
         : mHead(o.mHead)
         , mListForFree(o.mListForFree) {
         o.mListForFree = nullptr;
         o.mHead = nullptr;
     }
 
-    BulkPoolAllocator& operator=(BulkPoolAllocator&& o) {
+    BulkPoolAllocator& operator=(BulkPoolAllocator&& o) noexcept {
         reset();
         mHead = o.mHead;
         mListForFree = o.mListForFree;
@@ -247,7 +247,7 @@ public:
         return *this;
     }
 
-    BulkPoolAllocator& operator=(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/) {
+    BulkPoolAllocator& operator=(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/) noexcept {
         // does not do anything
         return *this;
     }
@@ -257,7 +257,7 @@ public:
     }
 
     // Deallocates all allocated memory.
-    void reset() {
+    void reset() noexcept {
         while (mListForFree) {
             T* tmp = *mListForFree;
             free(mListForFree);
@@ -283,7 +283,7 @@ public:
     // make sure you have already called the destructor! e.g. with
     //  obj->~T();
     //  pool.deallocate(obj);
-    void deallocate(T* obj) {
+    void deallocate(T* obj) noexcept {
         *reinterpret_cast_no_cast_align_warning<T**>(obj) = mHead;
         mHead = obj;
     }
@@ -301,7 +301,7 @@ public:
         }
     }
 
-    void swap(BulkPoolAllocator<T, MinNumAllocs, MaxNumAllocs>& other) {
+    void swap(BulkPoolAllocator<T, MinNumAllocs, MaxNumAllocs>& other) noexcept {
         using std::swap;
         swap(mHead, other.mHead);
         swap(mListForFree, other.mListForFree);
@@ -312,7 +312,7 @@ private:
     // Recalculating this each time saves us a size_t member.
     // This ignores the fact that memory blocks might have been added manually with addOrFree. In
     // practice, this should not matter much.
-    size_t calcNumElementsToAlloc() const {
+    size_t calcNumElementsToAlloc() const noexcept {
         auto tmp = mListForFree;
         size_t numAllocs = MinNumAllocs;
 
@@ -389,7 +389,7 @@ template <typename T, size_t MinSize, size_t MaxSize>
 struct NodeAllocator<T, MinSize, MaxSize, true> {
 
     // we are not using the data, so just free it.
-    void addOrFree(void* ptr, size_t ROBIN_HOOD_UNUSED(numBytes) /*unused*/) {
+    void addOrFree(void* ptr, size_t ROBIN_HOOD_UNUSED(numBytes) /*unused*/) noexcept {
         free(ptr);
     }
 };
@@ -460,20 +460,20 @@ struct pair {
         (void)tuple2;
     }
 
-    first_type& getFirst() {
+    first_type& getFirst() noexcept {
         return first;
     }
-    first_type const& getFirst() const {
+    first_type const& getFirst() const noexcept {
         return first;
     }
-    second_type& getSecond() {
+    second_type& getSecond() noexcept {
         return second;
     }
-    second_type const& getSecond() const {
+    second_type const& getSecond() const noexcept {
         return second;
     }
 
-    void swap(pair<First, Second>& o) {
+    void swap(pair<First, Second>& o) noexcept {
         using std::swap;
         swap(first, o.first);
         swap(second, o.second);
@@ -570,7 +570,7 @@ inline size_t hash_int(uint64_t obj) noexcept {
 // A thin wrapper around std::hash, performing an additional simple mixing step of the result.
 template <typename T>
 struct hash : public std::hash<T> {
-    size_t operator()(T const& obj) const {
+    size_t operator()(T const& obj) const noexcept {
         // call base hash
         auto result = std::hash<T>::operator()(obj);
         // return mixed of that, to be save against identity has
@@ -708,41 +708,41 @@ private:
             : mData(std::move(n.mData)) {}
 
         // doesn't do anything
-        void destroy(M& ROBIN_HOOD_UNUSED(map) /*unused*/) {}
-        void destroyDoNotDeallocate() {}
+        void destroy(M& ROBIN_HOOD_UNUSED(map) /*unused*/) noexcept {}
+        void destroyDoNotDeallocate() noexcept {}
 
-        value_type const* operator->() const {
+        value_type const* operator->() const noexcept {
             return &mData;
         }
-        value_type* operator->() {
+        value_type* operator->() noexcept {
             return &mData;
         }
 
-        const value_type& operator*() const {
+        const value_type& operator*() const noexcept {
             return mData;
         }
 
-        value_type& operator*() {
+        value_type& operator*() noexcept {
             return mData;
         }
 
-        typename value_type::first_type& getFirst() {
+        typename value_type::first_type& getFirst() noexcept {
             return mData.first;
         }
 
-        typename value_type::first_type const& getFirst() const {
+        typename value_type::first_type const& getFirst() const noexcept {
             return mData.first;
         }
 
-        typename value_type::second_type& getSecond() {
+        typename value_type::second_type& getSecond() noexcept {
             return mData.second;
         }
 
-        typename value_type::second_type const& getSecond() const {
+        typename value_type::second_type const& getSecond() const noexcept {
             return mData.second;
         }
 
-        void swap(DataNode<M, true>& o) {
+        void swap(DataNode<M, true>& o) noexcept {
             mData.swap(o.mData);
         }
 
@@ -769,43 +769,43 @@ private:
             map.deallocate(mData);
         }
 
-        void destroyDoNotDeallocate() {
+        void destroyDoNotDeallocate() noexcept {
             mData->~value_type();
         }
 
-        value_type const* operator->() const {
+        value_type const* operator->() const noexcept {
             return mData;
         }
 
-        value_type* operator->() {
+        value_type* operator->() noexcept {
             return mData;
         }
 
-        const value_type& operator*() const {
+        const value_type& operator*() const noexcept {
             return *mData;
         }
 
-        value_type& operator*() {
+        value_type& operator*() noexcept {
             return *mData;
         }
 
-        typename value_type::first_type& getFirst() {
+        typename value_type::first_type& getFirst() noexcept {
             return mData->first;
         }
 
-        typename value_type::first_type const& getFirst() const {
+        typename value_type::first_type const& getFirst() const noexcept {
             return mData->first;
         }
 
-        typename value_type::second_type& getSecond() {
+        typename value_type::second_type& getSecond() noexcept {
             return mData->second;
         }
 
-        typename value_type::second_type const& getSecond() const {
+        typename value_type::second_type const& getSecond() const noexcept {
             return mData->second;
         }
 
-        void swap(DataNode<M, false>& o) {
+        void swap(DataNode<M, false>& o) noexcept {
             using std::swap;
             swap(mData, o.mData);
         }
@@ -857,18 +857,18 @@ private:
 
     template <typename M>
     struct Destroyer<M, true> {
-        void nodes(M& m) const {
+        void nodes(M& m) const noexcept {
             m.mNumElements = 0;
         }
 
-        void nodesDoNotDeallocate(M& m) const {
+        void nodesDoNotDeallocate(M& m) const noexcept {
             m.mNumElements = 0;
         }
     };
 
     template <typename M>
     struct Destroyer<M, false> {
-        void nodes(M& m) const {
+        void nodes(M& m) const noexcept {
             m.mNumElements = 0;
             // clear also resets mInfo to 0, that's sometimes not necessary.
             for (size_t idx = 0; idx <= m.mMask; ++idx) {
@@ -880,7 +880,7 @@ private:
             }
         }
 
-        void nodesDoNotDeallocate(M& m) const {
+        void nodesDoNotDeallocate(M& m) const noexcept {
             m.mNumElements = 0;
             // clear also resets mInfo to 0, that's sometimes not necessary.
             for (size_t idx = 0; idx <= m.mMask; ++idx) {
@@ -912,61 +912,61 @@ private:
 
         // default constructed iterator can be compared to itself, but WON'T return true when
         // compared to end().
-        Iter()
+        Iter() noexcept
             : mKeyVals(nullptr)
             , mInfo(nullptr) {}
 
         // both const_iterator and iterator can be constructed from a non-const iterator
-        Iter(Iter<false> const& other)
+        Iter(Iter<false> const& other) noexcept
             : mKeyVals(other.mKeyVals)
             , mInfo(other.mInfo) {}
 
-        Iter& operator=(Iter<false> const& other) {
+        Iter& operator=(Iter<false> const& other) noexcept {
             mKeyVals = other.mKeyVals;
             mInfo = other.mInfo;
             return *this;
         }
 
-        Iter(NodePtr valPtr, uint8_t const* infoPtr)
+        Iter(NodePtr valPtr, uint8_t const* infoPtr) noexcept
             : mKeyVals(valPtr)
             , mInfo(infoPtr) {}
 
         Iter(NodePtr valPtr, uint8_t const* infoPtr,
-             fast_forward_tag ROBIN_HOOD_UNUSED(tag) /*unused*/)
+             fast_forward_tag ROBIN_HOOD_UNUSED(tag) /*unused*/) noexcept
             : mKeyVals(valPtr)
             , mInfo(infoPtr) {
             fastForward();
         }
 
         // prefix increment. Undefined behavior if we are at end()!
-        Iter& operator++() {
+        Iter& operator++() noexcept {
             mInfo++;
             mKeyVals++;
             fastForward();
             return *this;
         }
 
-        reference operator*() const {
+        reference operator*() const noexcept {
             return **mKeyVals;
         }
 
-        pointer operator->() const {
+        pointer operator->() const noexcept {
             return &**mKeyVals;
         }
 
         template <bool O>
-        bool operator==(Iter<O> const& o) const {
+        bool operator==(Iter<O> const& o) const noexcept {
             return mKeyVals == o.mKeyVals;
         }
 
         template <bool O>
-        bool operator!=(Iter<O> const& o) const {
+        bool operator!=(Iter<O> const& o) const noexcept {
             return mKeyVals != o.mKeyVals;
         }
 
     private:
         // fast forward to the next non-free info byte
-        void fastForward() {
+        void fastForward() noexcept {
             int inc;
             do {
                 auto const n = detail::unaligned_load<size_t>(mInfo);
@@ -1017,7 +1017,7 @@ private:
     // Lower bits are used for indexing into the array (2^n size)
     // The upper 1-5 bits need to be a reasonable good hash, to save comparisons.
     template <typename HashKey>
-    void keyToIdx(HashKey&& key, size_t& idx, InfoType& info) const {
+    void keyToIdx(HashKey&& key, size_t& idx, InfoType& info) const noexcept {
         // for a user-specified hash that is *not* robin_hood::hash, apply robin_hood::hash as an
         // additional mixing step. This serves as a bad hash prevention, if the given data is badly
         // mixed.
@@ -1032,12 +1032,12 @@ private:
     }
 
     // forwards the index by one, wrapping around at the end
-    void next(InfoType* info, size_t* idx) const {
+    void next(InfoType* info, size_t* idx) const noexcept {
         *idx = (*idx + 1) & mMask;
         *info += mInfoInc;
     }
 
-    void nextWhileLess(InfoType* info, size_t* idx) const {
+    void nextWhileLess(InfoType* info, size_t* idx) const noexcept {
         // unrolling this by hand did not bring any speedups.
         while (*info < mInfo[*idx]) {
             next(info, idx);
@@ -1047,7 +1047,7 @@ private:
     // Shift everything up by one element. Tries to move stuff around.
     // True if some shifting has occured (entry under idx is a constructed object)
     // Fals if no shift has occured (entry under idx is unconstructed memory)
-    void shiftUp(size_t idx, size_t const insertion_idx) {
+    void shiftUp(size_t idx, size_t const insertion_idx) noexcept {
         while (idx != insertion_idx) {
             size_t prev_idx = (idx - 1) & mMask;
             if (mInfo[idx]) {
@@ -1063,7 +1063,7 @@ private:
         }
     }
 
-    void shiftDown(size_t idx) {
+    void shiftDown(size_t idx) noexcept {
         // until we find one that is either empty or has zero offset.
         // TODO we don't need to move everything, just the last one for the same bucket.
         mKeyVals[idx].destroy(*this);
@@ -1085,7 +1085,7 @@ private:
 
     // copy of find(), except that it returns iterator instead of const_iterator.
     template <typename Other>
-    size_t findIdx(Other const& key) const {
+    size_t findIdx(Other const& key) const noexcept {
         size_t idx;
         InfoType info;
         keyToIdx(key, idx, info);
@@ -1190,7 +1190,7 @@ public:
         insert(init.begin(), init.end());
     }
 
-    unordered_map(unordered_map&& o)
+    unordered_map(unordered_map&& o) noexcept
         : Hash(std::move(static_cast<Hash&>(o)))
         , KeyEqual(std::move(static_cast<KeyEqual&>(o)))
         , DataPool(std::move(static_cast<DataPool&>(o))) {
@@ -1316,14 +1316,14 @@ public:
     }
 
     // Swaps everything between the two maps.
-    void swap(unordered_map& o) {
+    void swap(unordered_map& o) noexcept {
         ROBIN_HOOD_TRACE(this);
         using std::swap;
         swap(o, *this);
     }
 
     // Clears all data, without resizing.
-    void clear() {
+    void clear() noexcept {
         ROBIN_HOOD_TRACE(this);
         if (empty()) {
             // don't do anything! also important because we don't want to write to DummyInfoByte::b,
@@ -1349,7 +1349,7 @@ public:
     }
 
     // Checks if both maps contain the same entries. Order is irrelevant.
-    bool operator==(const unordered_map& other) const {
+    bool operator==(const unordered_map& other) const noexcept {
         ROBIN_HOOD_TRACE(this);
         if (other.size() != size()) {
             return false;
@@ -1364,7 +1364,7 @@ public:
         return true;
     }
 
-    bool operator!=(const unordered_map& other) const {
+    bool operator!=(const unordered_map& other) const noexcept {
         ROBIN_HOOD_TRACE(this);
         return !operator==(other);
     }
@@ -1440,44 +1440,44 @@ public:
         return kv->getSecond();
     }
 
-    const_iterator find(const key_type& key) const {
+    const_iterator find(const key_type& key) const noexcept {
         ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return const_iterator{mKeyVals + idx, mInfo + idx};
     }
 
     template <typename OtherKey>
-    const_iterator find(const OtherKey& key, is_transparent_tag /*unused*/) const {
+    const_iterator find(const OtherKey& key, is_transparent_tag /*unused*/) const noexcept {
         ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return const_iterator{mKeyVals + idx, mInfo + idx};
     }
 
-    iterator find(const key_type& key) {
+    iterator find(const key_type& key) noexcept {
         ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return iterator{mKeyVals + idx, mInfo + idx};
     }
 
     template <typename OtherKey>
-    iterator find(const OtherKey& key, is_transparent_tag /*unused*/) {
+    iterator find(const OtherKey& key, is_transparent_tag /*unused*/) noexcept {
         ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return iterator{mKeyVals + idx, mInfo + idx};
     }
 
-    iterator begin() {
+    iterator begin() noexcept {
         ROBIN_HOOD_TRACE(this);
         if (empty()) {
             return end();
         }
         return iterator(mKeyVals, mInfo, fast_forward_tag{});
     }
-    const_iterator begin() const {
+    const_iterator begin() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return cbegin();
     }
-    const_iterator cbegin() const {
+    const_iterator cbegin() const noexcept {
         ROBIN_HOOD_TRACE(this);
         if (empty()) {
             return cend();
@@ -1485,29 +1485,29 @@ public:
         return const_iterator(mKeyVals, mInfo, fast_forward_tag{});
     }
 
-    iterator end() {
+    iterator end() noexcept {
         ROBIN_HOOD_TRACE(this);
         // no need to supply valid info pointer: end() must not be dereferenced, and only node
         // pointer is compared.
         return iterator{reinterpret_cast_no_cast_align_warning<Node*>(mInfo), nullptr};
     }
-    const_iterator end() const {
+    const_iterator end() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return cend();
     }
-    const_iterator cend() const {
+    const_iterator cend() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return const_iterator{reinterpret_cast_no_cast_align_warning<Node*>(mInfo), nullptr};
     }
 
-    iterator erase(const_iterator pos) {
+    iterator erase(const_iterator pos) noexcept {
         ROBIN_HOOD_TRACE(this);
         // its safe to perform const cast here
         return erase(iterator{const_cast<Node*>(pos.mKeyVals), const_cast<uint8_t*>(pos.mInfo)});
     }
 
     // Erases element at pos, returns iterator to the next element.
-    iterator erase(iterator pos) {
+    iterator erase(iterator pos) noexcept {
         ROBIN_HOOD_TRACE(this);
         // we assume that pos always points to a valid entry, and not end().
         auto const idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
@@ -1524,7 +1524,7 @@ public:
         return ++pos;
     }
 
-    size_t erase(const key_type& key) {
+    size_t erase(const key_type& key) noexcept {
         ROBIN_HOOD_TRACE(this);
         size_t idx;
         InfoType info;
@@ -1584,33 +1584,33 @@ public:
         }
     }
 
-    size_type size() const {
+    size_type size() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return mNumElements;
     }
 
-    size_type max_size() const {
+    size_type max_size() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return static_cast<size_type>(-1);
     }
 
-    bool empty() const {
+    bool empty() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return 0 == mNumElements;
     }
 
-    float max_load_factor() const {
+    float max_load_factor() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return MaxLoadFactor100 / 100.0f;
     }
 
     // Average number of elements per bucket. Since we allow only 1 per bucket
-    float load_factor() const {
+    float load_factor() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return static_cast<float>(size()) / static_cast<float>(mMask + 1);
     }
 
-    size_t mask() const {
+    size_t mask() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return mMask;
     }
@@ -1748,7 +1748,7 @@ private:
         }
     }
 
-    size_t calcMaxNumElementsAllowed(size_t maxElements) {
+    size_t calcMaxNumElementsAllowed(size_t maxElements) noexcept {
         static constexpr size_t overflowLimit = (std::numeric_limits<size_t>::max)() / 100;
         static constexpr double factor = MaxLoadFactor100 / 100.0;
 
@@ -1808,7 +1808,7 @@ private:
         rehash((mMask + 1) * 2);
     }
 
-    void destroy() {
+    void destroy() noexcept {
         if (0 == mMask) {
             // don't deallocate!
             return;
@@ -1819,7 +1819,7 @@ private:
         free(mKeyVals);
     }
 
-    void init() {
+    void init() noexcept {
         mKeyVals = reinterpret_cast<Node*>(&mMask);
         mInfo = reinterpret_cast<uint8_t*>(&mMask);
         mNumElements = 0;
