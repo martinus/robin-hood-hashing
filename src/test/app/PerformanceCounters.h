@@ -107,7 +107,7 @@ public:
 
     ~PerformanceCounters();
 
-    uint64_t const* monitor(uint32_t type, uint64_t event);
+    uint64_t const* monitor(uint32_t type, uint64_t eventid);
 
 private:
 #ifdef __linux__
