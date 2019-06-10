@@ -1158,7 +1158,9 @@ public:
     // points to DummyInfoByte::b. parameter bucket_count is dictated by the standard, but we can
     // ignore it.
     explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
-                           const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
+                           const Hash& h = Hash{},
+                           const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) &&
+                                                                        noexcept(KeyEqual(equal)))
         : Hash(h)
         , KeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
@@ -1231,7 +1233,6 @@ public:
         : Hash(static_cast<const Hash&>(o))
         , KeyEqual(static_cast<const KeyEqual&>(o))
         , DataPool(static_cast<const DataPool&>(o)) {
-
         ROBIN_HOOD_TRACE(this);
         if (!o.empty()) {
             // not empty: create an exact copy. it is also possible to just iterate through all

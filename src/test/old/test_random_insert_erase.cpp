@@ -187,29 +187,3 @@ TEMPLATE_TEST_CASE("erase iterator", "", FlatMapVerifier, NodeMapVerifier) {
     }
     REQUIRE(CtorDtorVerifier::mapSize() == static_cast<size_t>(0));
 }
-
-TEMPLATE_TEST_CASE("test vector", "", FlatMapVerifier, NodeMapVerifier) {
-    {
-        std::vector<TestType> maps;
-        for (size_t i = 0; i < 10; ++i) {
-            TestType m;
-            fill(m, 100);
-            maps.push_back(m);
-        }
-    }
-    REQUIRE(CtorDtorVerifier::mapSize() == static_cast<size_t>(0));
-}
-
-TEMPLATE_TEST_CASE("maps of maps", "", FlatMapVerifier, NodeMapVerifier) {
-    {
-        robin_hood::unordered_map<CtorDtorVerifier, TestType> maps;
-        for (uint64_t i = 0; i < 10; ++i) {
-            fill(maps[i], 100);
-        }
-
-        robin_hood::unordered_map<CtorDtorVerifier, TestType> maps2;
-        maps2 = maps;
-        REQUIRE(maps2 == maps);
-    }
-    REQUIRE(CtorDtorVerifier::mapSize() == static_cast<size_t>(0));
-}

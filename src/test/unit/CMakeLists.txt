@@ -54,4 +54,5 @@ target_sources_local(rh PRIVATE
     unit_reserve.cpp
     unit_sizeof.cpp
     unit_unique_ptr.cpp
+    unit_vectorofmaps.cpp
 )
