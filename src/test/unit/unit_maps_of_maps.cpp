@@ -30,8 +30,17 @@ void testMapsOfMaps() {
             REQUIRE(checksum::mapmap(mapsCopied) == checksum::mapmap(maps));
             REQUIRE(mapsCopied == maps);
 
-            // TODO(martinus)
-            // M mapsMoved
+            M mapsMoved;
+            mapsMoved = std::move(mapsCopied);
+
+            // move
+            REQUIRE(checksum::mapmap(mapsMoved) == checksum::mapmap(maps));
+            REQUIRE(mapsCopied.size() == 0);
+            mapsCopied = std::move(mapsMoved);
+
+            // move back
+            REQUIRE(checksum::mapmap(mapsCopied) == checksum::mapmap(maps));
+            REQUIRE(mapsMoved.size() == 0);
         }
         REQUIRE(CtorDtorVerifier::mapSize() == static_cast<size_t>(0));
     }
