@@ -52,6 +52,7 @@ target_sources_local(rh PRIVATE
     unit_overflow.cpp
     unit_pair_trivial.cpp
     unit_reserve.cpp
+    unit_sfc64_is_deterministic.cpp
     unit_sizeof.cpp
     unit_unique_ptr.cpp
     unit_vectorofmaps.cpp
