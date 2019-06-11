@@ -86,7 +86,6 @@ std::string mup(char const* format, double value) {
 }
 
 struct FP {
-    double factor;
     std::string prefix;
 };
 

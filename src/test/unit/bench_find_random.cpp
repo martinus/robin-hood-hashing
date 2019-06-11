@@ -14,9 +14,7 @@ TEST_CASE_TEMPLATE("bench find random" * doctest::test_suite("bench") * doctest:
                    robin_hood::unordered_node_map<size_t, size_t>) {
 
     static constexpr size_t numTotal = 4;
-    static constexpr size_t numInserts = 200'000;
     static constexpr size_t numFindsPerInsert = 500;
-    static constexpr size_t numFindsPerIter = numFindsPerInsert * numTotal;
 
     size_t requiredChecksum = 0;
     size_t numFound = 0;
@@ -60,6 +58,9 @@ TEST_CASE_TEMPLATE("bench find random" * doctest::test_suite("bench") * doctest:
     sfc64 findRng(anotherUnrelatedRngInitialState);
 
     {
+        static constexpr size_t numInserts = 200'000;
+        static constexpr size_t numFindsPerIter = numFindsPerInsert * numTotal;
+
         Map map;
         size_t i = 0;
         size_t findCount = 0;
