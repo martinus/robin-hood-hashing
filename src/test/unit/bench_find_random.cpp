@@ -58,7 +58,7 @@ TEST_CASE_TEMPLATE("bench find random" * doctest::test_suite("bench") * doctest:
     sfc64 findRng(anotherUnrelatedRngInitialState);
 
     {
-        static constexpr size_t numInserts = 200'000;
+        static constexpr size_t numInserts = 200000;
         static constexpr size_t numFindsPerIter = numFindsPerInsert * numTotal;
 
         Map map;
