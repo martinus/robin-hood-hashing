@@ -48,80 +48,6 @@
 #include <type_traits>
 #include <utility>
 
-namespace std_comp {
-template< class T >
-struct alignment_of : std::integral_constant<std::size_t,
-    alignof(typename std::remove_all_extents<T>::type)>{};
-
-template <class T, T...Ints>
-class integer_sequence {
-public:
-    using value_type = T;
-    static_assert(std::is_integral<value_type>::value,
-                "not integral type");
-    static constexpr std::size_t size() noexcept {
-        return sizeof...(Ints);
-    }
-};
-template <std::size_t...Inds>
-using index_sequence = integer_sequence<std::size_t, Inds...>;
-
-namespace Detail_ {
-template <class T, T Begin, T End, bool>
-struct IntSeqImpl {
-    using TValue = T;
-    static_assert(std::is_integral<TValue>::value,
-                    "not integral type");
-    static_assert( Begin>=0 && Begin<End,
-                    "unexpected argument (Begin<0 || Begin<=End)");
-
-    template <class, class>
-    struct IntSeqCombiner;
-
-    template <TValue...Inds0, TValue...Inds1>
-    struct IntSeqCombiner<integer_sequence<TValue, Inds0...>,
-                            integer_sequence<TValue, Inds1...>> {
-        using TResult = integer_sequence<TValue, Inds0..., Inds1...>;
-    };
-
-    using TResult = typename IntSeqCombiner
-    <typename IntSeqImpl<TValue, Begin, Begin+(End-Begin)/2,
-                            (End-Begin)/2==1>::TResult,
-        typename IntSeqImpl<TValue, Begin+(End-Begin)/2, End,
-                            (End-Begin+1)/2==1>::TResult>
-    ::TResult;
-};
-
-template <class T, T Begin>
-struct IntSeqImpl<T, Begin, Begin, false> {
-    using TValue = T;
-    static_assert(std::is_integral<TValue>::value,
-                    "not integral type");
-    static_assert( Begin>=0, "unexpected argument (Begin<0)");
-    using TResult = integer_sequence<TValue>;
-};
-
-template <class T, T Begin, T End>
-struct IntSeqImpl<T, Begin, End, true> {
-    using TValue = T;
-    static_assert(std::is_integral<TValue>::value,
-                    "not integral type");
-    static_assert( Begin>=0, "unexpected argument (Begin<0)");
-    using TResult = integer_sequence<TValue, Begin>;
-};
-} // namespace Detail_
-
-template <class T, T N>
-using make_integer_sequence =
-typename Detail_::IntSeqImpl<T, 0, N, (N-0)==1>::TResult;
-
-template <std::size_t N>
-using make_index_sequence = make_integer_sequence<std::size_t, N>;
-
-template<class... T>
-using index_sequence_for = make_index_sequence<sizeof...(T)>;
-} // namespace std_comp
-
 // #define ROBIN_HOOD_LOG_ENABLED
 #ifdef ROBIN_HOOD_LOG_ENABLED
 #    include <iostream>
@@ -196,6 +122,77 @@ using index_sequence_for = make_index_sequence<sizeof...(T)>;
 
 // umul
 namespace robin_hood {
+
+#if __cplusplus >= 201402L
+#    define ROBIN_HOOD_STD_COMP std
+#else
+namespace ROBIN_HOOD_STD_COMP {
+template <class T>
+struct alignment_of
+    : std::integral_constant<std::size_t, alignof(typename std::remove_all_extents<T>::type)> {};
+
+template <class T, T... Ints>
+class integer_sequence {
+public:
+    using value_type = T;
+    static_assert(std::is_integral<value_type>::value, "not integral type");
+    static constexpr std::size_t size() noexcept {
+        return sizeof...(Ints);
+    }
+};
+template <std::size_t... Inds>
+using index_sequence = integer_sequence<std::size_t, Inds...>;
+
+namespace detail_ {
+template <class T, T Begin, T End, bool>
+struct IntSeqImpl {
+    using TValue = T;
+    static_assert(std::is_integral<TValue>::value, "not integral type");
+    static_assert(Begin >= 0 && Begin < End, "unexpected argument (Begin<0 || Begin<=End)");
+
+    template <class, class>
+    struct IntSeqCombiner;
+
+    template <TValue... Inds0, TValue... Inds1>
+    struct IntSeqCombiner<integer_sequence<TValue, Inds0...>, integer_sequence<TValue, Inds1...>> {
+        using TResult = integer_sequence<TValue, Inds0..., Inds1...>;
+    };
+
+    using TResult =
+        typename IntSeqCombiner<typename IntSeqImpl<TValue, Begin, Begin + (End - Begin) / 2,
+                                                    (End - Begin) / 2 == 1>::TResult,
+                                typename IntSeqImpl<TValue, Begin + (End - Begin) / 2, End,
+                                                    (End - Begin + 1) / 2 == 1>::TResult>::TResult;
+};
+#endif
+
+template <class T, T Begin>
+struct IntSeqImpl<T, Begin, Begin, false> {
+    using TValue = T;
+    static_assert(std::is_integral<TValue>::value, "not integral type");
+    static_assert(Begin >= 0, "unexpected argument (Begin<0)");
+    using TResult = integer_sequence<TValue>;
+};
+
+template <class T, T Begin, T End>
+struct IntSeqImpl<T, Begin, End, true> {
+    using TValue = T;
+    static_assert(std::is_integral<TValue>::value, "not integral type");
+    static_assert(Begin >= 0, "unexpected argument (Begin<0)");
+    using TResult = integer_sequence<TValue, Begin>;
+};
+} // namespace robin_hood
+
+template <class T, T N>
+using make_integer_sequence = typename detail_::IntSeqImpl<T, 0, N, (N - 0) == 1>::TResult;
+
+template <std::size_t N>
+using make_index_sequence = make_integer_sequence<std::size_t, N>;
+
+template <class... T>
+using index_sequence_for = make_index_sequence<sizeof...(T)>;
+} // namespace ROBIN_HOOD_STD_COMP
+
 namespace detail {
 #if defined(__SIZEOF_INT128__)
 #    if defined(__GNUC__) || defined(__clang__)
@@ -441,11 +438,15 @@ private:
     }
 
     // enforce byte alignment of the T's
-    // static const size_t ALIGNMENT =
-    //     (std::max)(std_comp::alignment_of<T>::value, std_comp::alignment_of<T*>::value);
+#if __cplusplus >= 201402L
     static const size_t ALIGNMENT =
-           (std_comp::alignment_of<T>::value >  std_comp::alignment_of<T*>::value) ?
-            std_comp::alignment_of<T>::value : +std_comp::alignment_of<T*>::value  ; // the + is for walkarround
+        (std::max)(std::alignment_of<T>::value, std::alignment_of<T*>::value);
+#else
+    static const size_t ALIGNMENT =
+        (ROBIN_HOOD_STD_COMP::alignment_of<T>::value > ROBIN_HOOD_STD_COMP::alignment_of<T*>::value)
+            ? ROBIN_HOOD_STD_COMP::alignment_of<T>::value
+            : +ROBIN_HOOD_STD_COMP::alignment_of<T*>::value; // the + is for walkarround
+#endif
 
     static constexpr size_t ALIGNED_SIZE = ((sizeof(T) - 1) / ALIGNMENT + 1) * ALIGNMENT;
 
@@ -523,13 +524,14 @@ struct pair {
     template <typename... Args1, typename... Args2>
     pair(std::piecewise_construct_t /*unused*/, std::tuple<Args1...> firstArgs,
          std::tuple<Args2...> secondArgs)
-        : pair(firstArgs, secondArgs, std_comp::index_sequence_for<Args1...>(),
-               std_comp::index_sequence_for<Args2...>()) {}
+        : pair(firstArgs, secondArgs, ROBIN_HOOD_STD_COMP::index_sequence_for<Args1...>(),
+               ROBIN_HOOD_STD_COMP::index_sequence_for<Args2...>()) {}
 
     // constructor called from the std::piecewise_construct_t ctor
     template <typename... Args1, size_t... Indexes1, typename... Args2, size_t... Indexes2>
     pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2,
-         std_comp::index_sequence<Indexes1...> /*unused*/, std_comp::index_sequence<Indexes2...> /*unused*/)
+         ROBIN_HOOD_STD_COMP::index_sequence<Indexes1...> /*unused*/,
+         ROBIN_HOOD_STD_COMP::index_sequence<Indexes2...> /*unused*/)
         : first(std::forward<Args1>(std::get<Indexes1>(tuple1))...)
         , second(std::forward<Args2>(std::get<Indexes2>(tuple2))...) {
         // make visual studio compiler happy about warning about unused tuple1 & tuple2.
