@@ -123,7 +123,7 @@
 // umul
 namespace robin_hood {
 
-#if __cplusplus >= 201402L
+#if(__cplusplus >= 201402L)
 #    define ROBIN_HOOD_STD_COMP std
 #else
 namespace ROBIN_HOOD_STD_COMP {
@@ -164,7 +164,6 @@ struct IntSeqImpl {
                                 typename IntSeqImpl<TValue, Begin + (End - Begin) / 2, End,
                                                     (End - Begin + 1) / 2 == 1>::TResult>::TResult;
 };
-#endif
 
 template <class T, T Begin>
 struct IntSeqImpl<T, Begin, Begin, false> {
@@ -181,7 +180,7 @@ struct IntSeqImpl<T, Begin, End, true> {
     static_assert(Begin >= 0, "unexpected argument (Begin<0)");
     using TResult = integer_sequence<TValue, Begin>;
 };
-} // namespace robin_hood
+} // namespace detail_
 
 template <class T, T N>
 using make_integer_sequence = typename detail_::IntSeqImpl<T, 0, N, (N - 0) == 1>::TResult;
@@ -192,6 +191,7 @@ using make_index_sequence = make_integer_sequence<std::size_t, N>;
 template <class... T>
 using index_sequence_for = make_index_sequence<sizeof...(T)>;
 } // namespace ROBIN_HOOD_STD_COMP
+#endif
 
 namespace detail {
 #if defined(__SIZEOF_INT128__)

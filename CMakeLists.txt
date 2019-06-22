@@ -1,7 +1,16 @@
 cmake_minimum_required(VERSION 3.5)
 project(robin-hood-hashing LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 11)
+option(RH_sanitizer "Address sanitizer" OFF)
+option(RH_coverage "Enable coverage" OFF)
+option(RH_use_cxx11 "Enable C++11 Testing" OFF)
+
+if(RH_use_cxx11)
+    set(CMAKE_CXX_STANDARD 11)
+else()
+    set(CMAKE_CXX_STANDARD 14)
+endif()
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -10,8 +19,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_CXX_CLANG_TIDY clang-tidy)
 endif()
 
-option(RH_sanitizer "Address sanitizer" OFF)
-option(RH_coverage, "Enable coverage" OFF)
+
 
 add_executable(rh "")
 
@@ -20,7 +28,7 @@ if (RH_sanitizer)
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         # see https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#silencing-unsigned-integer-overflow
         # Compile with -g and -fno-omit-frame-pointer to get proper debug information in your binary
-        target_compile_options(rh PRIVATE -g) 
+        target_compile_options(rh PRIVATE -g)
         target_compile_options(rh PRIVATE -O2)
         target_compile_options(rh PRIVATE -fno-omit-frame-pointer)
 
@@ -42,7 +50,7 @@ if (RH_sanitizer)
         # need to use gold linker, otherwise travis gets '/usr/bin/ld: --push-state: unknown option' error
         target_link_libraries(rh PRIVATE -fuse-ld=gold)
 
-        target_compile_options(rh PRIVATE -g) 
+        target_compile_options(rh PRIVATE -g)
         target_compile_options(rh PRIVATE -O2)
         target_compile_options(rh PRIVATE -fno-omit-frame-pointer)
 
@@ -94,4 +102,3 @@ add_compile_flags_target(rh)
 add_subdirectory(src)
 
 target_sources_local(rh PUBLIC .clang-tidy)
-
