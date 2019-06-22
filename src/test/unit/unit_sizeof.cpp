@@ -12,7 +12,7 @@ struct Foo {
 };
 } // namespace
 
-#if(__GNUG__ < 8)
+#if defined(__GNUC__) && (__GNUG__ < 8)
 namespace std {
 template <>
 struct hash<Foo> {
