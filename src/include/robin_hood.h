@@ -239,8 +239,8 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
 #    define ROBIN_HOOD_FALLTHROUGH
 #endif
 
-// This cast gets rid of warnings like "cast from ‘uint8_t*’ {aka ‘unsigned char*’} to
-// ‘uint64_t*’ {aka ‘long unsigned int*’} increases required alignment of target type". Use with
+// This cast gets rid of warnings like "cast from 'uint8_t*' {aka 'unsigned char*'} to
+// 'uint64_t*' {aka 'long unsigned int*'} increases required alignment of target type". Use with
 // care!
 template <typename T>
 inline T reinterpret_cast_no_cast_align_warning(void* ptr) {
