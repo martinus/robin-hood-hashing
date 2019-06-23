@@ -25,7 +25,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8-multilib', 'linux-libc-dev:i386']        
+        packages: ['g++-8-multilib', 'linux-libc-dev:i386']
 
   # build for c++17
   - os: linux
@@ -61,6 +61,27 @@ matrix:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
         packages: ['g++-6', 'clang-6.0',]
 
+  # tests for c++11
+  - os: linux
+    compiler: gcc
+    env:
+    - COMPILER=g++-8
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_use_cxx11=ON"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-8']
+
+  - os: linux
+    compiler: clang
+    env:
+    - COMPILER=clang++-6.0
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_use_cxx11=ON"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+        packages: ['g++-6', 'clang-6.0',]
+
 script:
   # make sure CXX is correctly set
   - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
@@ -72,7 +93,7 @@ script:
   # build
   - cd build
   - cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_OPTIONS} && cmake --build . -- -j4
-  
+
   # check file
   - file ./rh
 
