@@ -29,7 +29,7 @@ struct ConfigurableCounterHash {
         uint64_t h;
         uint64_t l = robin_hood::detail::umul128(obj, m_values[0], &h);
         auto result = h + l;
-#elif ROBIN_HOOD_BITNESS == 32
+#elif ROBIN_HOOD(BITNESS) == 32
         uint64_t const r = obj * m_values[0];
         uint32_t h = static_cast<uint32_t>(r >> 32);
         uint32_t l = static_cast<uint32_t>(r);
@@ -127,10 +127,10 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum,
             for (size_t i = 0; i < num_iters; ++i) {
                 map.emplace(std::piecewise_construct,
                             std::forward_as_tuple(
-                                rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts),
+                                rng.uniform<size_t>(10000) << (ROBIN_HOOD(BITNESS) / 2), counts),
                             std::forward_as_tuple(i));
                 current_mask_sum += map.mask();
-                map.erase(Counter{rng.uniform<size_t>(10000) << (ROBIN_HOOD_BITNESS / 2), counts});
+                map.erase(Counter{rng.uniform<size_t>(10000) << (ROBIN_HOOD(BITNESS) / 2), counts});
             }
         }
         {
@@ -138,7 +138,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum,
             map.m_values = current_values;
             map.m_shift = iters;
 
-            static size_t const max_shift = ROBIN_HOOD_BITNESS - 8;
+            static size_t const max_shift = ROBIN_HOOD(BITNESS) - 8;
             static size_t const min_shift = 1;
             static size_t const actual_iters = num_iters / (max_shift - min_shift);
             for (size_t i = 0; i < actual_iters; ++i) {
@@ -170,7 +170,7 @@ void eval(int const iters, A current_values, uint64_t& current_mask_sum,
 
             for (size_t i = 0; i < num_iters; ++i) {
                 map.emplace(std::piecewise_construct,
-                            std::forward_as_tuple(i << ROBIN_HOOD_BITNESS / 2, counts),
+                            std::forward_as_tuple(i << ROBIN_HOOD(BITNESS) / 2, counts),
                             std::forward_as_tuple(i));
                 current_mask_sum += map.mask();
             }

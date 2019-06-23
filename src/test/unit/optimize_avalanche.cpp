@@ -40,7 +40,7 @@ void mutate(std::array<uint64_t, S>* vals, sfc64* rng, RandomBool* rbool) {
 
 } // namespace
 
-#if ROBIN_HOOD_BITNESS == 64
+#if ROBIN_HOOD(BITNESS) == 64
 
 TEST_CASE("avalanche optimizer" * doctest::test_suite("optimize") * doctest::skip()) {
     sfc64 rng;

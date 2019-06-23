@@ -65,67 +65,94 @@
 #    define ROBIN_HOOD_TRACE(x)
 #endif
 
+// all non-argument macros should use this facility. See
+// https://www.fluentcpp.com/2019/05/28/better-macros-better-flags/
+#define ROBIN_HOOD(x) ROBIN_HOOD_PRIVATE_DEFINITION_##x()
+
 // mark unused members with this macro
 #define ROBIN_HOOD_UNUSED(identifier)
 
 // bitness
 #if SIZE_MAX == UINT32_MAX
-#    define ROBIN_HOOD_BITNESS 32
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_BITNESS() 32
 #elif SIZE_MAX == UINT64_MAX
-#    define ROBIN_HOOD_BITNESS 64
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_BITNESS() 64
 #else
 #    error Unsupported bitness
 #endif
 
 // endianess
 #ifdef _WIN32
-#    define ROBIN_HOOD_LITTLE_ENDIAN 1
-#    define ROBIN_HOOD_BIG_ENDIAN 0
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_LITTLE_ENDIAN() 1
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_BIG_ENDIAN() 0
 #else
-#    define ROBIN_HOOD_LITTLE_ENDIAN (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-#    define ROBIN_HOOD_BIG_ENDIAN (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_LITTLE_ENDIAN() \
+        (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_BIG_ENDIAN() (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
 #endif
 
 // inline
 #ifdef _WIN32
-#    define ROBIN_HOOD_NOINLINE __declspec(noinline)
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_NOINLINE() __declspec(noinline)
 #else
-#    define ROBIN_HOOD_NOINLINE __attribute__((noinline))
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_NOINLINE() __attribute__((noinline))
 #endif
 
 // count leading/trailing bits
 #ifdef _WIN32
-#    if ROBIN_HOOD_BITNESS == 32
-#        define ROBIN_HOOD_BITSCANFORWARD _BitScanForward
+#    if ROBIN_HOOD(BITNESS) == 32
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward
 #    else
-#        define ROBIN_HOOD_BITSCANFORWARD _BitScanForward64
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward64
 #    endif
 #    include <intrin.h>
-#    pragma intrinsic(ROBIN_HOOD_BITSCANFORWARD)
-#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                      \
-        [](size_t mask) -> int {                                                     \
-            unsigned long index;                                                     \
-            return ROBIN_HOOD_BITSCANFORWARD(&index, mask) ? static_cast<int>(index) \
-                                                           : ROBIN_HOOD_BITNESS;     \
+#    pragma intrinsic(ROBIN_HOOD(BITSCANFORWARD))
+#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                       \
+        [](size_t mask) -> int {                                                      \
+            unsigned long index;                                                      \
+            return ROBIN_HOOD(BITSCANFORWARD)(&index, mask) ? static_cast<int>(index) \
+                                                            : ROBIN_HOOD(BITNESS);    \
         }(x)
 #else
-#    if ROBIN_HOOD_BITNESS == 32
-#        define ROBIN_HOOD_CTZ(x) __builtin_ctzl(x)
-#        define ROBIN_HOOD_CLZ(x) __builtin_clzl(x)
+#    if ROBIN_HOOD(BITNESS) == 32
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzl
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CLZ() __builtin_clzl
 #    else
-#        define ROBIN_HOOD_CTZ(x) __builtin_ctzll(x)
-#        define ROBIN_HOOD_CLZ(x) __builtin_clzll(x)
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzll
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CLZ() __builtin_clzll
 #    endif
-#    define ROBIN_HOOD_COUNT_LEADING_ZEROES(x) ((x) ? ROBIN_HOOD_CLZ(x) : ROBIN_HOOD_BITNESS)
-#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ((x) ? ROBIN_HOOD_CTZ(x) : ROBIN_HOOD_BITNESS)
+#    define ROBIN_HOOD_COUNT_LEADING_ZEROES(x) ((x) ? ROBIN_HOOD(CLZ)(x) : ROBIN_HOOD(BITNESS))
+#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ((x) ? ROBIN_HOOD(CTZ)(x) : ROBIN_HOOD(BITNESS))
 #endif
 
-// umul
+// fallthrough
+#ifndef __has_cpp_attribute // For backwards compatibility
+#    define __has_cpp_attribute(x) 0
+#endif
+#if __has_cpp_attribute(clang::fallthrough)
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_FALLTHROUGH() [[clang::fallthrough]]
+#elif __has_cpp_attribute(gnu::fallthrough)
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_FALLTHROUGH() [[gnu::fallthrough]]
+#else
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_FALLTHROUGH()
+#endif
+
+// likely/unlikely
+#if defined(_WIN32)
+#    define ROBIN_HOOD_LIKELY(condition) condition
+#    define ROBIN_HOOD_UNLIKELY(condition) condition
+#else
+#    define ROBIN_HOOD_LIKELY(condition) __builtin_expect(condition, 1)
+#    define ROBIN_HOOD_UNLIKELY(condition) __builtin_expect(condition, 0)
+#endif
+
 namespace robin_hood {
 
 #if (__cplusplus >= 201402L)
 #    define ROBIN_HOOD_STD_COMP std
 #else
+
+// c++11 compatibility layer
 namespace ROBIN_HOOD_STD_COMP {
 template <class T>
 struct alignment_of
@@ -190,25 +217,29 @@ using make_index_sequence = make_integer_sequence<std::size_t, N>;
 
 template <class... T>
 using index_sequence_for = make_index_sequence<sizeof...(T)>;
+
 } // namespace ROBIN_HOOD_STD_COMP
+
 #endif
 
 namespace detail {
+
+// umul
 #if defined(__SIZEOF_INT128__)
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_UMUL128() 1
 #    if defined(__GNUC__) || defined(__clang__)
 #        pragma GCC diagnostic push
 #        pragma GCC diagnostic ignored "-Wpedantic"
 using uint128_t = unsigned __int128;
 #        pragma GCC diagnostic pop
 #    endif
-#    define ROBIN_HOOD_HAS_UMUL128 1
 inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
     auto result = static_cast<uint128_t>(a) * static_cast<uint128_t>(b);
     *high = static_cast<uint64_t>(result >> 64U);
     return static_cast<uint64_t>(result);
 }
-#elif (defined(_WIN32) && ROBIN_HOOD_BITNESS == 64)
-#    define ROBIN_HOOD_HAS_UMUL128 1
+#elif (defined(_WIN32) && ROBIN_HOOD(BITNESS) == 64)
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_UMUL128() 1
 #    include <intrin.h> // for __umulh
 #    pragma intrinsic(__umulh)
 #    ifndef _M_ARM64
@@ -222,18 +253,8 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
     return _umul128(a, b, high);
 #    endif
 }
-#endif
-
-// fallthrough
-#ifndef __has_cpp_attribute // For backwards compatibility
-#    define __has_cpp_attribute(x) 0
-#endif
-#if __has_cpp_attribute(clang::fallthrough)
-#    define ROBIN_HOOD_FALLTHROUGH [[clang::fallthrough]]
-#elif __has_cpp_attribute(gnu::fallthrough)
-#    define ROBIN_HOOD_FALLTHROUGH [[gnu::fallthrough]]
 #else
-#    define ROBIN_HOOD_FALLTHROUGH
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_UMUL128() 0
 #endif
 
 // This cast gets rid of warnings like "cast from 'uint8_t*' {aka 'unsigned char*'} to
@@ -248,25 +269,12 @@ template <typename T>
 inline T reinterpret_cast_no_cast_align_warning(void const* ptr) {
     return reinterpret_cast<T>(ptr);
 }
-} // namespace detail
-} // namespace robin_hood
-
-// likely/unlikely
-#if !defined(_WIN32)
-#    define ROBIN_HOOD_LIKELY(condition) __builtin_expect(condition, 1)
-#    define ROBIN_HOOD_UNLIKELY(condition) __builtin_expect(condition, 0)
-#else
-#    define ROBIN_HOOD_LIKELY(condition) condition
-#    define ROBIN_HOOD_UNLIKELY(condition) condition
-#endif
-namespace robin_hood {
-
-namespace detail {
 
 // make sure this is not inlined as it is slow and dramatically enlarges code, thus making other
 // inlinings more difficult. Throws are also generally the slow path.
 template <typename E, typename... Args>
-ROBIN_HOOD_NOINLINE void doThrow(Args&&... args) {
+ROBIN_HOOD(NOINLINE)
+void doThrow(Args&&... args) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
     throw E(std::forward<Args>(args)...);
 }
@@ -427,7 +435,7 @@ private:
 
     // Called when no memory is available (mHead == 0).
     // Don't inline this slow path.
-    ROBIN_HOOD_NOINLINE T* performAllocation() {
+    ROBIN_HOOD(NOINLINE) T* performAllocation() {
         size_t const numElementsToAlloc = calcNumElementsToAlloc();
 
         // alloc new memory: [prev |T, T, ... T]
@@ -589,26 +597,26 @@ inline size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     switch (len & 7U) {
     case 7:
         h ^= static_cast<uint64_t>(data8[6]) << 48U;
-        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
     case 6:
         h ^= static_cast<uint64_t>(data8[5]) << 40U;
-        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
     case 5:
         h ^= static_cast<uint64_t>(data8[4]) << 32U;
-        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
     case 4:
         h ^= static_cast<uint64_t>(data8[3]) << 24U;
-        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
     case 3:
         h ^= static_cast<uint64_t>(data8[2]) << 16U;
-        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
     case 2:
         h ^= static_cast<uint64_t>(data8[1]) << 8U;
-        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
     case 1:
         h ^= static_cast<uint64_t>(data8[0]);
         h *= m;
-        ROBIN_HOOD_FALLTHROUGH; // FALLTHROUGH
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
     default:
         break;
     }
@@ -620,13 +628,13 @@ inline size_t hash_bytes(void const* ptr, size_t const len) noexcept {
 }
 
 inline size_t hash_int(uint64_t obj) noexcept {
-#if defined(ROBIN_HOOD_HAS_UMUL128)
+#if ROBIN_HOOD(HAS_UMUL128)
     // 167079903232 masksum, 120428523 ops best: 0xde5fb9d2630458e9
     static constexpr uint64_t k = UINT64_C(0xde5fb9d2630458e9);
     uint64_t h;
     uint64_t l = detail::umul128(obj, k, &h);
     return h + l;
-#elif ROBIN_HOOD_BITNESS == 32
+#elif ROBIN_HOOD(BITNESS) == 32
     uint64_t const r = obj * UINT64_C(0xca4bcaa75ec3f625);
     uint32_t h = static_cast<uint32_t>(r >> 32);
     uint32_t l = static_cast<uint32_t>(r);
@@ -1042,7 +1050,7 @@ private:
             int inc;
             do {
                 auto const n = detail::unaligned_load<size_t>(mInfo);
-#if ROBIN_HOOD_LITTLE_ENDIAN
+#if ROBIN_HOOD(LITTLE_ENDIAN)
                 inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
 #else
                 inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / 8;
@@ -1691,7 +1699,7 @@ public:
     }
 
 private:
-    ROBIN_HOOD_NOINLINE void throwOverflowError() const {
+    ROBIN_HOOD(NOINLINE) void throwOverflowError() const {
         throw std::overflow_error("robin_hood::map overflow");
     }
 
