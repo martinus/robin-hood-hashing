@@ -36,8 +36,8 @@
 
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3  // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 2  // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 16 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_MINOR 3  // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_PATCH 0  // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -439,7 +439,7 @@ private:
 
     // enforce byte alignment of the T's
 #if __cplusplus >= 201402L
-    static const size_t ALIGNMENT =
+    static constexpr size_t ALIGNMENT =
         (std::max)(std::alignment_of<T>::value, std::alignment_of<T*>::value);
 #else
     static const size_t ALIGNMENT =
