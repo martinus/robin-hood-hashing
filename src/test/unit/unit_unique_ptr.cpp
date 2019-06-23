@@ -12,7 +12,9 @@ TEST_CASE_TEMPLATE("unique_ptr", Map, robin_hood::unordered_flat_map<size_t, std
     Map m;
     REQUIRE(m.end() == m.find(123));
     REQUIRE(m.end() == m.begin());
-    m[static_cast<size_t>(32)] = std::make_unique<int>(123);
+    // m[static_cast<size_t>(32)] = std::make_unique<int>(123);
+    m[static_cast<size_t>(32)] = std::unique_ptr<int>(new int);
+    *m[static_cast<size_t>(32)] = 123;
     REQUIRE(m.end() != m.begin());
     REQUIRE(m.end() == m.find(123));
     REQUIRE(m.end() != m.find(32));

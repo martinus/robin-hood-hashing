@@ -1,4 +1,5 @@
 #include <robin_hood.h>
+#include <ostream>
 
 #include <app/doctest.h>
 

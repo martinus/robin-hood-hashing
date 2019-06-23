@@ -15,8 +15,8 @@ TEST_CASE_TEMPLATE("bench distinctness" * doctest::test_suite("bench") * doctest
                    robin_hood::unordered_node_map<int, int>) {
     using mt = typename Map::mapped_type;
 
-    static mt const upper = 50'000'000;
-    static mt const lower = 10'000'000;
+    static mt const upper = 50000000;
+    static mt const lower = 10000000;
     static mt const num_steps = 5;
     static mt const step_width = (upper - lower) / num_steps;
 
