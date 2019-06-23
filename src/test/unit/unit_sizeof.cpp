@@ -19,7 +19,7 @@ struct hash<Foo> {
     size_t operator()(const Foo& o) const noexcept {
         size_t h = 0;
         auto hf = hash<int>{};
-        for(auto a : o.ary) {
+        for (auto a : o.ary) {
             h ^= hf(a);
         }
         return h;

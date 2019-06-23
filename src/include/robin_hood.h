@@ -5,8 +5,8 @@
 //  /_/     \____/ /_.___/ /_/   /_/ /_/ ________/_/ /_/ \____/ \____/ \__,_/
 //                                      _/_____/
 //
-// robin_hood::unordered_map for C++14
-// version 3.2.16
+// robin_hood::unordered_map for C++11
+// version 3.3.0
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -35,9 +35,9 @@
 #define ROBIN_HOOD_H_INCLUDED
 
 // see https://semver.org/
-#define ROBIN_HOOD_VERSION_MAJOR 3  // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 3  // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 0  // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
+#define ROBIN_HOOD_VERSION_MINOR 3 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -123,7 +123,7 @@
 // umul
 namespace robin_hood {
 
-#if(__cplusplus >= 201402L)
+#if (__cplusplus >= 201402L)
 #    define ROBIN_HOOD_STD_COMP std
 #else
 namespace ROBIN_HOOD_STD_COMP {

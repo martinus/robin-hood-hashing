@@ -1,12 +1,13 @@
 #include <robin_hood.h>
-#include <ostream>
 
 #include <app/doctest.h>
+
+#include <ostream>
 
 TEST_CASE("copyassignment") {
     robin_hood::unordered_map<std::string, std::string> map;
     robin_hood::unordered_map<std::string, std::string> tmp;
-    
+
     map.emplace("a", "b");
     map = tmp;
     map.emplace("c", "d");

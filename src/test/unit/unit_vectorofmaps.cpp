@@ -1,10 +1,10 @@
 #include <robin_hood.h>
-#include <ostream>
 
 #include <app/CtorDtorVerifier.h>
 #include <app/doctest.h>
 #include <app/sfc64.h>
 
+#include <ostream>
 #include <vector>
 
 TYPE_TO_STRING(robin_hood::unordered_flat_map<CtorDtorVerifier, CtorDtorVerifier>);
