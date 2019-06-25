@@ -57,7 +57,8 @@ TEST_CASE_TEMPLATE("count find random" * doctest::test_suite("count") * doctest:
                     findCount = 0;
                     findRng.state(anotherUnrelatedRngInitialState);
                 }
-                map.find(counts(findRng.uniform<size_t>()));
+				// cast to void to get rid of nodiscard warning
+                static_cast<void>(map.find(counts(findRng.uniform<size_t>())));
             }
         } while (i < numInserts);
     }

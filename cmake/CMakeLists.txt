@@ -126,6 +126,8 @@ function(add_compile_flags_target target)
         target_compile_options(${target} PRIVATE /permissive-)   # force standard conformance - this is the better flag than /Za
         target_compile_options(${target} PRIVATE /WX)
         target_compile_options(${target} PRIVATE /Wall) # turns on warnings from levels 1 through 4 which are off by default - https://msdn.microsoft.com/en-us/library/23k5d385.aspx
+        
+        add_definitions(/MP) # parallel builds
 
         target_compile_options(${target} PRIVATE 
             /wd4514 # unreferenced inline function has been removed
@@ -143,6 +145,8 @@ function(add_compile_flags_target target)
             /wd5026 # move constructor was implicitly defined as deleted
             /wd4623 # default constructor was implicitly defined as deleted
             /wd4774 # 'swprintf_s' : format string expected in argument 3 is not a string literal
+
+            /wd5045 # Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
         )
     endif()
 
