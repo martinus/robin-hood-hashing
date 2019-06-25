@@ -48,8 +48,8 @@
 
 #define DOCTEST_VERSION_MAJOR 2
 #define DOCTEST_VERSION_MINOR 3
-#define DOCTEST_VERSION_PATCH 1
-#define DOCTEST_VERSION_STR "2.3.1"
+#define DOCTEST_VERSION_PATCH 3
+#define DOCTEST_VERSION_STR "2.3.3"
 
 #define DOCTEST_VERSION                                                                            \
     (DOCTEST_VERSION_MAJOR * 10000 + DOCTEST_VERSION_MINOR * 100 + DOCTEST_VERSION_PATCH)
@@ -227,7 +227,7 @@ DOCTEST_MSVC_SUPPRESS_WARNING(26444) // Avoid unnamed objects with custom constr
 // GCC C++11 feature support table: https://gcc.gnu.org/projects/cxx-status.html
 // MSVC version table:
 // https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B#Internal_version_numbering
-// MSVC++ 14.2 (16) _MSC_VER == 1920 (Visual Studio 2019) << NOT YET RELEASED - April 2 2019
+// MSVC++ 14.2 (16) _MSC_VER == 1920 (Visual Studio 2019)
 // MSVC++ 14.1 (15) _MSC_VER == 1910 (Visual Studio 2017)
 // MSVC++ 14.0      _MSC_VER == 1900 (Visual Studio 2015)
 // MSVC++ 12.0      _MSC_VER == 1800 (Visual Studio 2013)
@@ -362,7 +362,9 @@ DOCTEST_MSVC_SUPPRESS_WARNING(26444) // Avoid unnamed objects with custom constr
 #elif DOCTEST_MSVC
 #define DOCTEST_BREAK_INTO_DEBUGGER() __debugbreak()
 #elif defined(__MINGW32__)
+DOCTEST_GCC_SUPPRESS_WARNING_WITH_PUSH("-Wredundant-decls")
 extern "C" __declspec(dllimport) void __stdcall DebugBreak();
+DOCTEST_GCC_SUPPRESS_WARNING_POP
 #define DOCTEST_BREAK_INTO_DEBUGGER() ::DebugBreak()
 #else // linux
 #define DOCTEST_BREAK_INTO_DEBUGGER() ((void)0)
@@ -376,6 +378,10 @@ extern "C" __declspec(dllimport) void __stdcall DebugBreak();
 #ifdef DOCTEST_CONFIG_USE_STD_HEADERS
 #include <iosfwd>
 #include <cstddef>
+#if DOCTEST_MSVC >= DOCTEST_COMPILER(19, 20, 0)
+// see this issue on why this is needed: https://github.com/onqtam/doctest/issues/183
+#include <ostream>
+#endif // VS 2019
 #else // DOCTEST_CONFIG_USE_STD_HEADERS
 
 #if DOCTEST_CLANG
@@ -405,6 +411,14 @@ class basic_ostream;
 typedef basic_ostream<char, char_traits<char>> ostream;
 template <class... Types>
 class tuple;
+#if DOCTEST_MSVC >= DOCTEST_COMPILER(19, 20, 0)
+// see this issue on why this is needed: https://github.com/onqtam/doctest/issues/183
+template <class _Ty>
+class allocator;
+template <class _Elem, class _Traits, class _Alloc>
+class basic_string;
+using string = basic_string<char, char_traits<char>, allocator<char>>;
+#endif // VS 2019
 DOCTEST_STD_NAMESPACE_END
 
 DOCTEST_MSVC_SUPPRESS_WARNING_POP
@@ -885,6 +899,11 @@ DOCTEST_INTERFACE String toString(int long long in);
 DOCTEST_INTERFACE String toString(int long long unsigned in);
 DOCTEST_INTERFACE String toString(std::nullptr_t in);
 
+#if DOCTEST_MSVC >= DOCTEST_COMPILER(19, 20, 0)
+// see this issue on why this is needed: https://github.com/onqtam/doctest/issues/183
+DOCTEST_INTERFACE String toString(const std::string& in);
+#endif // VS 2019
+
 class DOCTEST_INTERFACE Approx
 {
 public:
@@ -996,7 +1015,7 @@ namespace detail {
     };
 
     DOCTEST_INTERFACE bool checkIfShouldThrow(assertType::Enum at);
-    
+
 #ifndef DOCTEST_CONFIG_NO_EXCEPTIONS
     [[noreturn]]
 #endif // DOCTEST_CONFIG_NO_EXCEPTIONS
@@ -1286,6 +1305,9 @@ namespace detail {
     DOCTEST_INTERFACE int  setTestSuite(const TestSuite& ts);
     DOCTEST_INTERFACE bool isDebuggerActive();
 
+    template<typename T>
+    int instantiationHelper(const T&) { return 0; }
+
     namespace binaryAssertComparison {
         enum Enum
         {
@@ -1300,7 +1322,7 @@ namespace detail {
 
     // clang-format off
     template <int, class L, class R> struct RelationalComparator     { bool operator()(const DOCTEST_REF_WRAP(L),     const DOCTEST_REF_WRAP(R)    ) const { return false;        } };
-    
+
 #define DOCTEST_BINARY_RELATIONAL_OP(n, op) \
     template <class L, class R> struct RelationalComparator<n, L, R> { bool operator()(const DOCTEST_REF_WRAP(L) lhs, const DOCTEST_REF_WRAP(R) rhs) const { return op(lhs, rhs); } };
     // clang-format on
@@ -1921,14 +1943,6 @@ int registerReporter(const char* name, int priority) {
     }                                                                                              \
     typedef int DOCTEST_ANONYMOUS(_DOCTEST_ANON_FOR_SEMICOLON_)
 
-// for typed tests
-#define DOCTEST_REGISTER_TYPED_TEST_CASE_IMPL(func, type, decorators, idx)                         \
-    doctest::detail::regTest(                                                                      \
-            doctest::detail::TestCase(func, __FILE__, __LINE__,                                    \
-                                      doctest_detail_test_suite_ns::getCurrentTestSuite(),         \
-                                      doctest::detail::type_to_string<type>(), idx) *              \
-            decorators)
-
 #define DOCTEST_TEST_CASE_TEMPLATE_DEFINE_IMPL(dec, T, iter, func)                                 \
     template <typename T>                                                                          \
     static void func();                                                                            \
@@ -1938,15 +1952,19 @@ int registerReporter(const char* name, int priority) {
         template <typename Type, typename... Rest>                                                 \
         struct iter<std::tuple<Type, Rest...>>                                                     \
         {                                                                                          \
-            iter(int line, int index) {                                                            \
-                DOCTEST_REGISTER_TYPED_TEST_CASE_IMPL(func<Type>, Type, dec, line * 1000 + index); \
-                iter<std::tuple<Rest...>>(line, index + 1);                                        \
+            iter(const char* file, unsigned line, int index) {                                     \
+                doctest::detail::regTest(doctest::detail::TestCase(func<Type>, file, line,         \
+                                            doctest_detail_test_suite_ns::getCurrentTestSuite(),   \
+                                            doctest::detail::type_to_string<Type>(),               \
+                                            int(line) * 1000 + index)                              \
+                                         * dec);                                                   \
+                iter<std::tuple<Rest...>>(file, line, index + 1);                                  \
             }                                                                                      \
         };                                                                                         \
         template <>                                                                                \
         struct iter<std::tuple<>>                                                                  \
         {                                                                                          \
-            iter(int, int) {}                                                                      \
+            iter(const char*, unsigned, int) {}                                                    \
         };                                                                                         \
     }                                                                                              \
     template <typename T>                                                                          \
@@ -1956,33 +1974,22 @@ int registerReporter(const char* name, int priority) {
     DOCTEST_TEST_CASE_TEMPLATE_DEFINE_IMPL(dec, T, DOCTEST_CAT(id, ITERATOR),                      \
                                            DOCTEST_ANONYMOUS(_DOCTEST_ANON_TMP_))
 
-#define DOCTEST_TEST_CASE_TEMPLATE_INVOKE_IMPL(id, anon, ...)                                      \
-    DOCTEST_GLOBAL_NO_WARNINGS(DOCTEST_CAT(anon, DUMMY)) = [] {                                    \
-        DOCTEST_CAT(id, ITERATOR)<std::tuple<__VA_ARGS__>> DOCTEST_UNUSED DOCTEST_CAT(             \
-                anon, inner_dummy)(__LINE__, 0);                                                   \
-        return 0;                                                                                  \
-    }();                                                                                           \
+#define DOCTEST_TEST_CASE_TEMPLATE_INSTANTIATE_IMPL(id, anon, ...)                                 \
+    DOCTEST_GLOBAL_NO_WARNINGS(DOCTEST_CAT(anon, DUMMY)) =                                         \
+        doctest::detail::instantiationHelper(DOCTEST_CAT(id, ITERATOR)<__VA_ARGS__>(__FILE__, __LINE__, 0));\
     DOCTEST_GLOBAL_NO_WARNINGS_END()
 
 #define DOCTEST_TEST_CASE_TEMPLATE_INVOKE(id, ...)                                                 \
-    DOCTEST_TEST_CASE_TEMPLATE_INVOKE_IMPL(id, DOCTEST_ANONYMOUS(_DOCTEST_ANON_TMP_), __VA_ARGS__) \
+    DOCTEST_TEST_CASE_TEMPLATE_INSTANTIATE_IMPL(id, DOCTEST_ANONYMOUS(_DOCTEST_ANON_TMP_), std::tuple<__VA_ARGS__>) \
     typedef int DOCTEST_ANONYMOUS(_DOCTEST_ANON_FOR_SEMICOLON_)
 
-#define DOCTEST_TEST_CASE_TEMPLATE_APPLY_IMPL(id, anon, ...)                                       \
-    DOCTEST_GLOBAL_NO_WARNINGS(DOCTEST_CAT(anon, DUMMY)) = [] {                                    \
-        DOCTEST_CAT(id, ITERATOR)<__VA_ARGS__> DOCTEST_UNUSED DOCTEST_CAT(anon, inner_dummy)(      \
-                __LINE__, 0);                                                                      \
-        return 0;                                                                                  \
-    }();                                                                                           \
-    DOCTEST_GLOBAL_NO_WARNINGS_END()
-
 #define DOCTEST_TEST_CASE_TEMPLATE_APPLY(id, ...)                                                  \
-    DOCTEST_TEST_CASE_TEMPLATE_APPLY_IMPL(id, DOCTEST_ANONYMOUS(_DOCTEST_ANON_TMP_), __VA_ARGS__)  \
+    DOCTEST_TEST_CASE_TEMPLATE_INSTANTIATE_IMPL(id, DOCTEST_ANONYMOUS(_DOCTEST_ANON_TMP_), __VA_ARGS__) \
     typedef int DOCTEST_ANONYMOUS(_DOCTEST_ANON_FOR_SEMICOLON_)
 
 #define DOCTEST_TEST_CASE_TEMPLATE_IMPL(dec, T, anon, ...)                                         \
     DOCTEST_TEST_CASE_TEMPLATE_DEFINE_IMPL(dec, T, DOCTEST_CAT(anon, ITERATOR), anon);             \
-    DOCTEST_TEST_CASE_TEMPLATE_INVOKE_IMPL(anon, anon, __VA_ARGS__)                                \
+    DOCTEST_TEST_CASE_TEMPLATE_INSTANTIATE_IMPL(anon, anon, std::tuple<__VA_ARGS__>)               \
     template <typename T>                                                                          \
     static void anon()
 
@@ -2511,11 +2518,11 @@ constexpr T to_lvalue = x;
 #define DOCTEST_SCENARIO_TEMPLATE(name, T, ...)  DOCTEST_TEST_CASE_TEMPLATE("  Scenario: " name, T, __VA_ARGS__)
 #define DOCTEST_SCENARIO_TEMPLATE_DEFINE(name, T, id) DOCTEST_TEST_CASE_TEMPLATE_DEFINE("  Scenario: " name, T, id)
 
-#define DOCTEST_GIVEN(name)     SUBCASE("   Given: " name)
-#define DOCTEST_WHEN(name)      SUBCASE("    When: " name)
-#define DOCTEST_AND_WHEN(name)  SUBCASE("And when: " name)
-#define DOCTEST_THEN(name)      SUBCASE("    Then: " name)
-#define DOCTEST_AND_THEN(name)  SUBCASE("     And: " name)
+#define DOCTEST_GIVEN(name)     DOCTEST_SUBCASE("   Given: " name)
+#define DOCTEST_WHEN(name)      DOCTEST_SUBCASE("    When: " name)
+#define DOCTEST_AND_WHEN(name)  DOCTEST_SUBCASE("And when: " name)
+#define DOCTEST_THEN(name)      DOCTEST_SUBCASE("    Then: " name)
+#define DOCTEST_AND_THEN(name)  DOCTEST_SUBCASE("     And: " name)
 // clang-format on
 
 // == SHORT VERSIONS OF THE MACROS
@@ -3394,6 +3401,11 @@ DOCTEST_TO_STRING_OVERLOAD(int long long unsigned, "%llu")
 
 String toString(std::nullptr_t) { return "NULL"; }
 
+#if DOCTEST_MSVC >= DOCTEST_COMPILER(19, 20, 0)
+// see this issue on why this is needed: https://github.com/onqtam/doctest/issues/183
+String toString(const std::string& in) { return in.c_str(); }
+#endif // VS 2019
+
 Approx::Approx(double value)
         : m_epsilon(static_cast<double>(std::numeric_limits<float>::epsilon()) * 100)
         , m_scale(1.0)
@@ -3662,7 +3674,7 @@ namespace detail {
                        const char* type, int template_id) {
         m_file              = file;
         m_line              = line;
-        m_name              = nullptr;
+        m_name              = nullptr; // will be later overridden in operator*
         m_test_suite        = test_suite.m_test_suite;
         m_description       = test_suite.m_description;
         m_skip              = test_suite.m_skip;
@@ -5329,9 +5341,9 @@ namespace {
             if(num_stringified_contexts) {
                 auto stringified_contexts = get_stringified_contexts();
                 s << Color::None << "  logged: ";
-                for(int i = num_stringified_contexts - 1; i >= 0; --i) {
-                    s << (i == num_stringified_contexts - 1 ? "" : "          ")
-                      << stringified_contexts[i] << "\n";
+                for(int i = num_stringified_contexts; i > 0; --i) {
+                    s << (i == num_stringified_contexts ? "" : "          ")
+                      << stringified_contexts[i - 1] << "\n";
                 }
             }
             s << "\n" << Color::None;
@@ -5448,55 +5460,33 @@ namespace {
     DOCTEST_THREAD_LOCAL std::ostringstream DebugOutputWindowReporter::oss;
 #endif // DOCTEST_PLATFORM_WINDOWS
 
-    // the implementation of parseFlag()
-    bool parseFlagImpl(int argc, const char* const* argv, const char* pattern) {
-        for(int i = argc - 1; i >= 0; --i) {
-            auto temp = std::strstr(argv[i], pattern);
-            if(temp && strlen(temp) == strlen(pattern)) {
-                // eliminate strings in which the chars before the option are not '-'
-                bool noBadCharsFound = true; //!OCLINT prefer early exits and continue
-                while(temp != argv[i]) {
-                    if(*--temp != '-') {
-                        noBadCharsFound = false;
-                        break;
-                    }
-                }
-                if(noBadCharsFound && argv[i][0] == '-')
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    // locates a flag on the command line
-    bool parseFlag(int argc, const char* const* argv, const char* pattern) {
-#ifndef DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
-        // offset (normally 3 for "dt-") to skip prefix
-        if(parseFlagImpl(argc, argv, pattern + strlen(DOCTEST_CONFIG_OPTIONS_PREFIX)))
-            return true;
-#endif // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
-        return parseFlagImpl(argc, argv, pattern);
-    }
-
     // the implementation of parseOption()
-    bool parseOptionImpl(int argc, const char* const* argv, const char* pattern, String& res) {
-        for(int i = argc - 1; i >= 0; --i) {
-            auto temp = std::strstr(argv[i], pattern);
-            if(temp) { //!OCLINT prefer early exits and continue
+    bool parseOptionImpl(int argc, const char* const* argv, const char* pattern, String* value) {
+        // going from the end to the begining and stopping on the first occurance from the end
+        for(int i = argc; i > 0; --i) {
+            auto index = i - 1;
+            auto temp = std::strstr(argv[index], pattern);
+            if(temp && (value || strlen(temp) == strlen(pattern))) { //!OCLINT prefer early exits and continue
                 // eliminate matches in which the chars before the option are not '-'
                 bool noBadCharsFound = true;
-                auto curr            = argv[i];
+                auto curr            = argv[index];
                 while(curr != temp) {
                     if(*curr++ != '-') {
                         noBadCharsFound = false;
                         break;
                     }
                 }
-                if(noBadCharsFound && argv[i][0] == '-') {
-                    temp += strlen(pattern);
-                    const unsigned len = strlen(temp);
-                    if(len) {
-                        res = temp;
+                if(noBadCharsFound && argv[index][0] == '-') {
+                    if(value) {
+                        // parsing the value of an option
+                        temp += strlen(pattern);
+                        const unsigned len = strlen(temp);
+                        if(len) {
+                            *value = temp;
+                            return true;
+                        }
+                    } else {
+                        // just a flag - no value
                         return true;
                     }
                 }
@@ -5506,22 +5496,28 @@ namespace {
     }
 
     // parses an option and returns the string after the '=' character
-    bool parseOption(int argc, const char* const* argv, const char* pattern, String& res,
+    bool parseOption(int argc, const char* const* argv, const char* pattern, String* value = nullptr,
                      const String& defaultVal = String()) {
-        res = defaultVal;
+        if(value)
+            *value = defaultVal;
 #ifndef DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
         // offset (normally 3 for "dt-") to skip prefix
-        if(parseOptionImpl(argc, argv, pattern + strlen(DOCTEST_CONFIG_OPTIONS_PREFIX), res))
+        if(parseOptionImpl(argc, argv, pattern + strlen(DOCTEST_CONFIG_OPTIONS_PREFIX), value))
             return true;
 #endif // DOCTEST_CONFIG_NO_UNPREFIXED_OPTIONS
-        return parseOptionImpl(argc, argv, pattern, res);
+        return parseOptionImpl(argc, argv, pattern, value);
+    }
+
+    // locates a flag on the command line
+    bool parseFlag(int argc, const char* const* argv, const char* pattern) {
+        return parseOption(argc, argv, pattern);
     }
 
     // parses a comma separated list of words after a pattern in one of the arguments in argv
     bool parseCommaSepArgs(int argc, const char* const* argv, const char* pattern,
                            std::vector<String>& res) {
         String filtersString;
-        if(parseOption(argc, argv, pattern, filtersString)) {
+        if(parseOption(argc, argv, pattern, &filtersString)) {
             // tokenize with "," as a separator
             // cppcheck-suppress strtokCalled
             DOCTEST_CLANG_SUPPRESS_WARNING_WITH_PUSH("-Wdeprecated-declarations")
@@ -5549,7 +5545,7 @@ namespace {
     bool parseIntOption(int argc, const char* const* argv, const char* pattern, optionType type,
                         int& res) {
         String parsedValue;
-        if(!parseOption(argc, argv, pattern, parsedValue))
+        if(!parseOption(argc, argv, pattern, &parsedValue))
             return false;
 
         if(type == 0) {
@@ -5646,8 +5642,8 @@ void Context::parseArgs(int argc, const char* const* argv, bool withDefaults) {
     p->var = default
 
 #define DOCTEST_PARSE_STR_OPTION(name, sname, var, default)                                        \
-    if(parseOption(argc, argv, DOCTEST_CONFIG_OPTIONS_PREFIX name "=", strRes, default) ||         \
-       parseOption(argc, argv, DOCTEST_CONFIG_OPTIONS_PREFIX sname "=", strRes, default) ||        \
+    if(parseOption(argc, argv, DOCTEST_CONFIG_OPTIONS_PREFIX name "=", &strRes, default) ||        \
+       parseOption(argc, argv, DOCTEST_CONFIG_OPTIONS_PREFIX sname "=", &strRes, default) ||       \
        withDefaults)                                                                               \
     p->var = strRes
 
@@ -5978,6 +5974,13 @@ int Context::run() {
         DOCTEST_ITERATE_THROUGH_REPORTERS(report_query, qdata);
     }
 
+    // see these issues on the reasoning for this:
+    // - https://github.com/onqtam/doctest/issues/143#issuecomment-414418903
+    // - https://github.com/onqtam/doctest/issues/126
+    auto DOCTEST_FIX_FOR_MACOS_LIBCPP_IOSFWD_STRING_LINK_ERRORS = []() DOCTEST_NOINLINE
+        { std::cout << std::string(); };
+    DOCTEST_FIX_FOR_MACOS_LIBCPP_IOSFWD_STRING_LINK_ERRORS();
+
     return cleanup_and_return();
 }
 
@@ -6002,11 +6005,6 @@ namespace detail {
         getReporters().insert(reporterMap::value_type(reporterMap::key_type(priority, name), c));
     }
 } // namespace detail
-
-// see these issues on the reasoning for this:
-// - https://github.com/onqtam/doctest/issues/143#issuecomment-414418903
-// - https://github.com/onqtam/doctest/issues/126
-void DOCTEST_FIX_FOR_MACOS_LIBCPP_IOSFWD_STRING_LINK_ERRORS() { std::cout << std::string(); }
 
 } // namespace doctest
 
