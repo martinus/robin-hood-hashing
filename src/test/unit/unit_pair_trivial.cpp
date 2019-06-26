@@ -12,11 +12,13 @@ using TestPair = robin_hood::pair<K, V>;
 template <typename K, typename V>
 void nothrow_trivially() {
     static_assert(std::is_nothrow_move_constructible<TestPair<K, V>>::value ==
+                      // cppcheck-suppress duplicateExpression
                       (std::is_nothrow_move_constructible<K>::value &&
                        std::is_nothrow_move_constructible<V>::value),
                   "");
 
     static_assert(std::is_nothrow_move_assignable<TestPair<K, V>>::value ==
+                      // cppcheck-suppress duplicateExpression
                       (std::is_nothrow_move_assignable<K>::value &&
                        std::is_nothrow_move_assignable<V>::value),
                   "");
