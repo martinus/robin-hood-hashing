@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++11
-// version 3.3.0
+// version 3.3.1
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 3 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -573,7 +573,7 @@ struct pair {
 
 // Hash an arbitrary amount of bytes. This is basically Murmur2 hash without caring about big
 // endianness. TODO(martinus) add a fallback for very large strings?
-inline size_t hash_bytes(void const* ptr, size_t const len) noexcept {
+static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
     static constexpr uint64_t seed = UINT64_C(0xe17a1465);
     static constexpr unsigned int r = 47;
@@ -1381,8 +1381,6 @@ public:
 
             // no need for calloc here because cloneData performs a memcpy.
             mInfo = reinterpret_cast<uint8_t*>(mKeyVals + o.mMask + 1);
-            mInfoInc = o.mInfoInc;
-            mInfoHashShift = o.mInfoHashShift;
             // sentinel is set in cloneData
         }
         Hash::operator=(static_cast<const Hash&>(o));
@@ -1391,6 +1389,8 @@ public:
         mNumElements = o.mNumElements;
         mMask = o.mMask;
         mMaxNumElementsAllowed = o.mMaxNumElementsAllowed;
+        mInfoInc = o.mInfoInc;
+        mInfoHashShift = o.mInfoHashShift;
         cloneData(o);
 
         return *this;

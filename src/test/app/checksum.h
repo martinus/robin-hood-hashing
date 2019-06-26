@@ -17,6 +17,18 @@ inline uint64_t mix(uint64_t k) {
     return k;
 }
 
+inline uint64_t mix(std::string const& data) {
+    static constexpr uint64_t FNV_offset_basis = UINT64_C(14695981039346656037);
+    static constexpr uint64_t FNV_prime = UINT64_C(1099511628211);
+
+    uint64_t val = FNV_offset_basis;
+    for (size_t i = 0; i < data.size(); ++i) {
+        val ^= static_cast<uint64_t>(data[i]);
+        val *= FNV_prime;
+    }
+    return val;
+}
+
 inline uint64_t mix(CtorDtorVerifier const& cdv) {
     return mix(cdv.val());
 }
