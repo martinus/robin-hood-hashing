@@ -41,6 +41,7 @@ target_sources_local(rh PRIVATE
     unit_initializerlist.cpp
     unit_iterators_ctor.cpp
     unit_iterators_empty.cpp
+    unit_iterators_erase.cpp
     unit_iterators_insert.cpp
     unit_iterators_stochastic.cpp
     unit_load_factor.cpp
@@ -51,6 +52,7 @@ target_sources_local(rh PRIVATE
     unit_not_moveable.cpp
     unit_overflow.cpp
     unit_pair_trivial.cpp
+    unit_random_verifier.cpp
     unit_reserve_and_assign.cpp
     unit_reserve.cpp
     unit_sfc64_is_deterministic.cpp

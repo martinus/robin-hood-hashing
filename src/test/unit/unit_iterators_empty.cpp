@@ -1,5 +1,6 @@
-#include <app/doctest.h>
 #include <robin_hood.h>
+
+#include <app/doctest.h>
 
 TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, uint64_t>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<uint64_t, uint64_t>);
