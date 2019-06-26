@@ -13,6 +13,9 @@
 // y axis: input bits 0 to 63 (lower to upper)
 class Avalanche {
 public:
+    Avalanche()
+        : m_flip_count() {}
+
     template <typename Op>
     void eval_input(uint64_t input, Op const& op) {
         uint64_t const output = op(input);
@@ -155,7 +158,7 @@ public:
     }
 
 private:
-    std::array<size_t, 64 * 64> m_flip_count{};
+    std::array<size_t, 64 * 64> m_flip_count;
     sfc64 m_rng{};
     size_t m_count{};
 };

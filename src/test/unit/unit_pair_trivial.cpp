@@ -21,10 +21,9 @@ void nothrow_trivially() {
                        std::is_nothrow_move_assignable<V>::value),
                   "");
 
-    static_assert(
-        std::is_trivially_copyable<TestPair<K, V>>::value ==
-            (std::is_trivially_copyable<K>::value && std::is_trivially_copyable<V>::value),
-        "");
+    static_assert(ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(TestPair<K, V>) ==
+                      (ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(K) && ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(V)),
+                  "");
 
     static_assert(
         std::is_trivially_destructible<TestPair<K, V>>::value ==

@@ -47,7 +47,7 @@ TEST_CASE_TEMPLATE("bench find random" * doctest::test_suite("bench") * doctest:
     size_t checksum = 0;
 
     using Ary = std::array<bool, numTotal>;
-    Ary insertRandom{};
+    Ary insertRandom;
     insertRandom.fill(true);
     for (typename Ary::size_type i = 0; i < numFound; ++i) {
         insertRandom[i] = false;
@@ -69,7 +69,7 @@ TEST_CASE_TEMPLATE("bench find random" * doctest::test_suite("bench") * doctest:
             do {
                 // insert numTotal entries: some random, some sequential.
                 std::shuffle(insertRandom.begin(), insertRandom.end(), rng);
-                for (auto isRandomToInsert : insertRandom) {
+                for (bool isRandomToInsert : insertRandom) {
                     auto val = anotherUnrelatedRng.uniform<size_t>();
                     if (isRandomToInsert) {
                         map[rng.uniform<size_t>()] = static_cast<size_t>(1);

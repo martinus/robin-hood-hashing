@@ -146,6 +146,14 @@
 #    define ROBIN_HOOD_UNLIKELY(condition) __builtin_expect(condition, 0)
 #endif
 
+// workaround missing "is_trivially_copyable" in g++ < 5.0
+// See https://stackoverflow.com/a/31798726/48181
+#if defined(__GNUC__) && __GNUC__ < 5
+#    define ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(...) __has_trivial_copy(__VA_ARGS__)
+#else
+#    define ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(...) std::is_trivially_copyable<__VA_ARGS__>::value
+#endif
+
 namespace robin_hood {
 
 #if (__cplusplus >= 201402L)
@@ -1187,7 +1195,7 @@ private:
     }
 
     void cloneData(const unordered_map& o) {
-        Cloner<unordered_map, IsFlatMap && std::is_trivially_copyable<Node>::value>()(o, *this);
+        Cloner<unordered_map, IsFlatMap && ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(Node)>()(o, *this);
     }
 
     // inserts a keyval that is guaranteed to be new, e.g. when the hashmap is resized.
@@ -1263,13 +1271,13 @@ public:
         insert(first, last);
     }
 
-    unordered_map(std::initializer_list<value_type> init,
+    unordered_map(std::initializer_list<value_type> initlist,
                   size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
                   const KeyEqual& equal = KeyEqual{})
         : Hash(h)
         , KeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
-        insert(init.begin(), init.end());
+        insert(initlist.begin(), initlist.end());
     }
 
     unordered_map(unordered_map&& o) noexcept
@@ -1627,10 +1635,10 @@ public:
         return 0;
     }
 
-    void reserve(size_t count) {
+    void reserve(size_t c) {
         ROBIN_HOOD_TRACE(this);
         auto newSize = InitialNumElements > mMask + 1 ? InitialNumElements : mMask + 1;
-        while (calcMaxNumElementsAllowed(newSize) < count && newSize != 0) {
+        while (calcMaxNumElementsAllowed(newSize) < c && newSize != 0) {
             newSize *= 2;
         }
         if (ROBIN_HOOD_UNLIKELY(newSize == 0)) {

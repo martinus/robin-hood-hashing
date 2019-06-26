@@ -24,16 +24,16 @@ public:
         , m_c{c}
         , m_counter{counter} {}
 
-    sfc64(std::array<uint64_t, 4> const& state)
-        : m_a{state[0]}
-        , m_b{state[1]}
-        , m_c{state[2]}
-        , m_counter{state[3]} {}
+    sfc64(std::array<uint64_t, 4> const& st)
+        : m_a{st[0]}
+        , m_b{st[1]}
+        , m_c{st[2]}
+        , m_counter{st[3]} {}
 
-    explicit sfc64(uint64_t seed)
-        : m_a(seed)
-        , m_b(seed)
-        , m_c(seed)
+    explicit sfc64(uint64_t s)
+        : m_a(s)
+        , m_b(s)
+        , m_c(s)
         , m_counter(1) {
         for (int i = 0; i < 12; ++i) {
             operator()();
@@ -60,8 +60,8 @@ public:
         seed(randomseed());
     }
 
-    void seed(uint64_t seed) {
-        state(sfc64{seed}.state());
+    void seed(uint64_t s) {
+        state(sfc64{s}.state());
     }
 
     uint64_t operator()() noexcept {
@@ -90,7 +90,7 @@ public:
         do {
             x = operator()();
             r = x % boundExcluded;
-        } while (x - r > (UINT64_C(0)-boundExcluded));
+        } while (x - r > (UINT64_C(0) - boundExcluded));
         return r;
     }
 

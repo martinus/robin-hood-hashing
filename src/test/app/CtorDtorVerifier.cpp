@@ -20,8 +20,8 @@ std::unordered_set<CtorDtorVerifier const*>& constructedAddresses() {
 
 } // namespace
 
-CtorDtorVerifier::CtorDtorVerifier(uint64_t val)
-    : mVal(val) {
+CtorDtorVerifier::CtorDtorVerifier(uint64_t v)
+    : mVal(v) {
     REQUIRE(constructedAddresses().insert(this).second);
     if (mDoPrintDebugInfo) {
         std::cout << this << " ctor(uint64_t) " << constructedAddresses().size() << std::endl;

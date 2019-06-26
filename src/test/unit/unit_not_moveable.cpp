@@ -6,8 +6,8 @@ class NoCopyMove {
 public:
     NoCopyMove()
         : mData{} {}
-    explicit NoCopyMove(size_t data)
-        : mData(data) {}
+    explicit NoCopyMove(size_t d)
+        : mData(d) {}
     ~NoCopyMove() = default;
 
     NoCopyMove(NoCopyMove const&) = delete;

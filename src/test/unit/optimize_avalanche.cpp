@@ -46,7 +46,9 @@ TEST_CASE("avalanche optimizer" * doctest::test_suite("optimize") * doctest::ski
     sfc64 rng;
     RandomBool rbool;
 
-    std::array<uint64_t, 2> factors = {};
+    std::array<uint64_t, 2> factors;
+    factors.fill(0);
+
     auto best_factors = factors;
     size_t best_rms = (std::numeric_limits<size_t>::max)();
 
