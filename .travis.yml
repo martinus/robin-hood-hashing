@@ -73,6 +73,16 @@ matrix:
         packages: ['g++-8']
 
   - os: linux
+    compiler: gcc
+    env:
+    - COMPILER=g++-4.9
+    - CMAKE_OPTIONS="-DRH_use_cxx11=ON"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-4.9']        
+
+  - os: linux
     compiler: clang
     env:
     - COMPILER=clang++-6.0
