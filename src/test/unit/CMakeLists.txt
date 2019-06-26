@@ -51,6 +51,7 @@ target_sources_local(rh PRIVATE
     unit_not_moveable.cpp
     unit_overflow.cpp
     unit_pair_trivial.cpp
+    unit_reserve_and_assign.cpp
     unit_reserve.cpp
     unit_sfc64_is_deterministic.cpp
     unit_sizeof.cpp
