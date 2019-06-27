@@ -12,7 +12,7 @@
 
 ## Installation & Usage
 
-1. Add [`robin_hood.h`](https://github.com/martinus/robin-hood-hashing/blob/master/src/include/robin_hood.h) to your C++ project.
+1. Add [`robin_hood.h`](https://github.com/martinus/robin-hood-hashing/releases) to your C++ project.
 1. Use `robin_hood::unordered_map` instead of `std::unordered_map`.
 
 ## Benchmarks
