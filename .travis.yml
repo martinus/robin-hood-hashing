@@ -2,24 +2,45 @@ language: cpp
 
 # see https://github.com/nlohmann/json/blob/develop/.travis.yml
 matrix:
-  # standard g++-8 build
   include:
+
+  # g++-8
   - os: linux
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS=-DRH_sanitizer=ON
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=11"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-8']
 
-  # 32bit build
   - os: linux
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS=-DRH_sanitizer=ON
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=14"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-8']
+
+  - os: linux
+    compiler: gcc
+    env:
+    - COMPILER=g++-8
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-8']
+
+  # g++-8 32bit
+  - os: linux
+    compiler: gcc
+    env:
+    - COMPILER=g++-8
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=11"
     - CXXFLAGS="-m32"
     - LDFLAGS="-m32"
     addons:
@@ -27,70 +48,71 @@ matrix:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-8-multilib', 'linux-libc-dev:i386']
 
-  # build for c++17
   - os: linux
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CXXFLAGS="-O2 -std=c++17"
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=14"
+    - CXXFLAGS="-m32"
+    - LDFLAGS="-m32"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8']
+        packages: ['g++-8-multilib', 'linux-libc-dev:i386']
 
-  # -fsanitize=address with additional checks
   - os: linux
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS=-DRH_sanitizer=ON
-    - ASAN_OPTIONS=verbosity=1:detect_invalid_pointer_pairs=2
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
+    - CXXFLAGS="-m32"
+    - LDFLAGS="-m32"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8']
+        packages: ['g++-8-multilib', 'linux-libc-dev:i386']
 
-  # clang should work too
+  # clang++-6.0
   - os: linux
     compiler: clang
     env:
     - COMPILER=clang++-6.0
-    - CMAKE_OPTIONS=-DRH_sanitizer=ON
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=11"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
         packages: ['g++-6', 'clang-6.0',]
 
-  # tests for c++11
   - os: linux
-    compiler: gcc
+    compiler: clang
     env:
-    - COMPILER=g++-8
-    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_use_cxx11=ON"
+    - COMPILER=clang++-6.0
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=14"
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8']
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+        packages: ['g++-6', 'clang-6.0',]
 
+  - os: linux
+    compiler: clang
+    env:
+    - COMPILER=clang++-6.0
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+        packages: ['g++-6', 'clang-6.0',]
+
+  # g++ 4.9
   - os: linux
     compiler: gcc
     env:
     - COMPILER=g++-4.9
-    - CMAKE_OPTIONS="-DRH_use_cxx11=ON"
+    - CMAKE_OPTIONS="-DRH_cxx_standard=11"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-4.9']        
-
-  - os: linux
-    compiler: clang
-    env:
-    - COMPILER=clang++-6.0
-    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_use_cxx11=ON"
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
-        packages: ['g++-6', 'clang-6.0',]
 
 script:
   # make sure CXX is correctly set

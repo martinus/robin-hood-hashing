@@ -3,14 +3,9 @@ project(robin-hood-hashing LANGUAGES CXX)
 
 option(RH_sanitizer "Address sanitizer" OFF)
 option(RH_coverage "Enable coverage" OFF)
-option(RH_use_cxx11 "Enable C++11 Testing" OFF)
+set(RH_cxx_standard "14" CACHE STRING "C++ standard, e.g. 11, 14, 17")
 
-if(RH_use_cxx11)
-    set(CMAKE_CXX_STANDARD 11)
-else()
-    set(CMAKE_CXX_STANDARD 14)
-endif()
-
+set(CMAKE_CXX_STANDARD ${RH_cxx_standard})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 

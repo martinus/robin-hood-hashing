@@ -108,7 +108,7 @@
 #    include <intrin.h>
 #    pragma intrinsic(ROBIN_HOOD(BITSCANFORWARD))
 #    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                       \
-        [](size_t mask) -> int noexcept {                                             \
+        [](size_t mask) noexcept->int {                                               \
             unsigned long index;                                                      \
             return ROBIN_HOOD(BITSCANFORWARD)(&index, mask) ? static_cast<int>(index) \
                                                             : ROBIN_HOOD(BITNESS);    \
@@ -515,7 +515,7 @@ struct pair {
     using second_type = Second;
 
     // pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
-    explicit pair(std::pair<First, Second> const& o)
+    explicit pair(std::pair<First, Second> const& o) noexcept(noexcept(First(o.first)))
         : first(o.first)
         , second(o.second) {}
 
