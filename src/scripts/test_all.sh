@@ -16,8 +16,11 @@ function build() {
     mkdir -p ${DIRNAME}
     cd ${DIRNAME}
 
-    CXX=$(which ${COMPILER}) cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DRH_sanitizer=${SANITIZER} -DRH_cxx_standard=${CXX_STANDARD} ${ROOTDIR}
+    CXX=$(which ${COMPILER}) cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DRH_sanitizer=${SANITIZER} -DRH_cxx_standard=${CXX_STANDARD} ${ROOTDIR}
     cmake --build .
+
+    ./rh -ns -ts=show
+    
     ./rh
 
     cd ${ORIGINDIR}
