@@ -108,11 +108,12 @@
 #    include <intrin.h>
 #    pragma intrinsic(ROBIN_HOOD(BITSCANFORWARD))
 #    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                       \
-        [](size_t mask) -> int {                                                      \
+        [](size_t mask) -> int noexcept {                                             \
             unsigned long index;                                                      \
             return ROBIN_HOOD(BITSCANFORWARD)(&index, mask) ? static_cast<int>(index) \
                                                             : ROBIN_HOOD(BITNESS);    \
-        }(x)
+        }                                                                             \
+        (x)
 #else
 #    if ROBIN_HOOD(BITNESS) == 32
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzl
@@ -269,12 +270,12 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
 // 'uint64_t*' {aka 'long unsigned int*'} increases required alignment of target type". Use with
 // care!
 template <typename T>
-inline T reinterpret_cast_no_cast_align_warning(void* ptr) {
+inline T reinterpret_cast_no_cast_align_warning(void* ptr) noexcept {
     return reinterpret_cast<T>(ptr);
 }
 
 template <typename T>
-inline T reinterpret_cast_no_cast_align_warning(void const* ptr) {
+inline T reinterpret_cast_no_cast_align_warning(void const* ptr) noexcept {
     return reinterpret_cast<T>(ptr);
 }
 
@@ -310,10 +311,10 @@ inline T unaligned_load(void const* ptr) noexcept {
 template <typename T, size_t MinNumAllocs = 4, size_t MaxNumAllocs = 256>
 class BulkPoolAllocator {
 public:
-    BulkPoolAllocator() = default;
+    BulkPoolAllocator() noexcept = default;
 
     // does not copy anything, just creates a new allocator.
-    BulkPoolAllocator(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/)
+    BulkPoolAllocator(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/) noexcept
         : mHead(nullptr)
         , mListForFree(nullptr) {}
 
@@ -334,12 +335,13 @@ public:
         return *this;
     }
 
-    BulkPoolAllocator& operator=(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/) {
+    BulkPoolAllocator&
+    operator=(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/) noexcept {
         // does not do anything
         return *this;
     }
 
-    ~BulkPoolAllocator() {
+    ~BulkPoolAllocator() noexcept {
         reset();
     }
 
@@ -370,7 +372,7 @@ public:
     // make sure you have already called the destructor! e.g. with
     //  obj->~T();
     //  pool.deallocate(obj);
-    void deallocate(T* obj) {
+    void deallocate(T* obj) noexcept {
         *reinterpret_cast_no_cast_align_warning<T**>(obj) = mHead;
         mHead = obj;
     }
@@ -378,7 +380,7 @@ public:
     // Adds an already allocated block of memory to the allocator. This allocator is from now on
     // responsible for freeing the data (with free()). If the provided data is not large enough to
     // make use of, it is immediately freed. Otherwise it is reused and freed in the destructor.
-    void addOrFree(void* ptr, const size_t numBytes) {
+    void addOrFree(void* ptr, const size_t numBytes) noexcept {
         // calculate number of available elements in ptr
         if (numBytes < ALIGNMENT + ALIGNED_SIZE) {
             // not enough data for at least one element. Free and return.
@@ -388,7 +390,7 @@ public:
         }
     }
 
-    void swap(BulkPoolAllocator<T, MinNumAllocs, MaxNumAllocs>& other) {
+    void swap(BulkPoolAllocator<T, MinNumAllocs, MaxNumAllocs>& other) noexcept {
         using std::swap;
         swap(mHead, other.mHead);
         swap(mListForFree, other.mListForFree);
@@ -399,7 +401,7 @@ private:
     // Recalculating this each time saves us a size_t member.
     // This ignores the fact that memory blocks might have been added manually with addOrFree. In
     // practice, this should not matter much.
-    size_t calcNumElementsToAlloc() const {
+    size_t calcNumElementsToAlloc() const noexcept {
         auto tmp = mListForFree;
         size_t numAllocs = MinNumAllocs;
 
@@ -413,7 +415,7 @@ private:
     }
 
     // WARNING: Underflow if numBytes < ALIGNMENT! This is guarded in addOrFree().
-    void add(void* ptr, const size_t numBytes) {
+    void add(void* ptr, const size_t numBytes) noexcept {
         const size_t numElements = (numBytes - ALIGNMENT) / ALIGNED_SIZE;
 
         auto data = reinterpret_cast<T**>(ptr);
@@ -484,7 +486,7 @@ template <typename T, size_t MinSize, size_t MaxSize>
 struct NodeAllocator<T, MinSize, MaxSize, true> {
 
     // we are not using the data, so just free it.
-    void addOrFree(void* ptr, size_t ROBIN_HOOD_UNUSED(numBytes) /*unused*/) {
+    void addOrFree(void* ptr, size_t ROBIN_HOOD_UNUSED(numBytes) /*unused*/) noexcept {
         free(ptr);
     }
 };
