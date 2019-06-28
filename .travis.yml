@@ -30,7 +30,6 @@ matrix:
     env:
     - COMPILER=g++-8
     - CMAKE_OPTIONS="-DRH_cxx_standard=17"
-    - CMAKE_BUILD_TYPE=Debug
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -66,7 +65,6 @@ matrix:
     env:
     - COMPILER=g++-8
     - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
-    - CMAKE_BUILD_TYPE=Debug
     - CXXFLAGS="-m32"
     - LDFLAGS="-m32"
     addons:
@@ -126,7 +124,7 @@ script:
 
   # build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Release ${CMAKE_OPTIONS} && cmake --build . -- -j4
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug ${CMAKE_OPTIONS} && cmake --build . -- -j4
 
   # check file
   - file ./rh
