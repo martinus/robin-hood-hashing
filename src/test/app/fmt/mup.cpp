@@ -12,8 +12,9 @@
 namespace {
 
 std::string fmt(long double v, char symbol) {
-    std::stringstream ss;
+    std::stringstream ss{};
     if (v >= 1 && v < 1000) {
+        ss << std::fixed;
         if (v >= 100) {
             ss << std::setprecision(1);
         } else if (v >= 10) {
@@ -21,7 +22,7 @@ std::string fmt(long double v, char symbol) {
         } else {
             ss << std::setprecision(3);
         }
-        ss << std::fixed << v;
+        ss << v;
         if (symbol != ' ') {
             ss << " " << symbol;
         }
@@ -110,6 +111,9 @@ std::string mup(char const* format, long double value) {
     }
 
     auto dist = static_cast<size_t>(std::distance(factors.begin(), pos));
+
+    // std::cout << __FILE__ << "(" << __LINE__ << "): " << value << " " << dist << " '" <<
+    // factors[dist] << "' '" << prefix[dist] << "'" << std::endl;
     return fmt(value / factors[dist], prefix[dist]);
 }
 
