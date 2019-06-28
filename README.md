@@ -29,10 +29,6 @@ Please see extensive benchmarks at [Hashmaps Benchmarks](https://martin.ankerl.c
 
 - **Depends on good Hashing**. For a really bad hash the performance will not only degrade like in `std::unordered_map`, the map will simply fail with an `std::overflow_error`. In practice, when using the standard `robin_hood::hash`, I have never seen this happening.
 
-### The Ugly
-
-This map is obviously not as well tested as `std::unordered_map`. It shoud be very stable for most use cases, but there might still be untested corner cases, where the map simply gives incorrect results! As far as I know, none of these bugs should be left. But I wouldn't bet my house on it.
-
 ## License
 
 Licensed under the MIT License. See the [LICENSE](https://github.com/martinus/robin-hood-hashing/blob/master/LICENSE) file for details.
