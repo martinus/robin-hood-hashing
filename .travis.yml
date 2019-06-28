@@ -30,6 +30,7 @@ matrix:
     env:
     - COMPILER=g++-8
     - CMAKE_OPTIONS="-DRH_cxx_standard=17"
+    - CMAKE_BUILD_TYPE=Debug
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -64,7 +65,8 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS="-DRH_cxx_standard=17"
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
+    - CMAKE_BUILD_TYPE=Debug
     - CXXFLAGS="-m32"
     - LDFLAGS="-m32"
     addons:
