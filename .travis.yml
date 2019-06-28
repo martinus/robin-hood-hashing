@@ -5,6 +5,17 @@ dist: xenial
 matrix:
   include:
 
+  # g++ 4.9
+  - os: linux
+    compiler: gcc
+    env:
+    - COMPILER=g++-4.9
+    - CMAKE_OPTIONS="-DRH_cxx_standard=11"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-4.9']        
+
   # g++-8
   - os: linux
     compiler: gcc
@@ -30,7 +41,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS="-DRH_cxx_standard=17"
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -103,17 +114,6 @@ matrix:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-6.0']
         packages: ['g++-6', 'clang-6.0',]
-
-  # g++ 4.9
-  - os: linux
-    compiler: gcc
-    env:
-    - COMPILER=g++-4.9
-    - CMAKE_OPTIONS="-DRH_cxx_standard=11"
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-4.9']        
 
 script:
   # make sure CXX is correctly set
