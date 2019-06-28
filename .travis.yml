@@ -1,4 +1,5 @@
 language: cpp
+dist: xenial
 
 # see https://github.com/nlohmann/json/blob/develop/.travis.yml
 matrix:
@@ -80,7 +81,7 @@ matrix:
     - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=11"
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-6.0']
         packages: ['g++-6', 'clang-6.0',]
 
   - os: linux
@@ -90,7 +91,7 @@ matrix:
     - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=14"
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-6.0']
         packages: ['g++-6', 'clang-6.0',]
 
   - os: linux
@@ -100,7 +101,7 @@ matrix:
     - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-6.0']
         packages: ['g++-6', 'clang-6.0',]
 
   # g++ 4.9
