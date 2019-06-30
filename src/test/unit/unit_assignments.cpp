@@ -21,14 +21,14 @@ TYPE_TO_STRING(robin_hood::unordered_node_map<int, int>);
 TEST_CASE_TEMPLATE("copy and assign maps", Map, robin_hood::unordered_flat_map<int, int>,
                    robin_hood::unordered_node_map<int, int>) {
 
-    { Map a = createMap<Map>(15); }
+    { auto a = createMap<Map>(15); }
 
-    { Map a = createMap<Map>(100); }
+    { auto a = createMap<Map>(100); }
 
     {
-        Map a = createMap<Map>(1);
+        auto a = createMap<Map>(1);
         // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
-        Map b = a;
+        auto b = a;
         REQUIRE(a == b);
     }
 
@@ -40,9 +40,9 @@ TEST_CASE_TEMPLATE("copy and assign maps", Map, robin_hood::unordered_flat_map<i
     }
 
     {
-        Map a = createMap<Map>(100);
+        auto a = createMap<Map>(100);
         // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
-        Map b = a;
+        auto b = a;
     }
     {
         Map a;

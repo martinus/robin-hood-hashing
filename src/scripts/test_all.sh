@@ -24,6 +24,7 @@ function build() {
 
     cd ${ORIGINDIR}
 }
+build "clang++-6" "17" "OFF"
 
 build "g++-4.9" "11" "OFF"
 build "g++-4.9" "14" "OFF"
@@ -44,6 +45,11 @@ build "g++" "11" "ON"
 build "g++" "14" "ON"
 build "g++" "17" "ON"
 build "g++" "20" "ON"
+
+build "clang++-6" "11" "OFF"
+build "clang++-6" "14" "OFF"
+build "clang++-6" "17" "OFF"
+build "clang++-6" "20" "OFF"
 
 build "clang++" "11" "ON"
 build "clang++" "14" "ON"

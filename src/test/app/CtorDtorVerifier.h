@@ -8,7 +8,7 @@
 
 class CtorDtorVerifier {
 public:
-    CtorDtorVerifier(uint64_t val);
+    CtorDtorVerifier(uint64_t v);
     CtorDtorVerifier();
     CtorDtorVerifier(const CtorDtorVerifier& o);
     CtorDtorVerifier& operator=(const CtorDtorVerifier& o);

@@ -11,6 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # configuration see .clang-tidy
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    # set(CMAKE_CXX_CLANG_TIDY clang-tidy-6)
     set(CMAKE_CXX_CLANG_TIDY clang-tidy)
 endif()
 
