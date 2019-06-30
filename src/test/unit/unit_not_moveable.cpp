@@ -16,7 +16,7 @@ public:
     NoCopyMove(NoCopyMove&&) = delete;
     NoCopyMove& operator=(NoCopyMove&&) = delete;
 
-    size_t data() const {
+    ROBIN_HOOD(NODISCARD) size_t data() const {
         return mData;
     }
 

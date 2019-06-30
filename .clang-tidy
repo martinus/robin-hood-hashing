@@ -20,7 +20,7 @@ Checks: "*,\
   -fuchsia-overloaded-operator,\
   -fuchsia-default-arguments,\
   -fuchsia-multiple-inheritance"
-WarningsAsErrors: true
+WarningsAsErrors: "*"
 HeaderFilterRegex: 'robin_hood\.h'
 ...
 

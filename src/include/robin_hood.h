@@ -162,6 +162,12 @@
 #define ROBIN_HOOD_PRIVATE_DEFINITION_CXX14() 201402L
 #define ROBIN_HOOD_PRIVATE_DEFINITION_CXX17() 201703L
 
+#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX17)
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_NODISCARD() [[nodiscard]]
+#else
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_NODISCARD()
+#endif
+
 namespace robin_hood {
 
 #if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
@@ -408,7 +414,7 @@ private:
     // Recalculating this each time saves us a size_t member.
     // This ignores the fact that memory blocks might have been added manually with addOrFree. In
     // practice, this should not matter much.
-    size_t calcNumElementsToAlloc() const noexcept {
+    ROBIN_HOOD(NODISCARD) size_t calcNumElementsToAlloc() const noexcept {
         auto tmp = mListForFree;
         size_t numAllocs = MinNumAllocs;
 
@@ -565,16 +571,16 @@ struct pair {
         (void)tuple2;
     }
 
-    first_type& getFirst() {
+    ROBIN_HOOD(NODISCARD) first_type& getFirst() {
         return first;
     }
-    first_type const& getFirst() const {
+    ROBIN_HOOD(NODISCARD) first_type const& getFirst() const {
         return first;
     }
-    second_type& getSecond() {
+    ROBIN_HOOD(NODISCARD) second_type& getSecond() {
         return second;
     }
-    second_type const& getSecond() const {
+    ROBIN_HOOD(NODISCARD) second_type const& getSecond() const {
         return second;
     }
 
@@ -827,19 +833,19 @@ private:
             return mData;
         }
 
-        typename value_type::first_type& getFirst() {
+        ROBIN_HOOD(NODISCARD) typename value_type::first_type& getFirst() {
             return mData.first;
         }
 
-        typename value_type::first_type const& getFirst() const {
+        ROBIN_HOOD(NODISCARD) typename value_type::first_type const& getFirst() const {
             return mData.first;
         }
 
-        typename value_type::second_type& getSecond() {
+        ROBIN_HOOD(NODISCARD) typename value_type::second_type& getSecond() {
             return mData.second;
         }
 
-        typename value_type::second_type const& getSecond() const {
+        ROBIN_HOOD(NODISCARD) typename value_type::second_type const& getSecond() const {
             return mData.second;
         }
 
@@ -890,19 +896,19 @@ private:
             return *mData;
         }
 
-        typename value_type::first_type& getFirst() {
+        ROBIN_HOOD(NODISCARD) typename value_type::first_type& getFirst() {
             return mData->first;
         }
 
-        typename value_type::first_type const& getFirst() const {
+        ROBIN_HOOD(NODISCARD) typename value_type::first_type const& getFirst() const {
             return mData->first;
         }
 
-        typename value_type::second_type& getSecond() {
+        ROBIN_HOOD(NODISCARD) typename value_type::second_type& getSecond() {
             return mData->second;
         }
 
-        typename value_type::second_type const& getSecond() const {
+        ROBIN_HOOD(NODISCARD) typename value_type::second_type const& getSecond() const {
             return mData->second;
         }
 
@@ -1085,7 +1091,7 @@ private:
 
     ////////////////////////////////////////////////////////////////////
 
-    size_t calcNumBytesInfo(size_t numElements) const {
+    ROBIN_HOOD(NODISCARD) size_t calcNumBytesInfo(size_t numElements) const {
         const size_t s = sizeof(uint8_t) * (numElements + 1);
         if (ROBIN_HOOD_UNLIKELY(s / sizeof(uint8_t) != numElements + 1)) {
             throwOverflowError();
@@ -1093,14 +1099,14 @@ private:
         // make sure it's a bit larger, so we can load 64bit numbers
         return s + sizeof(uint64_t);
     }
-    size_t calcNumBytesNode(size_t numElements) const {
+    ROBIN_HOOD(NODISCARD) size_t calcNumBytesNode(size_t numElements) const {
         const size_t s = sizeof(Node) * numElements;
         if (ROBIN_HOOD_UNLIKELY(s / sizeof(Node) != numElements)) {
             throwOverflowError();
         }
         return s;
     }
-    size_t calcNumBytesTotal(size_t numElements) const {
+    ROBIN_HOOD(NODISCARD) size_t calcNumBytesTotal(size_t numElements) const {
         const size_t si = calcNumBytesInfo(numElements);
         const size_t sn = calcNumBytesNode(numElements);
         const size_t s = si + sn;
@@ -1182,6 +1188,7 @@ private:
 
     // copy of find(), except that it returns iterator instead of const_iterator.
     template <typename Other>
+    ROBIN_HOOD(NODISCARD)
     size_t findIdx(Other const& key) const {
         size_t idx;
         InfoType info;
@@ -1508,7 +1515,7 @@ public:
     }
 
     // Returns 1 if key is found, 0 otherwise.
-    size_t count(const key_type& key) const {
+    size_t count(const key_type& key) const { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         auto kv = mKeyVals + findIdx(key);
         if (kv != reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
@@ -1530,7 +1537,7 @@ public:
 
     // Returns a reference to the value found for key.
     // Throws std::out_of_range if element cannot be found
-    mapped_type const& at(key_type const& key) const {
+    mapped_type const& at(key_type const& key) const { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         auto kv = mKeyVals + findIdx(key);
         if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
@@ -1539,7 +1546,7 @@ public:
         return kv->getSecond();
     }
 
-    const_iterator find(const key_type& key) const {
+    const_iterator find(const key_type& key) const { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return const_iterator{mKeyVals + idx, mInfo + idx};
@@ -1572,11 +1579,11 @@ public:
         }
         return iterator(mKeyVals, mInfo, fast_forward_tag{});
     }
-    const_iterator begin() const {
+    const_iterator begin() const { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         return cbegin();
     }
-    const_iterator cbegin() const {
+    const_iterator cbegin() const { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         if (empty()) {
             return cend();
@@ -1590,11 +1597,11 @@ public:
         // pointer is compared.
         return iterator{reinterpret_cast_no_cast_align_warning<Node*>(mInfo), nullptr};
     }
-    const_iterator end() const {
+    const_iterator end() const { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         return cend();
     }
-    const_iterator cend() const {
+    const_iterator cend() const { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         return const_iterator{reinterpret_cast_no_cast_align_warning<Node*>(mInfo), nullptr};
     }
@@ -1684,33 +1691,33 @@ public:
         }
     }
 
-    size_type size() const {
+    size_type size() const noexcept { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         return mNumElements;
     }
 
-    size_type max_size() const {
+    size_type max_size() const noexcept { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         return static_cast<size_type>(-1);
     }
 
-    bool empty() const {
+    ROBIN_HOOD(NODISCARD) bool empty() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return 0 == mNumElements;
     }
 
-    float max_load_factor() const {
+    float max_load_factor() const noexcept { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         return MaxLoadFactor100 / 100.0F;
     }
 
     // Average number of elements per bucket. Since we allow only 1 per bucket
-    float load_factor() const {
+    float load_factor() const noexcept { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         return static_cast<float>(size()) / static_cast<float>(mMask + 1);
     }
 
-    size_t mask() const {
+    ROBIN_HOOD(NODISCARD) size_t mask() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return mMask;
     }

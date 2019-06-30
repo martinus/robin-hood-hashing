@@ -17,7 +17,7 @@ public:
     NoCopy(NoCopy&&) = default;
     NoCopy& operator=(NoCopy&&) = default;
 
-    size_t data() const {
+    ROBIN_HOOD(NODISCARD) size_t data() const {
         return mData;
     }
 

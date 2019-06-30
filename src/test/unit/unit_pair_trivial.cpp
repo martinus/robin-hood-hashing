@@ -15,24 +15,25 @@ void nothrow_trivially() {
                       // cppcheck-suppress duplicateExpression
                       (std::is_nothrow_move_constructible<K>::value &&
                        std::is_nothrow_move_constructible<V>::value),
-                  "");
+                  "pair doesnt have same attributes as key & value");
 
     static_assert(std::is_nothrow_move_assignable<TestPair<K, V>>::value ==
                       // cppcheck-suppress duplicateExpression
                       (std::is_nothrow_move_assignable<K>::value &&
                        std::is_nothrow_move_assignable<V>::value),
-                  "");
+                  "pair doesnt have same attributes as key & value");
 
     static_assert(ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(TestPair<K, V>) ==
                       (ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(K) && ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(V)),
-                  "");
+                  "pair doesnt have same attributes as key & value");
 
     static_assert(
         std::is_trivially_destructible<TestPair<K, V>>::value ==
             (std::is_trivially_destructible<K>::value && std::is_trivially_destructible<V>::value),
-        "");
+        "pair doesnt have same attributes as key & value");
 
-    static_assert(sizeof(TestPair<K, V>) == sizeof(std::pair<K, V>), "");
+    static_assert(sizeof(TestPair<K, V>) == sizeof(std::pair<K, V>),
+                  "pair doesnt have same attributes as key & value");
 }
 
 TEST_CASE("pair trivially copy/destructible") {

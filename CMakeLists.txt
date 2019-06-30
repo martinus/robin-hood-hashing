@@ -19,7 +19,6 @@ endif()
 add_executable(rh "")
 
 if (RH_sanitizer)
-    message(STATUS "Building with Sanitizers")
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         # see https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#silencing-unsigned-integer-overflow
         # Compile with -g and -fno-omit-frame-pointer to get proper debug information in your binary
@@ -61,7 +60,7 @@ if (RH_sanitizer)
 endif()
 
 if(RH_coverage AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    MESSAGE("coverage")
+    MESSAGE(STATUS "Coverage enable")
     # Add required flags (GCC & LLVM/Clang)
     target_compile_options(rh PRIVATE
         -O0        # no optimization
