@@ -155,9 +155,16 @@
 #    define ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(...) std::is_trivially_copyable<__VA_ARGS__>::value
 #endif
 
+// helpers for C++ versions, see https://gcc.gnu.org/onlinedocs/cpp/Standard-Predefined-Macros.html
+#define ROBIN_HOOD_PRIVATE_DEFINITION_CXX() __cplusplus
+#define ROBIN_HOOD_PRIVATE_DEFINITION_CXX98() 199711L
+#define ROBIN_HOOD_PRIVATE_DEFINITION_CXX11() 201103L
+#define ROBIN_HOOD_PRIVATE_DEFINITION_CXX14() 201402L
+#define ROBIN_HOOD_PRIVATE_DEFINITION_CXX17() 201703L
+
 namespace robin_hood {
 
-#if (__cplusplus >= 201402L)
+#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
 #    define ROBIN_HOOD_STD_COMP std
 #else
 
@@ -456,7 +463,7 @@ private:
     }
 
     // enforce byte alignment of the T's
-#if __cplusplus >= 201402L
+#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
     static constexpr size_t ALIGNMENT =
         (std::max)(std::alignment_of<T>::value, std::alignment_of<T*>::value);
 #else

@@ -116,7 +116,7 @@ void PerformanceCounters::reset() {
 }
 
 uint64_t const* PerformanceCounters::monitor(uint32_t type, uint64_t eventid) {
-    perf_event_attr pea;
+    auto pea = perf_event_attr();
     memset(&pea, 0, sizeof(perf_event_attr));
     pea.type = type;
     pea.size = sizeof(perf_event_attr);

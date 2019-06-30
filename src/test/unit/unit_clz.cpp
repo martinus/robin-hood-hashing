@@ -15,8 +15,7 @@ int clz(void const* data) {
 
 TEST_CASE("clz") {
     int constexpr const num_bytes = sizeof(size_t);
-    std::array<uint8_t, num_bytes * 2 + 1> ary;
-    ary.fill(0);
+    auto ary = std::array<uint8_t, num_bytes * 2 + 1>();
     for (size_t data = 0; data < num_bytes; ++data) {
         uint8_t* d = ary.data() + data;
         for (int i = 0; i < num_bytes; ++i) {
