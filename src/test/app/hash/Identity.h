@@ -14,6 +14,13 @@ struct Identity {
     }
 };
 
+template <typename T>
+struct Identity<T*> {
+    size_t operator()(T* key) const {
+        return reinterpret_cast<size_t>(key);
+    }
+};
+
 } // namespace hash
 
 #endif

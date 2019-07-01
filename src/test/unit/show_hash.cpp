@@ -11,14 +11,16 @@
 #include <bitset>
 #include <iomanip>
 #include <iostream>
+#include <vector>
 
 namespace {
 
-void showHash(size_t val) {
-    auto id = hash::Identity<size_t>{}(val);
-    auto sh = std::hash<size_t>{}(val);
-    auto rh = robin_hood::hash<size_t>{}(val);
-    auto fn = hash::FNV1a<size_t>{}(val);
+template <typename T>
+void showHash(T val) {
+    auto id = hash::Identity<T>{}(val);
+    auto sh = std::hash<T>{}(val);
+    auto rh = robin_hood::hash<T>{}(val);
+    auto fn = hash::FNV1a<T>{}(val);
     std::cout << fmt::hex(val) << " | " << fmt::hex(id) << " | " << fmt::hex(sh) << " | "
               << fmt::hex(fn) << " | " << fmt::hex(rh) << " | " << fmt::bin(rh) << std::endl;
 }
@@ -50,5 +52,10 @@ TEST_CASE("show hash distribution" * doctest::test_suite("show") * doctest::skip
     for (size_t i = 1; i != 0; i *= 2) {
         showHash(i);
         showHash(i + 1);
+    }
+
+    std::vector<size_t> data(10, 0);
+    for (auto const& x : data) {
+        showHash(&x);
     }
 }
