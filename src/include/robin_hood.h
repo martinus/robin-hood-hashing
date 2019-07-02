@@ -509,11 +509,8 @@ struct identity_hash {
     }
 };
 
-#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX17)
-#    define ROBIN_HOOD_IS_NOTHROW_SWAPPABLE(...) ::std::is_nothrow_swappable<__VA_ARGS__>::value
-#else
-
-// c++14 doesn't have is_nothrow_swappable, so I'm making my own here.
+// c++14 doesn't have is_nothrow_swappable, and clang++ 6.0.1 doesn't like it either, so I'm making
+// my own here.
 namespace swappable {
 using std::swap;
 template <typename T>
@@ -522,10 +519,6 @@ struct nothrow {
 };
 
 } // namespace swappable
-
-#    define ROBIN_HOOD_IS_NOTHROW_SWAPPABLE(...) \
-        ::robin_hood::detail::swappable::nothrow<__VA_ARGS__>::value
-#endif
 
 } // namespace detail
 
@@ -589,21 +582,21 @@ struct pair {
         (void)tuple2;
     }
 
-    ROBIN_HOOD(NODISCARD) first_type& getFirst() {
+    ROBIN_HOOD(NODISCARD) first_type& getFirst() noexcept {
         return first;
     }
-    ROBIN_HOOD(NODISCARD) first_type const& getFirst() const {
+    ROBIN_HOOD(NODISCARD) first_type const& getFirst() const noexcept {
         return first;
     }
-    ROBIN_HOOD(NODISCARD) second_type& getSecond() {
+    ROBIN_HOOD(NODISCARD) second_type& getSecond() noexcept {
         return second;
     }
-    ROBIN_HOOD(NODISCARD) second_type const& getSecond() const {
+    ROBIN_HOOD(NODISCARD) second_type const& getSecond() const noexcept {
         return second;
     }
 
-    void swap(pair<First, Second>& o) noexcept(ROBIN_HOOD_IS_NOTHROW_SWAPPABLE(First) &&
-                                               ROBIN_HOOD_IS_NOTHROW_SWAPPABLE(Second)) {
+    void swap(pair<First, Second>& o) noexcept((detail::swappable::nothrow<First>::value) &&
+                                               (detail::swappable::nothrow<Second>::value)) {
         using std::swap;
         swap(first, o.first);
         swap(second, o.second);
@@ -702,7 +695,8 @@ inline size_t hash_int(uint64_t obj) noexcept {
 // A thin wrapper around std::hash, performing an additional simple mixing step of the result.
 template <typename T>
 struct hash : public std::hash<T> {
-    size_t operator()(T const& obj) const {
+    size_t operator()(T const& obj) const
+        noexcept(noexcept(std::declval<std::hash<T>>().operator()(std::declval<T const&>()))) {
         // call base hash
         auto result = std::hash<T>::operator()(obj);
         // return mixed of that, to be save against identity has
@@ -840,41 +834,42 @@ private:
             : mData(std::move(n.mData)) {}
 
         // doesn't do anything
-        void destroy(M& ROBIN_HOOD_UNUSED(map) /*unused*/) {}
-        void destroyDoNotDeallocate() {}
+        void destroy(M& ROBIN_HOOD_UNUSED(map) /*unused*/) noexcept {}
+        void destroyDoNotDeallocate() noexcept {}
 
-        value_type const* operator->() const {
+        value_type const* operator->() const noexcept {
             return &mData;
         }
-        value_type* operator->() {
+        value_type* operator->() noexcept {
             return &mData;
         }
 
-        const value_type& operator*() const {
+        const value_type& operator*() const noexcept {
             return mData;
         }
 
-        value_type& operator*() {
+        value_type& operator*() noexcept {
             return mData;
         }
 
-        ROBIN_HOOD(NODISCARD) typename value_type::first_type& getFirst() {
+        ROBIN_HOOD(NODISCARD) typename value_type::first_type& getFirst() noexcept {
             return mData.first;
         }
 
-        ROBIN_HOOD(NODISCARD) typename value_type::first_type const& getFirst() const {
+        ROBIN_HOOD(NODISCARD) typename value_type::first_type const& getFirst() const noexcept {
             return mData.first;
         }
 
-        ROBIN_HOOD(NODISCARD) typename value_type::second_type& getSecond() {
+        ROBIN_HOOD(NODISCARD) typename value_type::second_type& getSecond() noexcept {
             return mData.second;
         }
 
-        ROBIN_HOOD(NODISCARD) typename value_type::second_type const& getSecond() const {
+        ROBIN_HOOD(NODISCARD) typename value_type::second_type const& getSecond() const noexcept {
             return mData.second;
         }
 
-        void swap(DataNode<M, true>& o) {
+        void swap(DataNode<M, true>& o) noexcept(
+            noexcept(std::declval<value_type>().swap(std::declval<value_type>()))) {
             mData.swap(o.mData);
         }
 
@@ -892,7 +887,7 @@ private:
             ::new (static_cast<void*>(mData)) value_type(std::forward<Args>(args)...);
         }
 
-        DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, DataNode<M, false>&& n)
+        DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, DataNode<M, false>&& n) noexcept
             : mData(std::move(n.mData)) {}
 
         void destroy(M& map) {
@@ -905,11 +900,11 @@ private:
             mData->~value_type();
         }
 
-        value_type const* operator->() const {
+        value_type const* operator->() const noexcept {
             return mData;
         }
 
-        value_type* operator->() {
+        value_type* operator->() noexcept {
             return mData;
         }
 
@@ -937,7 +932,7 @@ private:
             return mData->second;
         }
 
-        void swap(DataNode<M, false>& o) {
+        void swap(DataNode<M, false>& o) noexcept {
             using std::swap;
             swap(mData, o.mData);
         }
@@ -989,18 +984,18 @@ private:
 
     template <typename M>
     struct Destroyer<M, true> {
-        void nodes(M& m) const {
+        void nodes(M& m) const noexcept {
             m.mNumElements = 0;
         }
 
-        void nodesDoNotDeallocate(M& m) const {
+        void nodesDoNotDeallocate(M& m) const noexcept {
             m.mNumElements = 0;
         }
     };
 
     template <typename M>
     struct Destroyer<M, false> {
-        void nodes(M& m) const {
+        void nodes(M& m) const noexcept {
             m.mNumElements = 0;
             // clear also resets mInfo to 0, that's sometimes not necessary.
             for (size_t idx = 0; idx <= m.mMask; ++idx) {
@@ -1012,7 +1007,7 @@ private:
             }
         }
 
-        void nodesDoNotDeallocate(M& m) const {
+        void nodesDoNotDeallocate(M& m) const noexcept {
             m.mNumElements = 0;
             // clear also resets mInfo to 0, that's sometimes not necessary.
             for (size_t idx = 0; idx <= m.mMask; ++idx) {
@@ -1051,23 +1046,23 @@ private:
 
         // Conversion constructor from iterator to const_iterator
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
-        Iter(Iter<false> const& other)
+        Iter(Iter<false> const& other) noexcept
             : mKeyVals(other.mKeyVals)
             , mInfo(other.mInfo) {}
 
-        Iter(NodePtr valPtr, uint8_t const* infoPtr)
+        Iter(NodePtr valPtr, uint8_t const* infoPtr) noexcept
             : mKeyVals(valPtr)
             , mInfo(infoPtr) {}
 
         Iter(NodePtr valPtr, uint8_t const* infoPtr,
-             fast_forward_tag ROBIN_HOOD_UNUSED(tag) /*unused*/)
+             fast_forward_tag ROBIN_HOOD_UNUSED(tag) /*unused*/) noexcept
             : mKeyVals(valPtr)
             , mInfo(infoPtr) {
             fastForward();
         }
 
         // prefix increment. Undefined behavior if we are at end()!
-        Iter& operator++() {
+        Iter& operator++() noexcept {
             mInfo++;
             mKeyVals++;
             fastForward();
@@ -1083,18 +1078,18 @@ private:
         }
 
         template <bool O>
-        bool operator==(Iter<O> const& o) const {
+        bool operator==(Iter<O> const& o) const noexcept {
             return mKeyVals == o.mKeyVals;
         }
 
         template <bool O>
-        bool operator!=(Iter<O> const& o) const {
+        bool operator!=(Iter<O> const& o) const noexcept {
             return mKeyVals != o.mKeyVals;
         }
 
     private:
         // fast forward to the next non-free info byte
-        void fastForward() {
+        void fastForward() noexcept {
             int inc;
             do {
                 auto const n = detail::unaligned_load<size_t>(mInfo);
@@ -1160,12 +1155,12 @@ private:
     }
 
     // forwards the index by one, wrapping around at the end
-    void next(InfoType* info, size_t* idx) const {
+    void next(InfoType* info, size_t* idx) const noexcept {
         *idx = (*idx + 1) & mMask;
         *info += mInfoInc;
     }
 
-    void nextWhileLess(InfoType* info, size_t* idx) const {
+    void nextWhileLess(InfoType* info, size_t* idx) const noexcept {
         // unrolling this by hand did not bring any speedups.
         while (*info < mInfo[*idx]) {
             next(info, idx);
