@@ -47,3 +47,17 @@ TEST_CASE("pair trivially copy/destructible") {
     nothrow_trivially<uint32_t, uint32_t>();
     nothrow_trivially<char, char>();
 }
+
+TEST_CASE("pairstuff") {
+    robin_hood::pair<std::string, std::string> p("asdf", "321");
+    auto pc = p;
+    p = pc;
+    p = std::move(pc);
+
+    std::string a = "13";
+    std::string b = "54";
+    robin_hood::pair<std::string, std::string> p2(std::move(a), std::move(b));
+
+    using std::swap;
+    swap(p, p2);
+}

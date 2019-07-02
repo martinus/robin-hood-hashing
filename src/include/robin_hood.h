@@ -338,8 +338,7 @@ public:
         o.mHead = nullptr;
     }
 
-    BulkPoolAllocator&
-    operator=(BulkPoolAllocator&& o) noexcept(noexcept(BulkPoolAllocator{}.reset())) {
+    BulkPoolAllocator& operator=(BulkPoolAllocator&& o) noexcept {
         reset();
         mHead = o.mHead;
         mListForFree = o.mListForFree;
@@ -469,15 +468,10 @@ private:
     }
 
     // enforce byte alignment of the T's
-#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
     static constexpr size_t ALIGNMENT =
-        (std::max)(std::alignment_of<T>::value, std::alignment_of<T*>::value);
-#else
-    static const size_t ALIGNMENT =
         (ROBIN_HOOD_STD_COMP::alignment_of<T>::value > ROBIN_HOOD_STD_COMP::alignment_of<T*>::value)
             ? ROBIN_HOOD_STD_COMP::alignment_of<T>::value
-            : +ROBIN_HOOD_STD_COMP::alignment_of<T*>::value; // the + is for walkarround
-#endif
+            : +ROBIN_HOOD_STD_COMP::alignment_of<T*>::value; // the + is for walkaround
 
     static constexpr size_t ALIGNED_SIZE = ((sizeof(T) - 1) / ALIGNMENT + 1) * ALIGNMENT;
 
@@ -515,6 +509,24 @@ struct identity_hash {
     }
 };
 
+#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX17)
+#    define ROBIN_HOOD_IS_NOTHROW_SWAPPABLE(...) ::std::is_nothrow_swappable<__VA_ARGS__>::value
+#else
+
+// c++14 doesn't have is_nothrow_swappable, so I'm making my own here.
+namespace swappable {
+using std::swap;
+template <typename T>
+struct nothrow {
+    static const bool value = noexcept(swap(std::declval<T&>(), std::declval<T&>()));
+};
+
+} // namespace swappable
+
+#    define ROBIN_HOOD_IS_NOTHROW_SWAPPABLE(...) \
+        ::robin_hood::detail::swappable::nothrow<__VA_ARGS__>::value
+#endif
+
 } // namespace detail
 
 struct is_transparent_tag {};
@@ -528,20 +540,26 @@ struct pair {
     using second_type = Second;
 
     // pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
-    explicit pair(std::pair<First, Second> const& o) noexcept(noexcept(First(o.first)))
+    explicit pair(std::pair<First, Second> const& o) noexcept(noexcept(First(o.first)) &&
+                                                              noexcept(Second(o.second)))
         : first(o.first)
         , second(o.second) {}
 
     // pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
-    explicit pair(std::pair<First, Second>&& o)
+    explicit pair(std::pair<First, Second>&& o) noexcept(noexcept(First(std::move(o.first))) &&
+                                                         noexcept(Second(std::move(o.second))))
         : first(std::move(o.first))
         , second(std::move(o.second)) {}
 
-    constexpr pair(const First& firstArg, const Second& secondArg)
+    constexpr pair(const First& firstArg,
+                   const Second& secondArg) noexcept(noexcept(First(firstArg)) &&
+                                                     noexcept(Second(secondArg)))
         : first(firstArg)
         , second(secondArg) {}
 
-    constexpr pair(First&& firstArg, Second&& secondArg)
+    constexpr pair(First&& firstArg,
+                   Second&& secondArg) noexcept(noexcept(First(std::move(firstArg))) &&
+                                                noexcept(Second(std::move(secondArg))))
         : first(std::move(firstArg))
         , second(std::move(secondArg)) {}
 
@@ -584,7 +602,8 @@ struct pair {
         return second;
     }
 
-    void swap(pair<First, Second>& o) {
+    void swap(pair<First, Second>& o) noexcept(ROBIN_HOOD_IS_NOTHROW_SWAPPABLE(First) &&
+                                               ROBIN_HOOD_IS_NOTHROW_SWAPPABLE(Second)) {
         using std::swap;
         swap(first, o.first);
         swap(second, o.second);
@@ -593,6 +612,12 @@ struct pair {
     First first;   // NOLINT(misc-non-private-member-variables-in-classes)
     Second second; // NOLINT(misc-non-private-member-variables-in-classes)
 };
+
+template <typename A, typename B>
+void swap(pair<A, B>& a, pair<A, B>& b) noexcept(
+    noexcept(std::declval<pair<A, B>&>().swap(std::declval<pair<A, B>&>()))) {
+    a.swap(b);
+}
 
 // Hash an arbitrary amount of bytes. This is basically Murmur2 hash without caring about big
 // endianness. TODO(martinus) add a fallback for very large strings?
