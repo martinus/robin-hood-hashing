@@ -468,10 +468,15 @@ private:
     }
 
     // enforce byte alignment of the T's
+#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
     static constexpr size_t ALIGNMENT =
+        (std::max)(std::alignment_of<T>::value, std::alignment_of<T*>::value);
+#else
+    static const size_t ALIGNMENT =
         (ROBIN_HOOD_STD_COMP::alignment_of<T>::value > ROBIN_HOOD_STD_COMP::alignment_of<T*>::value)
             ? ROBIN_HOOD_STD_COMP::alignment_of<T>::value
-            : +ROBIN_HOOD_STD_COMP::alignment_of<T*>::value; // the + is for walkaround
+            : +ROBIN_HOOD_STD_COMP::alignment_of<T*>::value; // the + is for walkarround
+#endif
 
     static constexpr size_t ALIGNED_SIZE = ((sizeof(T) - 1) / ALIGNMENT + 1) * ALIGNMENT;
 
