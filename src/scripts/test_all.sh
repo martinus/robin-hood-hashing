@@ -17,10 +17,9 @@ function build() {
     cd ${DIRNAME}
 
     CXX=$(which ${COMPILER}) cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DRH_cxx_standard=${CXX_STANDARD} -DRH_sanitizer=${SANITIZER} ${ROOTDIR}
-    cmake --build .
-
-    ./rh -ns -ts=show
-    ./rh
+    nice -n20 cmake --build .
+    nice -n20 ./rh -ns -ts=show
+    nice -n20 ./rh
 
     cd ${ORIGINDIR}
 }
@@ -28,7 +27,6 @@ function build() {
 # quick checks
 build "clang++" "11" "OFF"
 build "clang++" "17" "OFF"
-
 
 # all the rest
 build "g++-4.9" "11" "OFF"
@@ -51,6 +49,7 @@ build "g++" "14" "ON"
 build "g++" "17" "ON"
 build "g++" "20" "ON"
 
+# can't ccache with clang-tidy, so do it last
 build "clang++-6" "11" "OFF"
 build "clang++-6" "14" "OFF"
 build "clang++-6" "17" "OFF"

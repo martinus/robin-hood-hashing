@@ -570,7 +570,12 @@ struct pair {
 
     template <typename... Args1, typename... Args2>
     pair(std::piecewise_construct_t /*unused*/, std::tuple<Args1...> firstArgs,
-         std::tuple<Args2...> secondArgs)
+         std::tuple<Args2...>
+             secondArgs) noexcept(noexcept(pair(std::declval<std::tuple<Args1...>&>(),
+                                                std::declval<std::tuple<Args2...>&>(),
+                                                ROBIN_HOOD_STD_COMP::index_sequence_for<Args1...>(),
+                                                ROBIN_HOOD_STD_COMP::index_sequence_for<
+                                                    Args2...>())))
         : pair(firstArgs, secondArgs, ROBIN_HOOD_STD_COMP::index_sequence_for<Args1...>(),
                ROBIN_HOOD_STD_COMP::index_sequence_for<Args2...>()) {}
 
@@ -578,7 +583,14 @@ struct pair {
     template <typename... Args1, size_t... Indexes1, typename... Args2, size_t... Indexes2>
     pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2,
          ROBIN_HOOD_STD_COMP::index_sequence<Indexes1...> /*unused*/,
-         ROBIN_HOOD_STD_COMP::index_sequence<Indexes2...> /*unused*/)
+         ROBIN_HOOD_STD_COMP::index_sequence<
+             Indexes2...> /*unused*/) noexcept(noexcept(First(std::
+                                                                  forward<Args1>(std::get<Indexes1>(
+                                                                      std::declval<std::tuple<
+                                                                          Args1...>&>()))...)) &&
+                                               noexcept(
+                                                   Second(std::forward<Args2>(std::get<Indexes2>(
+                                                       std::declval<std::tuple<Args2...>&>()))...)))
         : first(std::forward<Args1>(std::get<Indexes1>(tuple1))...)
         , second(std::forward<Args2>(std::get<Indexes2>(tuple2))...) {
         // make visual studio compiler happy about warning about unused tuple1 & tuple2.
@@ -832,10 +844,12 @@ private:
     class DataNode<M, true> final {
     public:
         template <typename... Args>
-        explicit DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, Args&&... args)
+        explicit DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, Args&&... args) noexcept(
+            noexcept(value_type(std::forward<Args>(args)...)))
             : mData(std::forward<Args>(args)...) {}
 
-        DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, DataNode<M, true>&& n)
+        DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, DataNode<M, true>&& n) noexcept(
+            std::is_nothrow_move_constructible<value_type>::value)
             : mData(std::move(n.mData)) {}
 
         // doesn't do anything
@@ -895,13 +909,13 @@ private:
         DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, DataNode<M, false>&& n) noexcept
             : mData(std::move(n.mData)) {}
 
-        void destroy(M& map) {
+        void destroy(M& map) noexcept {
             // don't deallocate, just put it into list of datapool.
             mData->~value_type();
             map.deallocate(mData);
         }
 
-        void destroyDoNotDeallocate() {
+        void destroyDoNotDeallocate() noexcept {
             mData->~value_type();
         }
 
@@ -1175,7 +1189,9 @@ private:
     // Shift everything up by one element. Tries to move stuff around.
     // True if some shifting has occured (entry under idx is a constructed object)
     // Fals if no shift has occured (entry under idx is unconstructed memory)
-    void shiftUp(size_t idx, size_t const insertion_idx) {
+    void
+    shiftUp(size_t idx,
+            size_t const insertion_idx) noexcept(std::is_nothrow_move_assignable<Node>::value) {
         while (idx != insertion_idx) {
             size_t prev_idx = (idx - 1) & mMask;
             if (mInfo[idx]) {
@@ -1191,7 +1207,7 @@ private:
         }
     }
 
-    void shiftDown(size_t idx) {
+    void shiftDown(size_t idx) noexcept(std::is_nothrow_move_assignable<Node>::value) {
         // until we find one that is either empty or has zero offset.
         // TODO(martinus) we don't need to move everything, just the last one for the same bucket.
         mKeyVals[idx].destroy(*this);

@@ -5,9 +5,9 @@
 // not copyable, but movable.
 class NoCopy {
 public:
-    NoCopy()
+    NoCopy() noexcept
         : mData{} {}
-    explicit NoCopy(size_t /*unused*/)
+    explicit NoCopy(size_t /*unused*/) noexcept
         : mData() {}
 
     ~NoCopy() = default;

@@ -4,9 +4,9 @@
 
 class NoCopyMove {
 public:
-    NoCopyMove()
+    NoCopyMove() noexcept
         : mData{} {}
-    explicit NoCopyMove(size_t d)
+    explicit NoCopyMove(size_t d) noexcept
         : mData(d) {}
     ~NoCopyMove() = default;
 
