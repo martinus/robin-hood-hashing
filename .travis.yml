@@ -9,13 +9,12 @@ matrix:
   - os: linux
     compiler: gcc
     env:
-    - COMPILER=g++-8
     - CMAKE_OPTIONS="-DRH_coverage=ON"
     - CODE_COVERAGE=true
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8', 'lcov']
+        packages: ['lcov']
 
   # g++ 4.9
   - os: linux
