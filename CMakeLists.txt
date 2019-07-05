@@ -62,28 +62,24 @@ endif()
 
 if(RH_coverage AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     MESSAGE(STATUS "Coverage enable")
+
     # Add required flags (GCC & LLVM/Clang)
-    target_compile_options(rh PRIVATE
-        -O0        # no optimization
-        -g         # generate debug info
-        --coverage # sets all required flags
-    )
-    target_link_libraries(rh PRIVATE --coverage)
+    target_compile_options(rh PRIVATE -fprofile-arcs -ftest-coverage)
+    target_link_libraries(rh PRIVATE -fprofile-arcs -ftest-coverage)
 
     # find the correct gcov version
-    get_filename_component(COMPILER_PATH "${CMAKE_CXX_COMPILER}" PATH)
-    string(REGEX MATCH "^[0-9]+" GCC_VERSION "${CMAKE_CXX_COMPILER_VERSION}")
-    find_program(GCOV_BIN NAMES gcov-${GCC_VERSION} gcov HINTS ${COMPILER_PATH})
+    #get_filename_component(COMPILER_PATH "${CMAKE_CXX_COMPILER}" PATH)
+    #string(REGEX MATCH "^[0-9]+" GCC_VERSION "${CMAKE_CXX_COMPILER_VERSION}")
+    #find_program(GCOV_BIN NAMES gcov-${GCC_VERSION} gcov HINTS ${COMPILER_PATH})
 
     # collect all source files from the chosen include dir
     file(GLOB_RECURSE SOURCE_FILES src/include/robin_hood.h)
 
     # COMMAND ${CMAKE_SOURCE_DIR}/test/thirdparty/imapdl/filterbr.py json.info.filtered > json.info.filtered.noexcept
-    add_custom_target(lcov_html
-        COMMAND lcov --directory . --capture --output-file json.info --rc lcov_branch_coverage=1
-        COMMAND lcov -e json.info ${SOURCE_FILES} --output-file json.info.filtered --gcov-tool ${GCOV_BIN} --rc lcov_branch_coverage=1
-        COMMAND genhtml --title "JSON for Modern C++" --legend --demangle-cpp --output-directory html --show-details --branch-coverage json.info.filtered
-        COMMENT "Generating HTML report test/html/index.html"
+    add_custom_target(lcov
+        COMMAND lcov --directory . --capture --output-file coverage.info # parse coverage data
+        COMMAND lcov -e coverage.info ${SOURCE_FILES} --output-file coverage.info # filter
+        COMMAND coveralls-lcov coverage.info  # upload results
     )
 
 endif()
