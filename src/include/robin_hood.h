@@ -694,8 +694,8 @@ inline size_t hash_int(uint64_t obj) noexcept {
     return h + l;
 #elif ROBIN_HOOD(BITNESS) == 32
     uint64_t const r = obj * UINT64_C(0xca4bcaa75ec3f625);
-    uint32_t h = static_cast<uint32_t>(r >> 32);
-    uint32_t l = static_cast<uint32_t>(r);
+    auto h = static_cast<uint32_t>(r >> 32U);
+    auto l = static_cast<uint32_t>(r);
     return h + l;
 #else
     // murmurhash 3 finalizer

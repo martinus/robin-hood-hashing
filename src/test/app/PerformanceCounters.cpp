@@ -171,9 +171,9 @@ void PerformanceCounters::fetch() {
     mTimeEnabledNanos = mReadFormat[1];
     mTimeRunningNanos = mReadFormat[2];
 
-    for (size_t i = 0; i < mReadFormat[0]; i++) {
-        auto val = mReadFormat[3 + i * 2 + 0];
-        auto id = mReadFormat[3 + i * 2 + 1];
+    for (uint64_t i = 0; i < mReadFormat[0]; i++) {
+        auto val = mReadFormat[static_cast<size_t>(3 + i * 2 + 0)];
+        auto id = mReadFormat[static_cast<size_t>(3 + i * 2 + 1)];
         auto it = mIdToValue.find(id);
         if (it != mIdToValue.end()) {
             it->second = val;

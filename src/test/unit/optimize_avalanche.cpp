@@ -18,6 +18,8 @@ TEST_CASE("avalanche image generation" * doctest::test_suite("show") * doctest::
     a.save("robin_hood_hash_uint64_t.ppm");
 }
 
+#if ROBIN_HOOD(BITNESS) == 64
+
 namespace {
 
 // Mutates input
@@ -39,8 +41,6 @@ void mutate(std::array<uint64_t, S>* vals, sfc64* rng, RandomBool* rbool) {
 }
 
 } // namespace
-
-#if ROBIN_HOOD(BITNESS) == 64
 
 TEST_CASE("avalanche optimizer" * doctest::test_suite("optimize") * doctest::skip()) {
     sfc64 rng;
