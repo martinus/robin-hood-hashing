@@ -76,7 +76,7 @@ function(add_compile_flags_target target)
         target_compile_options(${target} PRIVATE -Winvalid-pch)
         target_compile_options(${target} PRIVATE -Wmissing-declarations)
         target_compile_options(${target} PRIVATE -Woverloaded-virtual)
-        if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.6)
+        if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
             target_compile_options(${target} PRIVATE -Wnoexcept)
         endif()
 

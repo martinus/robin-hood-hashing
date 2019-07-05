@@ -14,7 +14,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8', 'lcov']
+        packages: ['lcov']
 
   # g++ 4.9
   - os: linux
