@@ -27,6 +27,7 @@ target_sources_local(rh PRIVATE
     show_hash.cpp
 
     # unit tests
+    unit_addOrFree.cpp
     unit_assertNotNull.cpp
     unit_assign_to_move.cpp
     unit_assignments.cpp
