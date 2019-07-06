@@ -61,3 +61,17 @@ TEST_CASE("pairstuff") {
     using std::swap;
     swap(p, p2);
 }
+
+TEST_CASE("pair creating") {
+    std::string a("sadf");
+    uint64_t b{123};
+
+    // uint64_t copy ctor is noexcept (string not)
+    REQUIRE(noexcept(robin_hood::pair<uint64_t, uint64_t>(std::declval<uint64_t const&>(),
+                                                          std::declval<uint64_t const&>())));
+
+    // create a copy of a and b
+    robin_hood::pair<std::string, uint64_t> p(a, b);
+    REQUIRE(p.first == a);
+    REQUIRE(p.second == b);
+}

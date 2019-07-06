@@ -113,4 +113,16 @@ TEST_CASE_TEMPLATE("assignment combinations", Map,
         b = a;
         REQUIRE(a == b);
     }
+
+    {
+        Map a;
+        a[1] = 2;
+
+        // self assignment should work too
+        Map* b = &a;
+        a = *b;
+        REQUIRE(a == a);
+        REQUIRE(a.size() == 1);
+        REQUIRE(a.find(1) != a.end());
+    }
 }

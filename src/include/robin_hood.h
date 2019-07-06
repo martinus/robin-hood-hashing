@@ -549,9 +549,9 @@ struct pair {
         : first(std::move(o.first))
         , second(std::move(o.second)) {}
 
-    constexpr pair(const First& firstArg,
-                   const Second& secondArg) noexcept(noexcept(First(firstArg)) &&
-                                                     noexcept(Second(secondArg)))
+    constexpr pair(First const& firstArg, Second const& secondArg) noexcept(
+        noexcept(First(std::declval<First const&>())) &&
+        noexcept(Second(std::declval<Second const&>())))
         : first(firstArg)
         , second(secondArg) {}
 
