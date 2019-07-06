@@ -2,9 +2,13 @@
 
 #include <app/doctest.h>
 
-struct MyException {
-    explicit MyException(int, std::string const&) {}
+namespace {
+
+struct MyException : public std::exception {
+    MyException(int /* unused */, std::string const& /* unused */) {}
 };
+
+} // namespace
 
 TEST_CASE("assertNotNull") {
     REQUIRE_THROWS_AS(
