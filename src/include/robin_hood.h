@@ -561,11 +561,6 @@ struct pair {
         : first(std::move(a))
         , second(std::move(b)) {}
 
-    constexpr pair(T1 const& a, T2 const& b) noexcept(noexcept(T1(std::declval<T1 const&>())) &&
-                                                      noexcept(T2(std::declval<T2 const&>())))
-        : first(std::move(a))
-        , second(std::move(b)) {}
-
     template <typename U1, typename U2>
     constexpr pair(U1&& a, U2&& b) noexcept(noexcept(T1(std::forward<U1>(std::declval<U1&&>()))) &&
                                             noexcept(T2(std::forward<U2>(std::declval<U2&&>()))))
