@@ -537,6 +537,13 @@ struct pair {
     using first_type = First;
     using second_type = Second;
 
+    template <
+        typename = typename std::enable_if<std::is_default_constructible<First>::value &&
+                                           std::is_default_constructible<Second>::value>::type>
+    constexpr pair() noexcept(noexcept(First()) && noexcept(Second()))
+        : first()
+        , second() {}
+
     // pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
     explicit pair(std::pair<First, Second> const& o) noexcept(noexcept(First(o.first)) &&
                                                               noexcept(Second(o.second)))

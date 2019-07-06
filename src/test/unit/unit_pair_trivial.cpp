@@ -62,7 +62,9 @@ TEST_CASE("pairstuff") {
     swap(p, p2);
 }
 
-TEST_CASE("pair creating") {
+TEST_CASE("pair_creating") {
+    robin_hood::pair<std::string, uint64_t> pdefault;
+
     std::string a("sadf");
     uint64_t b{123};
 
@@ -74,4 +76,8 @@ TEST_CASE("pair creating") {
     robin_hood::pair<std::string, uint64_t> p(a, b);
     REQUIRE(p.first == a);
     REQUIRE(p.second == b);
+
+    robin_hood::pair<std::string, uint64_t> p1 = {"asdf", UINT64_C(123)};
+
+    // robin_hood::pair<std::string, uint64_t> p2 = {{}, {}};
 }
