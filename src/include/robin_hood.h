@@ -532,48 +532,45 @@ struct is_transparent_tag {};
 // A custom pair implementation is used in the map because std::pair is not is_trivially_copyable,
 // which means it would  not be allowed to be used in std::memcpy. This struct is copyable, which is
 // also tested.
-template <typename First, typename Second>
+template <typename T1, typename T2>
 struct pair {
-    using first_type = First;
-    using second_type = Second;
+    using first_type = T1;
+    using second_type = T2;
 
-    template <
-        typename = typename std::enable_if<std::is_default_constructible<First>::value &&
-                                           std::is_default_constructible<Second>::value>::type>
-    constexpr pair() noexcept(noexcept(First()) && noexcept(Second()))
+    template <typename = typename std::enable_if<std::is_default_constructible<T1>::value &&
+                                                 std::is_default_constructible<T2>::value>::type>
+    constexpr pair() noexcept(noexcept(T1()) && noexcept(T2()))
         : first()
         , second() {}
 
     // pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
-    explicit pair(std::pair<First, Second> const& o) noexcept(noexcept(First(o.first)) &&
-                                                              noexcept(Second(o.second)))
+    explicit constexpr pair(std::pair<T1, T2> const& o) noexcept(
+        noexcept(T1(std::declval<T1 const&>())) && noexcept(T2(std::declval<T2 const&>())))
         : first(o.first)
         , second(o.second) {}
 
     // pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
-    explicit pair(std::pair<First, Second>&& o) noexcept(noexcept(First(std::move(o.first))) &&
-                                                         noexcept(Second(std::move(o.second))))
+    explicit constexpr pair(std::pair<T1, T2>&& o) noexcept(
+        noexcept(T1(std::move(std::declval<T1&&>()))) &&
+        noexcept(T2(std::move(std::declval<T2&&>()))))
         : first(std::move(o.first))
         , second(std::move(o.second)) {}
 
-    constexpr pair(First const& firstArg, Second const& secondArg) noexcept(
-        noexcept(First(std::declval<First const&>())) &&
-        noexcept(Second(std::declval<Second const&>())))
-        : first(firstArg)
-        , second(secondArg) {}
+    constexpr pair(T1&& a, T2&& b) noexcept(noexcept(T1(std::move(std::declval<T1&&>()))) &&
+                                            noexcept(T2(std::move(std::declval<T2&&>()))))
+        : first(std::move(a))
+        , second(std::move(b)) {}
 
-    constexpr pair(First&& firstArg,
-                   Second&& secondArg) noexcept(noexcept(First(std::move(firstArg))) &&
-                                                noexcept(Second(std::move(secondArg))))
-        : first(std::move(firstArg))
-        , second(std::move(secondArg)) {}
+    constexpr pair(T1 const& a, T2 const& b) noexcept(noexcept(T1(std::declval<T1 const&>())) &&
+                                                      noexcept(T2(std::declval<T2 const&>())))
+        : first(std::move(a))
+        , second(std::move(b)) {}
 
-    template <typename FirstArg, typename SecondArg>
-    constexpr pair(FirstArg&& firstArg, SecondArg&& secondArg) noexcept(
-        noexcept(First(std::forward<FirstArg>(firstArg))) &&
-        noexcept(Second(std::forward<SecondArg>(secondArg))))
-        : first(std::forward<FirstArg>(firstArg))
-        , second(std::forward<SecondArg>(secondArg)) {}
+    template <typename U1, typename U2>
+    constexpr pair(U1&& a, U2&& b) noexcept(noexcept(T1(std::forward<U1>(std::declval<U1&&>()))) &&
+                                            noexcept(T2(std::forward<U2>(std::declval<U2&&>()))))
+        : first(std::forward<U1>(a))
+        , second(std::forward<U2>(b)) {}
 
     template <typename... Args1, typename... Args2>
     pair(std::piecewise_construct_t /*unused*/, std::tuple<Args1...> firstArgs,
@@ -591,13 +588,12 @@ struct pair {
     pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2,
          ROBIN_HOOD_STD_COMP::index_sequence<Indexes1...> /*unused*/,
          ROBIN_HOOD_STD_COMP::index_sequence<
-             Indexes2...> /*unused*/) noexcept(noexcept(First(std::
-                                                                  forward<Args1>(std::get<Indexes1>(
-                                                                      std::declval<std::tuple<
-                                                                          Args1...>&>()))...)) &&
-                                               noexcept(
-                                                   Second(std::forward<Args2>(std::get<Indexes2>(
-                                                       std::declval<std::tuple<Args2...>&>()))...)))
+             Indexes2...> /*unused*/) noexcept(noexcept(T1(std::
+                                                               forward<Args1>(std::get<Indexes1>(
+                                                                   std::declval<std::tuple<
+                                                                       Args1...>&>()))...)) &&
+                                               noexcept(T2(std::forward<Args2>(std::get<Indexes2>(
+                                                   std::declval<std::tuple<Args2...>&>()))...)))
         : first(std::forward<Args1>(std::get<Indexes1>(tuple1))...)
         , second(std::forward<Args2>(std::get<Indexes2>(tuple2))...) {
         // make visual studio compiler happy about warning about unused tuple1 & tuple2.
@@ -619,15 +615,15 @@ struct pair {
         return second;
     }
 
-    void swap(pair<First, Second>& o) noexcept((detail::swappable::nothrow<First>::value) &&
-                                               (detail::swappable::nothrow<Second>::value)) {
+    void swap(pair<T1, T2>& o) noexcept((detail::swappable::nothrow<T1>::value) &&
+                                        (detail::swappable::nothrow<T2>::value)) {
         using std::swap;
         swap(first, o.first);
         swap(second, o.second);
     }
 
-    First first;   // NOLINT(misc-non-private-member-variables-in-classes)
-    Second second; // NOLINT(misc-non-private-member-variables-in-classes)
+    T1 first;  // NOLINT(misc-non-private-member-variables-in-classes)
+    T2 second; // NOLINT(misc-non-private-member-variables-in-classes)
 };
 
 template <typename A, typename B>

@@ -79,5 +79,5 @@ TEST_CASE("pair_creating") {
 
     robin_hood::pair<std::string, uint64_t> p1 = {"asdf", UINT64_C(123)};
 
-    // robin_hood::pair<std::string, uint64_t> p2 = {{}, {}};
+    robin_hood::pair<std::string, uint64_t> p2 = {{}, {}};
 }
