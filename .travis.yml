@@ -139,7 +139,7 @@ script:
 
   # build
   - cd build
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug ${CMAKE_OPTIONS} && cmake --build . -- -j4
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug ${CMAKE_OPTIONS} && cmake --build . -- -j2
 
   # check file
   - file ./rh
