@@ -125,4 +125,36 @@ TEST_CASE_TEMPLATE("assignment combinations", Map,
         REQUIRE(a.size() == 1);
         REQUIRE(a.find(1) != a.end());
     }
+
+    {
+        Map a;
+        a[1] = 2;
+        Map b;
+        b[2] = 1;
+
+        // maps have the same number of elements, but are not equal.
+        REQUIRE(a != b);
+        REQUIRE(b != a);
+        REQUIRE(!(a == b));
+        REQUIRE(!(b == a));
+
+        Map c;
+        c[1] = 3;
+        REQUIRE(a != c);
+        REQUIRE(c != a);
+        REQUIRE(!(a == c));
+        REQUIRE(!(c == a));
+
+        b.clear();
+        REQUIRE(a != b);
+        REQUIRE(b != a);
+        REQUIRE(!(a == b));
+        REQUIRE(!(b == a));
+
+        Map empty;
+        REQUIRE(b == empty);
+        REQUIRE(empty == b);
+        REQUIRE(!(b != empty));
+        REQUIRE(!(empty != b));
+    }
 }
