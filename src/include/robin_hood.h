@@ -1058,11 +1058,14 @@ private:
         // compared to end().
         Iter() = default;
 
-        // Rule of zero: nothing specified.
+        // Rule of zero: nothing specified. The conversion constructor is only enabled for iterator
+        // to const_iterator, so it doesn't accidentally work as a copy ctor.
 
-        // Conversion constructor from iterator to const_iterator
+        // Conversion constructor from iterator to const_iterator.
+        template <bool OtherIsConst,
+                  typename = typename std::enable_if<IsConst && !OtherIsConst>::type>
         // NOLINTNEXTLINE(hicpp-explicit-conversions)
-        Iter(Iter<false> const& other) noexcept
+        Iter(Iter<OtherIsConst> const& other) noexcept
             : mKeyVals(other.mKeyVals)
             , mInfo(other.mInfo) {}
 
@@ -1075,6 +1078,14 @@ private:
             : mKeyVals(valPtr)
             , mInfo(infoPtr) {
             fastForward();
+        }
+
+        template <bool OtherIsConst,
+                  typename = typename std::enable_if<IsConst && !OtherIsConst>::type>
+        Iter& operator=(Iter<OtherIsConst> const& other) noexcept {
+            mKeyVals = other.mKeyVals;
+            mInfo = other.mInfo;
+            return *this;
         }
 
         // prefix increment. Undefined behavior if we are at end()!
