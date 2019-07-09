@@ -171,11 +171,11 @@
 namespace robin_hood {
 
 #if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
-#    define ROBIN_HOOD_STD_COMP std
+#    define ROBIN_HOOD_STD std
 #else
 
 // c++11 compatibility layer
-namespace ROBIN_HOOD_STD_COMP {
+namespace ROBIN_HOOD_STD {
 template <class T>
 struct alignment_of
     : std::integral_constant<std::size_t, alignof(typename std::remove_all_extents<T>::type)> {};
@@ -240,7 +240,7 @@ using make_index_sequence = make_integer_sequence<std::size_t, N>;
 template <class... T>
 using index_sequence_for = make_index_sequence<sizeof...(T)>;
 
-} // namespace ROBIN_HOOD_STD_COMP
+} // namespace ROBIN_HOOD_STD
 
 #endif
 
@@ -473,9 +473,9 @@ private:
         (std::max)(std::alignment_of<T>::value, std::alignment_of<T*>::value);
 #else
     static const size_t ALIGNMENT =
-        (ROBIN_HOOD_STD_COMP::alignment_of<T>::value > ROBIN_HOOD_STD_COMP::alignment_of<T*>::value)
-            ? ROBIN_HOOD_STD_COMP::alignment_of<T>::value
-            : +ROBIN_HOOD_STD_COMP::alignment_of<T*>::value; // the + is for walkarround
+        (ROBIN_HOOD_STD::alignment_of<T>::value > ROBIN_HOOD_STD::alignment_of<T*>::value)
+            ? ROBIN_HOOD_STD::alignment_of<T>::value
+            : +ROBIN_HOOD_STD::alignment_of<T*>::value; // the + is for walkarround
 #endif
 
     static constexpr size_t ALIGNED_SIZE = ((sizeof(T) - 1) / ALIGNMENT + 1) * ALIGNMENT;
@@ -567,34 +567,33 @@ struct pair {
         : first(std::forward<U1>(a))
         , second(std::forward<U2>(b)) {}
 
-    template <typename... Args1, typename... Args2>
-    pair(std::piecewise_construct_t /*unused*/, std::tuple<Args1...> firstArgs,
-         std::tuple<Args2...>
-             secondArgs) noexcept(noexcept(pair(std::declval<std::tuple<Args1...>&>(),
-                                                std::declval<std::tuple<Args2...>&>(),
-                                                ROBIN_HOOD_STD_COMP::index_sequence_for<Args1...>(),
-                                                ROBIN_HOOD_STD_COMP::index_sequence_for<
-                                                    Args2...>())))
-        : pair(firstArgs, secondArgs, ROBIN_HOOD_STD_COMP::index_sequence_for<Args1...>(),
-               ROBIN_HOOD_STD_COMP::index_sequence_for<Args2...>()) {}
+    template <typename... U1, typename... U2>
+    constexpr pair(
+        std::piecewise_construct_t /*unused*/, std::tuple<U1...> a,
+        std::tuple<U2...> b) noexcept(noexcept(pair(std::declval<std::tuple<U1...>&>(),
+                                                    std::declval<std::tuple<U2...>&>(),
+                                                    ROBIN_HOOD_STD::index_sequence_for<U1...>(),
+                                                    ROBIN_HOOD_STD::index_sequence_for<U2...>())))
+        : pair(a, b, ROBIN_HOOD_STD::index_sequence_for<U1...>(),
+               ROBIN_HOOD_STD::index_sequence_for<U2...>()) {}
 
     // constructor called from the std::piecewise_construct_t ctor
-    template <typename... Args1, size_t... Indexes1, typename... Args2, size_t... Indexes2>
-    pair(std::tuple<Args1...>& tuple1, std::tuple<Args2...>& tuple2,
-         ROBIN_HOOD_STD_COMP::index_sequence<Indexes1...> /*unused*/,
-         ROBIN_HOOD_STD_COMP::index_sequence<
-             Indexes2...> /*unused*/) noexcept(noexcept(T1(std::
-                                                               forward<Args1>(std::get<Indexes1>(
-                                                                   std::declval<std::tuple<
-                                                                       Args1...>&>()))...)) &&
-                                               noexcept(T2(std::forward<Args2>(std::get<Indexes2>(
-                                                   std::declval<std::tuple<Args2...>&>()))...)))
-        : first(std::forward<Args1>(std::get<Indexes1>(tuple1))...)
-        , second(std::forward<Args2>(std::get<Indexes2>(tuple2))...) {
-        // make visual studio compiler happy about warning about unused tuple1 & tuple2.
+    template <typename... U1, size_t... I1, typename... U2, size_t... I2>
+    pair(std::tuple<U1...>& a, std::tuple<U2...>& b,
+         ROBIN_HOOD_STD::index_sequence<I1...> /*unused*/,
+         ROBIN_HOOD_STD::index_sequence<
+             I2...> /*unused*/) noexcept(noexcept(T1(std::
+                                                         forward<U1>(std::get<I1>(
+                                                             std::declval<
+                                                                 std::tuple<U1...>&>()))...)) &&
+                                         noexcept(T2(std::forward<U2>(
+                                             std::get<I2>(std::declval<std::tuple<U2...>&>()))...)))
+        : first(std::forward<U1>(std::get<I1>(a))...)
+        , second(std::forward<U2>(std::get<I2>(b))...) {
+        // make visual studio compiler happy about warning about unused a & b.
         // Visual studio's pair implementation disables warning 4100.
-        (void)tuple1;
-        (void)tuple2;
+        (void)a;
+        (void)b;
     }
 
     ROBIN_HOOD(NODISCARD) first_type& getFirst() noexcept {
