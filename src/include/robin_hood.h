@@ -1671,44 +1671,26 @@ public:
         return 0;
     }
 
+    // reserves space for the specified number of elements. Makes sure the old data fits.
+    // exactly the same as reserve(c).
+    void rehash(size_t c) {
+        reserve(c);
+    }
+
+    // reserves space for the specified number of elements. Makes sure the old data fits.
+    // Exactly the same as resize(c). Use resize(0) to shrink to fit.
     void reserve(size_t c) {
         ROBIN_HOOD_TRACE(this);
-        auto newSize = InitialNumElements > mMask + 1 ? InitialNumElements : mMask + 1;
-        while (calcMaxNumElementsAllowed(newSize) < c && newSize != 0) {
+        auto const minElementsAllowed = (std::max)(c, mNumElements);
+        auto newSize = InitialNumElements;
+        while (calcMaxNumElementsAllowed(newSize) < minElementsAllowed && newSize != 0) {
             newSize *= 2;
         }
         if (ROBIN_HOOD_UNLIKELY(newSize == 0)) {
             throwOverflowError();
         }
 
-        rehash(newSize);
-    }
-
-    void rehash(size_t numBuckets) {
-        ROBIN_HOOD_TRACE(this);
-        if (ROBIN_HOOD_UNLIKELY((numBuckets & (numBuckets - 1)) != 0)) {
-            doThrow<std::runtime_error>("rehash only allowed for power of two");
-        }
-
-        Node* const oldKeyVals = mKeyVals;
-        uint8_t const* const oldInfo = mInfo;
-
-        const size_t oldMaxElements = mMask + 1;
-
-        // resize operation: move stuff
-        init_data(numBuckets);
-        if (oldMaxElements > 1) {
-            for (size_t i = 0; i < oldMaxElements; ++i) {
-                if (oldInfo[i] != 0) {
-                    insert_move(std::move(oldKeyVals[i]));
-                    // destroy the node but DON'T destroy the data.
-                    oldKeyVals[i].~Node();
-                }
-            }
-
-            // don't destroy old data: put it into the pool instead
-            DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElements));
-        }
+        rehashPowerOfTwo(newSize);
     }
 
     size_type size() const noexcept { // NOLINT(modernize-use-nodiscard)
@@ -1776,6 +1758,32 @@ public:
     }
 
 private:
+    // reserves space for at least the specified number of elements.
+    // only works if numBuckets if power of two
+    void rehashPowerOfTwo(size_t numBuckets) {
+        ROBIN_HOOD_TRACE(this);
+
+        Node* const oldKeyVals = mKeyVals;
+        uint8_t const* const oldInfo = mInfo;
+
+        const size_t oldMaxElements = mMask + 1;
+
+        // resize operation: move stuff
+        init_data(numBuckets);
+        if (oldMaxElements > 1) {
+            for (size_t i = 0; i < oldMaxElements; ++i) {
+                if (oldInfo[i] != 0) {
+                    insert_move(std::move(oldKeyVals[i]));
+                    // destroy the node but DON'T destroy the data.
+                    oldKeyVals[i].~Node();
+                }
+            }
+
+            // don't destroy old data: put it into the pool instead
+            DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElements));
+        }
+    }
+
     ROBIN_HOOD(NOINLINE) void throwOverflowError() const {
         throw std::overflow_error("robin_hood::map overflow");
     }
@@ -1953,7 +1961,7 @@ private:
             throwOverflowError();
         }
 
-        rehash((mMask + 1) * 2);
+        rehashPowerOfTwo((mMask + 1) * 2);
     }
 
     void destroy() {
