@@ -1742,6 +1742,15 @@ public:
         return mMask;
     }
 
+    size_t calcMaxNumElementsAllowed(size_t maxElements) const {
+        if (ROBIN_HOOD_LIKELY(maxElements <= (std::numeric_limits<size_t>::max)() / 100)) {
+            return maxElements * MaxLoadFactor100 / 100;
+        }
+
+        // we might be a bit inprecise, but since maxElements is quite large that doesn't matter
+        return (maxElements / 100) * MaxLoadFactor100;
+    }
+
     ROBIN_HOOD(NODISCARD) size_t calcNumBytesInfo(size_t numElements) const {
         return numElements + sizeof(uint64_t);
     }
@@ -1897,18 +1906,6 @@ private:
             ++mNumElements;
             return std::make_pair(iterator(mKeyVals + insertion_idx, mInfo + insertion_idx), true);
         }
-    }
-
-    size_t calcMaxNumElementsAllowed(size_t maxElements) {
-        static constexpr size_t overflowLimit = (std::numeric_limits<size_t>::max)() / 100;
-        static constexpr double factor = MaxLoadFactor100 / 100.0;
-
-        // make sure we can't get an overflow; use floatingpoint arithmetic if necessary.
-        if (maxElements > overflowLimit) {
-            return static_cast<size_t>(static_cast<double>(maxElements) * factor);
-        }
-
-        return (maxElements * MaxLoadFactor100) / 100;
     }
 
     bool try_increase_info() {
