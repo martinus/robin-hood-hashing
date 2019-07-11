@@ -978,16 +978,12 @@ private:
 
     template <typename M>
     struct Cloner<M, false> {
-        void operator()(M const& source, M& target) const {
-            // make sure to copy initialize sentinel as well
-            // std::memcpy(target.mInfo, source.mInfo, target.calcNumBytesInfo(target.mMask + 1));
-            std::copy(source.mInfo, source.mInfo + target.calcNumBytesInfo(target.mMask + 1),
-                      target.mInfo);
+        void operator()(M const& s, M& t) const {
+            std::copy(s.mInfo, s.mInfo + t.calcNumBytesInfo(t.mMask + 1), t.mInfo);
 
-            for (size_t i = 0; i < target.mMask + 1; ++i) {
-                if (target.mInfo[i]) {
-                    ::new (static_cast<void*>(target.mKeyVals + i))
-                        Node(target, *source.mKeyVals[i]);
+            for (size_t i = 0; i < t.mMask + 1; ++i) {
+                if (t.mInfo[i]) {
+                    ::new (static_cast<void*>(t.mKeyVals + i)) Node(t, *s.mKeyVals[i]);
                 }
             }
         }
@@ -1137,31 +1133,6 @@ private:
     };
 
     ////////////////////////////////////////////////////////////////////
-
-    ROBIN_HOOD(NODISCARD) size_t calcNumBytesInfo(size_t numElements) const {
-        const size_t s = sizeof(uint8_t) * (numElements + 1);
-        if (ROBIN_HOOD_UNLIKELY(s / sizeof(uint8_t) != numElements + 1)) {
-            throwOverflowError();
-        }
-        // make sure it's a bit larger, so we can load 64bit numbers
-        return s + sizeof(uint64_t);
-    }
-    ROBIN_HOOD(NODISCARD) size_t calcNumBytesNode(size_t numElements) const {
-        const size_t s = sizeof(Node) * numElements;
-        if (ROBIN_HOOD_UNLIKELY(s / sizeof(Node) != numElements)) {
-            throwOverflowError();
-        }
-        return s;
-    }
-    ROBIN_HOOD(NODISCARD) size_t calcNumBytesTotal(size_t numElements) const {
-        const size_t si = calcNumBytesInfo(numElements);
-        const size_t sn = calcNumBytesNode(numElements);
-        const size_t s = si + sn;
-        if (ROBIN_HOOD_UNLIKELY(s <= si || s <= sn)) {
-            throwOverflowError();
-        }
-        return s;
-    }
 
     // highly performance relevant code.
     // Lower bits are used for indexing into the array (2^n size)
@@ -1769,6 +1740,30 @@ public:
     ROBIN_HOOD(NODISCARD) size_t mask() const noexcept {
         ROBIN_HOOD_TRACE(this);
         return mMask;
+    }
+
+    ROBIN_HOOD(NODISCARD) size_t calcNumBytesInfo(size_t numElements) const {
+        return numElements + sizeof(uint64_t);
+    }
+
+    // calculation ony allowed for 2^n values
+    ROBIN_HOOD(NODISCARD) size_t calcNumBytesTotal(size_t numElements) const {
+#if ROBIN_HOOD(BITNESS) == 64
+        return numElements * sizeof(Node) + calcNumBytesInfo(numElements);
+#else
+        // make sure we're doing 64bit operations, so we are at least safe against 32bit overflows.
+        auto const ne = static_cast<uint64_t>(numElements);
+        auto const s = static_cast<uint64_t>(sizeof(Node));
+        auto const infos = static_cast<uint64_t>(calcNumBytesInfo(numElements));
+
+        auto const total64 = ne * s + infos;
+        auto const total = static_cast<size_t>(total64);
+
+        if (ROBIN_HOOD_UNLIKELY(static_cast<uint64_t>(total) != total64)) {
+            throwOverflowError();
+        }
+        return total;
+#endif
     }
 
 private:
