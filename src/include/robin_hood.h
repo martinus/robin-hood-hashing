@@ -1724,7 +1724,7 @@ public:
         return mMask;
     }
 
-    ROBIN_HOOD(NODISCARD) size_t calcMaxNumElementsAllowed(size_t maxElements) const {
+    ROBIN_HOOD(NODISCARD) size_t calcMaxNumElementsAllowed(size_t maxElements) const noexcept {
         if (ROBIN_HOOD_LIKELY(maxElements <= (std::numeric_limits<size_t>::max)() / 100)) {
             return maxElements * MaxLoadFactor100 / 100;
         }
