@@ -537,9 +537,10 @@ struct pair {
     using first_type = T1;
     using second_type = T2;
 
-    template <typename = typename std::enable_if<std::is_default_constructible<T1>::value &&
-                                                 std::is_default_constructible<T2>::value>::type>
-    constexpr pair() noexcept(noexcept(T1()) && noexcept(T2()))
+    template <typename U1 = T1, typename U2 = T2,
+              typename = typename std::enable_if<std::is_default_constructible<U1>::value &&
+                                                 std::is_default_constructible<U2>::value>::type>
+    constexpr pair() noexcept(noexcept(U1()) && noexcept(U2()))
         : first()
         , second() {}
 
