@@ -3,6 +3,8 @@
 #include <app/CtorDtorVerifier.h>
 #include <app/doctest.h>
 
+#include <unordered_set>
+
 TYPE_TO_STRING(robin_hood::unordered_flat_map<CtorDtorVerifier, CtorDtorVerifier>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<CtorDtorVerifier, CtorDtorVerifier>);
 
@@ -24,7 +26,9 @@ TEST_CASE_TEMPLATE("erase iterator", Map,
 
         it = map.begin();
         size_t currentSize = map.size();
+        std::unordered_set<uint64_t> keys;
         while (it != map.end()) {
+            REQUIRE(keys.emplace(it->first.val()).second);
             it = map.erase(it);
             currentSize--;
             REQUIRE(map.size() == currentSize);
