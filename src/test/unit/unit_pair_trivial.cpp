@@ -86,8 +86,8 @@ namespace {
 
 class Foo {
 public:
-    explicit Foo(uint64_t val) noexcept
-        : mVal(val) {}
+    explicit Foo(uint64_t v) noexcept
+        : mVal(v) {}
 
     uint64_t const& val() const {
         return mVal;
