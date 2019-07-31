@@ -1241,6 +1241,7 @@ private:
         // we don't retry, fail if overflowing
         // don't need to check max num elements
         if (0 == mMaxNumElementsAllowed && !try_increase_info()) {
+            ROBIN_HOOD_LOG("insert_move throws exception!");
             throwOverflowError();
         }
 

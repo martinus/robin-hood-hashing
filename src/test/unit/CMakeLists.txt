@@ -43,6 +43,7 @@ target_sources_local(rh PRIVATE
     include_only.cpp
     unit_include_only.cpp
     unit_initializerlist.cpp
+    unit_insert_move.cpp
     unit_iterators_ctor.cpp
     unit_iterators_empty.cpp
     unit_iterators_erase.cpp
