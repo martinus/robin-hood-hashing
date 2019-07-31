@@ -4,6 +4,8 @@ const uint64_t PerformanceCounters::no_data = static_cast<uint64_t>(-1);
 
 #ifdef __linux__
 
+#    include <robin_hood.h>
+
 // currently only linux is supported.
 
 #    include <cstdlib>
@@ -96,7 +98,11 @@ uint64_t const* PerformanceCounters::monitor(Event e) {
 
 #    if !defined(__clang__)
     default:
+#        if ROBIN_HOOD(HAS_EXCEPTIONS)
         throw std::runtime_error("unknown event");
+#        else
+        abort();
+#        endif
 #    endif
     }
 }
@@ -160,7 +166,11 @@ void PerformanceCounters::fetch() {
     auto const numBytes = sizeof(uint64_t) * mReadFormat.size();
     auto ret = read(mFd, mReadFormat.data(), numBytes);
     if (ret <= 0 || (ret % 8) != 0) {
+#    if ROBIN_HOOD(HAS_EXCEPTIONS)
         throw std::runtime_error("not enough bytes read - maybe monitor the same thing twice?");
+#    else
+        abort();
+#    endif
     }
 
     // clear old data

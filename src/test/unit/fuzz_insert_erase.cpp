@@ -19,6 +19,8 @@ std::ostream& operator<<(std::ostream& os, decltype(sfc64{}.state()) const& stat
     return os;
 }
 
+#if ROBIN_HOOD(HAS_EXCEPTIONS)
+
 TEST_CASE("fuzz insert erase" * doctest::test_suite("fuzz") * doctest::skip()) {
     sfc64 rng;
     size_t min_ops = 10000;
@@ -67,3 +69,5 @@ TEST_CASE("fuzz insert erase" * doctest::test_suite("fuzz") * doctest::skip()) {
         }
     }
 }
+
+#endif

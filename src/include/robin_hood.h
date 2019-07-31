@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // robin_hood::unordered_map for C++11
-// version 3.3.2
+// version 3.4.0
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -36,8 +36,8 @@
 
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 3 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 2 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_MINOR 4 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -96,6 +96,13 @@
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NOINLINE() __declspec(noinline)
 #else
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NOINLINE() __attribute__((noinline))
+#endif
+
+// exceptions
+#if !defined(__cpp_exceptions) && !defined(__EXCEPTIONS) && !defined(_CPPUNWIND)
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_EXCEPTIONS() 0
+#else
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_EXCEPTIONS() 1
 #endif
 
 // count leading/trailing bits
@@ -296,10 +303,16 @@ inline T reinterpret_cast_no_cast_align_warning(void const* ptr) noexcept {
 // inlinings more difficult. Throws are also generally the slow path.
 template <typename E, typename... Args>
 ROBIN_HOOD(NOINLINE)
+#if ROBIN_HOOD(HAS_EXCEPTIONS)
 void doThrow(Args&&... args) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
     throw E(std::forward<Args>(args)...);
 }
+#else
+void doThrow(Args&&... ROBIN_HOOD_UNUSED(args) /*unused*/) {
+    abort();
+}
+#endif
 
 template <typename E, typename T, typename... Args>
 T* assertNotNull(T* t, Args&&... args) {
@@ -1786,7 +1799,11 @@ private:
     }
 
     ROBIN_HOOD(NOINLINE) void throwOverflowError() const {
+#if ROBIN_HOOD(HAS_EXCEPTIONS)
         throw std::overflow_error("robin_hood::map overflow");
+#else
+        abort();
+#endif
     }
 
     void init_data(size_t max_elements) {

@@ -19,6 +19,12 @@ endif()
 
 add_executable(rh "")
 
+if (RH_no_exceptions)
+    target_compile_options(rh PRIVATE -fno-exceptions)
+    target_link_libraries(rh PRIVATE -fno-exceptions)
+    add_definitions(-DDOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS)
+endif()
+
 if (RH_sanitizer)
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         # see https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#silencing-unsigned-integer-overflow

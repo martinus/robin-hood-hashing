@@ -84,10 +84,16 @@ TEST_CASE("pair_creating") {
 
 namespace {
 
-struct Foo {
-    Foo(uint64_t val) noexcept
+class Foo {
+public:
+    explicit Foo(uint64_t val) noexcept
         : mVal(val) {}
 
+    uint64_t const& val() const {
+        return mVal;
+    }
+
+private:
     uint64_t mVal;
 };
 
@@ -97,5 +103,5 @@ TEST_CASE("pair with no default constructor") {
     uint64_t x = 123;
     robin_hood::pair<Foo, uint64_t> p(std::piecewise_construct, std::forward_as_tuple(x),
                                       std::forward_as_tuple(x));
-    REQUIRE(p.first.mVal == x);
+    REQUIRE(p.first.val() == x);
 }
