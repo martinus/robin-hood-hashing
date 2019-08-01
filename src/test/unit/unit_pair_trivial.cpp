@@ -89,7 +89,7 @@ public:
     explicit Foo(uint64_t v) noexcept
         : mVal(v) {}
 
-    uint64_t const& val() const {
+    ROBIN_HOOD(NODISCARD) uint64_t const& val() const {
         return mVal;
     }
 
