@@ -5,7 +5,7 @@
 //  /_/     \____/ /_.___/ /_/   /_/ /_/ ________/_/ /_/ \____/ \____/ \__,_/
 //                                      _/_____/
 //
-// robin_hood::unordered_map for C++11
+// Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
 // version 3.4.0
 // https://github.com/martinus/robin-hood-hashing
 //
