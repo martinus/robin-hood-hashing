@@ -809,9 +809,7 @@ namespace detail {
 template <bool IsFlatMap, size_t MaxLoadFactor100, typename Key, typename T, typename Hash,
           typename KeyEqual>
 class unordered_map
-    : public Hash,
-      public KeyEqual,
-      detail::NodeAllocator<
+    : detail::NodeAllocator<
           robin_hood::pair<typename std::conditional<IsFlatMap, Key, Key const>::type, T>, 4, 16384,
           IsFlatMap> {
 public:
@@ -1160,7 +1158,7 @@ private:
             typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
                                       ::robin_hood::detail::identity_hash<size_t>,
                                       ::robin_hood::hash<size_t>>::type;
-        *idx = Mix{}(Hash::operator()(key));
+        *idx = Mix{}(mHash(key));
 
         *info = mInfoInc + static_cast<InfoType>(*idx >> mInfoHashShift);
         *idx &= mMask;
@@ -1230,11 +1228,11 @@ private:
 
         do {
             // unrolling this twice gives a bit of a speedup. More unrolling did not help.
-            if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+            if (info == mInfo[idx] && mKeyEqual(key, mKeyVals[idx].getFirst())) {
                 return idx;
             }
             next(&info, &idx);
-            if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+            if (info == mInfo[idx] && mKeyEqual(key, mKeyVals[idx].getFirst())) {
                 return idx;
             }
             next(&info, &idx);
@@ -1307,16 +1305,16 @@ public:
                            const Hash& h = Hash{},
                            const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) &&
                                                                         noexcept(KeyEqual(equal)))
-        : Hash(h)
-        , KeyEqual(equal) {
+        : mHash(h)
+        , mKeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
     }
 
     template <typename Iter>
     unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
                   const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
-        : Hash(h)
-        , KeyEqual(equal) {
+        : mHash(h)
+        , mKeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
         insert(first, last);
     }
@@ -1324,15 +1322,15 @@ public:
     unordered_map(std::initializer_list<value_type> initlist,
                   size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
                   const KeyEqual& equal = KeyEqual{})
-        : Hash(h)
-        , KeyEqual(equal) {
+        : mHash(h)
+        , mKeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
         insert(initlist.begin(), initlist.end());
     }
 
     unordered_map(unordered_map&& o) noexcept
-        : Hash(std::move(static_cast<Hash&>(o)))
-        , KeyEqual(std::move(static_cast<KeyEqual&>(o)))
+        : mHash(std::move(o.mHash))
+        , mKeyEqual(std::move(o.mKeyEqual))
         , DataPool(std::move(static_cast<DataPool&>(o))) {
         ROBIN_HOOD_TRACE(this);
         if (o.mMask) {
@@ -1361,8 +1359,8 @@ public:
                 mMaxNumElementsAllowed = std::move(o.mMaxNumElementsAllowed);
                 mInfoInc = std::move(o.mInfoInc);
                 mInfoHashShift = std::move(o.mInfoHashShift);
-                Hash::operator=(std::move(static_cast<Hash&>(o)));
-                KeyEqual::operator=(std::move(static_cast<KeyEqual&>(o)));
+                Hash::operator=(std::move(o.mHash));
+                KeyEqual::operator=(std::move(o.mKeyEqual));
                 DataPool::operator=(std::move(static_cast<DataPool&>(o)));
 
                 o.init();
@@ -1376,8 +1374,8 @@ public:
     }
 
     unordered_map(const unordered_map& o)
-        : Hash(static_cast<const Hash&>(o))
-        , KeyEqual(static_cast<const KeyEqual&>(o))
+        : mHash(o.mHash)
+        , mKeyEqual(o.KeyEqual)
         , DataPool(static_cast<const DataPool&>(o)) {
         ROBIN_HOOD_TRACE(this);
         if (!o.empty()) {
@@ -1673,7 +1671,7 @@ public:
 
         // check while info matches with the source idx
         do {
-            if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+            if (info == mInfo[idx] && mKeyEqual(key, mKeyVals[idx].getFirst())) {
                 shiftDown(idx);
                 --mNumElements;
                 return 1;
@@ -1834,7 +1832,7 @@ private:
             // while we potentially have a match. Can't do a do-while here because when mInfo is 0
             // we don't want to skip forward
             while (info == mInfo[idx]) {
-                if (KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+                if (mKeyEqual(key, mKeyVals[idx].getFirst())) {
                     // key already exists, do not insert.
                     return mKeyVals[idx].getSecond();
                 }
@@ -1891,7 +1889,7 @@ private:
 
             // while we potentially have a match
             while (info == mInfo[idx]) {
-                if (KeyEqual::operator()(keyval.getFirst(), mKeyVals[idx].getFirst())) {
+                if (mKeyEqual(keyval.getFirst(), mKeyVals[idx].getFirst())) {
                     // key already exists, do NOT insert.
                     // see http://en.cppreference.com/w/cpp/container/unordered_map/insert
                     return std::make_pair<iterator, bool>(iterator(mKeyVals + idx, mInfo + idx),
@@ -2004,6 +2002,8 @@ private:
     }
 
     // members are sorted so no padding occurs
+    Hash mHash;
+    KeyEqual mKeyEqual;
     Node* mKeyVals = reinterpret_cast<Node*>(&mMask);    // 8 byte  8
     uint8_t* mInfo = reinterpret_cast<uint8_t*>(&mMask); // 8 byte 16
     size_t mNumElements = 0;                             // 8 byte 24
