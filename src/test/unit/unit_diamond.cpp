@@ -14,6 +14,7 @@ struct HashWithEqual {
 };
 
 // create simple wrapper classes, use these in the map
+// see https://stackoverflow.com/a/28771920/48181
 struct WrapHash : public HashWithEqual {};
 struct WrapEquals : public HashWithEqual {};
 
