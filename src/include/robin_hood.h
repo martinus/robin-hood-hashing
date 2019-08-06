@@ -1329,9 +1329,9 @@ public:
     }
 
     unordered_map(unordered_map&& o) noexcept
-        : mHash(std::move(o.mHash))
-        , mKeyEqual(std::move(o.mKeyEqual))
-        , DataPool(std::move(static_cast<DataPool&>(o))) {
+        : DataPool(std::move(static_cast<DataPool&>(o)))
+        , mHash(std::move(o.mHash))
+        , mKeyEqual(std::move(o.mKeyEqual)) {
         ROBIN_HOOD_TRACE(this);
         if (o.mMask) {
             mKeyVals = std::move(o.mKeyVals);
@@ -1374,9 +1374,9 @@ public:
     }
 
     unordered_map(const unordered_map& o)
-        : mHash(o.mHash)
-        , mKeyEqual(o.KeyEqual)
-        , DataPool(static_cast<const DataPool&>(o)) {
+        : DataPool(static_cast<const DataPool&>(o))
+        , mHash(o.mHash)
+        , mKeyEqual(o.KeyEqual) {
         ROBIN_HOOD_TRACE(this);
         if (!o.empty()) {
             // not empty: create an exact copy. it is also possible to just iterate through all
