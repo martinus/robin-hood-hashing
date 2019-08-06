@@ -1359,9 +1359,9 @@ public:
                 mMaxNumElementsAllowed = std::move(o.mMaxNumElementsAllowed);
                 mInfoInc = std::move(o.mInfoInc);
                 mInfoHashShift = std::move(o.mInfoHashShift);
-                Hash::operator=(std::move(o.mHash));
-                KeyEqual::operator=(std::move(o.mKeyEqual));
                 DataPool::operator=(std::move(static_cast<DataPool&>(o)));
+                mHash = std::move(o.mHash);
+                mKeyEqual = std::move(o.mKeyEqual);
 
                 o.init();
 
@@ -1376,7 +1376,7 @@ public:
     unordered_map(const unordered_map& o)
         : DataPool(static_cast<const DataPool&>(o))
         , mHash(o.mHash)
-        , mKeyEqual(o.KeyEqual) {
+        , mKeyEqual(o.mKeyEqual) {
         ROBIN_HOOD_TRACE(this);
         if (!o.empty()) {
             // not empty: create an exact copy. it is also possible to just iterate through all
@@ -1415,9 +1415,9 @@ public:
             // clear also resets mInfo to 0, that's sometimes not necessary.
             destroy();
             init();
-            Hash::operator=(static_cast<const Hash&>(o));
-            KeyEqual::operator=(static_cast<const KeyEqual&>(o));
             DataPool::operator=(static_cast<DataPool const&>(o));
+            mHash = o.mHash;
+            mKeyEqual = o.mKeyEqual;
 
             return *this;
         }
@@ -1439,9 +1439,9 @@ public:
             mInfo = reinterpret_cast<uint8_t*>(mKeyVals + o.mMask + 1);
             // sentinel is set in cloneData
         }
-        Hash::operator=(static_cast<const Hash&>(o));
-        KeyEqual::operator=(static_cast<const KeyEqual&>(o));
         DataPool::operator=(static_cast<DataPool const&>(o));
+        mHash = o.mHash;
+        mKeyEqual = o.mKeyEqual;
         mNumElements = o.mNumElements;
         mMask = o.mMask;
         mMaxNumElementsAllowed = o.mMaxNumElementsAllowed;
