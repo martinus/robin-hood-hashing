@@ -2,7 +2,7 @@
 
 #include <app/doctest.h>
 
-// struct that provides both hash and equals operator. Can't directly use this in the robin_hood::map.
+// struct that provides both hash and equals operator
 struct HashWithEqual {
     size_t operator()(int x) const {
         return static_cast<size_t>(x);
@@ -13,13 +13,9 @@ struct HashWithEqual {
     }
 };
 
-// create simple wrapper classes, use these in the map
-// see https://stackoverflow.com/a/28771920/48181
-struct WrapHash : public HashWithEqual {};
-struct WrapEquals : public HashWithEqual {};
-
-TEST_CASE("diamond_problem_workaround") {
-    robin_hood::unordered_flat_map<int, int, WrapHash, WrapEquals> map;
+// make sure the map works with the same type (check that it handles the diamond problem)
+TEST_CASE("diamond_problem") {
+    robin_hood::unordered_flat_map<int, int, HashWithEqual, HashWithEqual> map;
     map[1] = 2;
     REQUIRE(map.size() == 1);
     REQUIRE(map.find(1) != map.end());

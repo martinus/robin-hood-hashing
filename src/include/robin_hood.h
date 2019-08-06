@@ -779,6 +779,22 @@ ROBIN_HOOD_HASH_INT(unsigned long long);
 #endif
 namespace detail {
 
+// using wrapper classes for hash and key_equal prevents the diamond problem when the same type is
+// used. see https://stackoverflow.com/a/28771920/48181
+template <typename T>
+struct WrapHash : public T {
+    WrapHash() = default;
+    explicit WrapHash(T const& o) noexcept(noexcept(T(std::declval<T const&>())))
+        : T(o) {}
+};
+
+template <typename T>
+struct WrapKeyEqual : public T {
+    WrapKeyEqual() = default;
+    explicit WrapKeyEqual(T const& o) noexcept(noexcept(T(std::declval<T const&>())))
+        : T(o) {}
+};
+
 // A highly optimized hashmap implementation, using the Robin Hood algorithm.
 //
 // In most cases, this map should be usable as a drop-in replacement for std::unordered_map, but be
@@ -809,8 +825,8 @@ namespace detail {
 template <bool IsFlatMap, size_t MaxLoadFactor100, typename Key, typename T, typename Hash,
           typename KeyEqual>
 class unordered_map
-    : public Hash,
-      public KeyEqual,
+    : public WrapHash<Hash>,
+      public WrapKeyEqual<KeyEqual>,
       detail::NodeAllocator<
           robin_hood::pair<typename std::conditional<IsFlatMap, Key, Key const>::type, T>, 4, 16384,
           IsFlatMap> {
@@ -829,6 +845,9 @@ public:
 private:
     static_assert(MaxLoadFactor100 > 10 && MaxLoadFactor100 < 100,
                   "MaxLoadFactor100 needs to be >10 && < 100");
+
+    using WHash = WrapHash<Hash>;
+    using WKeyEqual = WrapKeyEqual<KeyEqual>;
 
     // configuration defaults
 
@@ -1160,7 +1179,7 @@ private:
             typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
                                       ::robin_hood::detail::identity_hash<size_t>,
                                       ::robin_hood::hash<size_t>>::type;
-        *idx = Mix{}(Hash::operator()(key));
+        *idx = Mix{}(WHash::operator()(key));
 
         *info = mInfoInc + static_cast<InfoType>(*idx >> mInfoHashShift);
         *idx &= mMask;
@@ -1230,11 +1249,11 @@ private:
 
         do {
             // unrolling this twice gives a bit of a speedup. More unrolling did not help.
-            if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+            if (info == mInfo[idx] && WKeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
                 return idx;
             }
             next(&info, &idx);
-            if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+            if (info == mInfo[idx] && WKeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
                 return idx;
             }
             next(&info, &idx);
@@ -1307,16 +1326,16 @@ public:
                            const Hash& h = Hash{},
                            const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) &&
                                                                         noexcept(KeyEqual(equal)))
-        : Hash(h)
-        , KeyEqual(equal) {
+        : WHash(h)
+        , WKeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
     }
 
     template <typename Iter>
     unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
                   const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
-        : Hash(h)
-        , KeyEqual(equal) {
+        : WHash(h)
+        , WKeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
         insert(first, last);
     }
@@ -1324,15 +1343,15 @@ public:
     unordered_map(std::initializer_list<value_type> initlist,
                   size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
                   const KeyEqual& equal = KeyEqual{})
-        : Hash(h)
-        , KeyEqual(equal) {
+        : WHash(h)
+        , WKeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
         insert(initlist.begin(), initlist.end());
     }
 
     unordered_map(unordered_map&& o) noexcept
-        : Hash(std::move(static_cast<Hash&>(o)))
-        , KeyEqual(std::move(static_cast<KeyEqual&>(o)))
+        : WHash(std::move(static_cast<WHash&>(o)))
+        , WKeyEqual(std::move(static_cast<WKeyEqual&>(o)))
         , DataPool(std::move(static_cast<DataPool&>(o))) {
         ROBIN_HOOD_TRACE(this);
         if (o.mMask) {
@@ -1361,8 +1380,8 @@ public:
                 mMaxNumElementsAllowed = std::move(o.mMaxNumElementsAllowed);
                 mInfoInc = std::move(o.mInfoInc);
                 mInfoHashShift = std::move(o.mInfoHashShift);
-                Hash::operator=(std::move(static_cast<Hash&>(o)));
-                KeyEqual::operator=(std::move(static_cast<KeyEqual&>(o)));
+                WHash::operator=(std::move(static_cast<WHash&>(o)));
+                WKeyEqual::operator=(std::move(static_cast<WKeyEqual&>(o)));
                 DataPool::operator=(std::move(static_cast<DataPool&>(o)));
 
                 o.init();
@@ -1376,8 +1395,8 @@ public:
     }
 
     unordered_map(const unordered_map& o)
-        : Hash(static_cast<const Hash&>(o))
-        , KeyEqual(static_cast<const KeyEqual&>(o))
+        : WHash(static_cast<const WHash&>(o))
+        , WKeyEqual(static_cast<const WKeyEqual&>(o))
         , DataPool(static_cast<const DataPool&>(o)) {
         ROBIN_HOOD_TRACE(this);
         if (!o.empty()) {
@@ -1417,8 +1436,8 @@ public:
             // clear also resets mInfo to 0, that's sometimes not necessary.
             destroy();
             init();
-            Hash::operator=(static_cast<const Hash&>(o));
-            KeyEqual::operator=(static_cast<const KeyEqual&>(o));
+            WHash::operator=(static_cast<const WHash&>(o));
+            WKeyEqual::operator=(static_cast<const WKeyEqual&>(o));
             DataPool::operator=(static_cast<DataPool const&>(o));
 
             return *this;
@@ -1441,8 +1460,8 @@ public:
             mInfo = reinterpret_cast<uint8_t*>(mKeyVals + o.mMask + 1);
             // sentinel is set in cloneData
         }
-        Hash::operator=(static_cast<const Hash&>(o));
-        KeyEqual::operator=(static_cast<const KeyEqual&>(o));
+        WHash::operator=(static_cast<const WHash&>(o));
+        WKeyEqual::operator=(static_cast<const WKeyEqual&>(o));
         DataPool::operator=(static_cast<DataPool const&>(o));
         mNumElements = o.mNumElements;
         mMask = o.mMask;
@@ -1673,7 +1692,7 @@ public:
 
         // check while info matches with the source idx
         do {
-            if (info == mInfo[idx] && KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+            if (info == mInfo[idx] && WKeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
                 shiftDown(idx);
                 --mNumElements;
                 return 1;
@@ -1834,7 +1853,7 @@ private:
             // while we potentially have a match. Can't do a do-while here because when mInfo is 0
             // we don't want to skip forward
             while (info == mInfo[idx]) {
-                if (KeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+                if (WKeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
                     // key already exists, do not insert.
                     return mKeyVals[idx].getSecond();
                 }
@@ -1891,7 +1910,7 @@ private:
 
             // while we potentially have a match
             while (info == mInfo[idx]) {
-                if (KeyEqual::operator()(keyval.getFirst(), mKeyVals[idx].getFirst())) {
+                if (WKeyEqual::operator()(keyval.getFirst(), mKeyVals[idx].getFirst())) {
                     // key already exists, do NOT insert.
                     // see http://en.cppreference.com/w/cpp/container/unordered_map/insert
                     return std::make_pair<iterator, bool>(iterator(mKeyVals + idx, mInfo + idx),
