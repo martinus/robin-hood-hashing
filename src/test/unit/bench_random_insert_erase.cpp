@@ -10,7 +10,7 @@ TYPE_TO_STRING(robin_hood::unordered_node_map<int, int>);
 TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, uint64_t>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<uint64_t, uint64_t>);
 
-TEST_CASE_TEMPLATE("bench random insert erase" * doctest::test_suite("bench") * doctest::skip(),
+TEST_CASE_TEMPLATE("bench_random_insert_erase" * doctest::test_suite("bench") * doctest::skip(),
                    Map, robin_hood::unordered_flat_map<int, int>,
                    robin_hood::unordered_node_map<int, int>,
                    robin_hood::unordered_flat_map<uint64_t, uint64_t>,

@@ -10,7 +10,7 @@ TYPE_TO_STRING(robin_hood::unordered_node_map<int, int>);
 // benchmark adapted from https://github.com/attractivechaos/udb2
 // this implementation should have less overhead, because sfc64 and it's uniform() is extremely
 // fast.
-TEST_CASE_TEMPLATE("bench distinctness" * doctest::test_suite("bench") * doctest::skip(), Map,
+TEST_CASE_TEMPLATE("bench_distinctness" * doctest::test_suite("bench") * doctest::skip(), Map,
                    robin_hood::unordered_flat_map<int, int>,
                    robin_hood::unordered_node_map<int, int>) {
     using mt = typename Map::mapped_type;
@@ -21,7 +21,7 @@ TEST_CASE_TEMPLATE("bench distinctness" * doctest::test_suite("bench") * doctest
     static mt const step_width = (upper - lower) / num_steps;
 
     mt divisor = 0;
-    char const* title = "";
+    std::string title;
     int required_checksum = 0;
 
     SUBCASE("5%") {
@@ -48,7 +48,7 @@ TEST_CASE_TEMPLATE("bench distinctness" * doctest::test_suite("bench") * doctest
     sfc64 rng(123);
     int checksum = 0;
     {
-        Benchmark bench(title);
+        Benchmark bench(title + " " + type_string(Map{}));
         mt count = 0;
         for (mt n = lower; n <= upper; n += step_width) {
             mt const max_rng = divisor == 0 ? (std::numeric_limits<mt>::max)() : n / divisor;

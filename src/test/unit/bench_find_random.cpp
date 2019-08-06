@@ -9,7 +9,7 @@
 TYPE_TO_STRING(robin_hood::unordered_flat_map<size_t, size_t>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<size_t, size_t>);
 
-TEST_CASE_TEMPLATE("bench find random" * doctest::test_suite("bench") * doctest::skip(), Map,
+TEST_CASE_TEMPLATE("bench_find_random" * doctest::test_suite("bench") * doctest::skip(), Map,
                    robin_hood::unordered_flat_map<size_t, size_t>,
                    robin_hood::unordered_node_map<size_t, size_t>) {
 
@@ -38,8 +38,8 @@ TEST_CASE_TEMPLATE("bench find random" * doctest::test_suite("bench") * doctest:
         requiredChecksum = 99994482;
     }
 
-    std::string const title =
-        "random find " + std::to_string(numFound * 100 / numTotal) + "% success";
+    std::string const title = "random find " + std::to_string(numFound * 100 / numTotal) +
+                              "% success" + type_string(Map{});
 
     sfc64 rng(123);
 
