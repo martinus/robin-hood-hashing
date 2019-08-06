@@ -18,7 +18,7 @@ struct HashWithEqual {
 struct WrapHash : public HashWithEqual {};
 struct WrapEquals : public HashWithEqual {};
 
-TEST_CASE("bulkpoolallocator addOrFree") {
+TEST_CASE("diamond_problem_workaround") {
     robin_hood::unordered_flat_map<int, int, WrapHash, WrapEquals> map;
     map[1] = 2;
     REQUIRE(map.size() == 1);
