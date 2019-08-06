@@ -38,6 +38,7 @@ target_sources_local(rh PRIVATE
     unit_calcsize.cpp
     unit_copyassignment.cpp
     unit_count.cpp
+    unit_diamond.cpp
     unit_empty.cpp
     include_only.h
     include_only.cpp
