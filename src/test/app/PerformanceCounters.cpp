@@ -2,7 +2,7 @@
 
 const uint64_t PerformanceCounters::no_data = static_cast<uint64_t>(-1);
 
-#ifdef __linux__
+#if defined(__linux__) && PERFORMANCE_COUNTERS_ENABLED()
 
 #    include <robin_hood.h>
 

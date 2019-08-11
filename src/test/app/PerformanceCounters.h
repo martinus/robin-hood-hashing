@@ -1,6 +1,9 @@
 #ifndef APP_PERFORMANCECOUNTERS_H
 #define APP_PERFORMANCECOUNTERS_H
 
+// enable/disable performance counters here
+#define PERFORMANCE_COUNTERS_ENABLED() 1
+
 #include <cinttypes>
 #include <cstddef>
 #include <map>
@@ -110,7 +113,7 @@ public:
     uint64_t const* monitor(uint32_t type, uint64_t eventid);
 
 private:
-#ifdef __linux__
+#if defined(__linux__) && PERFORMANCE_COUNTERS_ENABLED()
     std::map<uint64_t, uint64_t> mIdToValue{};
     std::vector<uint64_t> mReadFormat{};
     uint64_t mTimeEnabledNanos = 0;
