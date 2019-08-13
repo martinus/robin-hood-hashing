@@ -6,7 +6,9 @@
 #include <iostream>
 
 namespace robin_hood {
-namespace compiletime_hash {
+// NOLINTNEXTLINE(modernize-concat-nested-namespaces)
+namespace compiletime {
+namespace hash {
 
 constexpr uint64_t xoshi_r(uint64_t h) {
     return h ^ (h >> 47U);
@@ -31,7 +33,6 @@ constexpr uint64_t rest(const char* data, size_t n, uint64_t h) {
     return n == 0 ? h : mul_m(h ^ fetch(data, n));
 }
 
-// potentially fetches remaining 1-7 bytes
 constexpr uint64_t fmix(uint64_t h) {
     return xoshi_r(mul_m(xoshi_r(h)));
 }
@@ -41,22 +42,21 @@ constexpr uint64_t mix(uint64_t h, uint64_t k) {
 }
 
 // Control function for the mixing
-constexpr uint64_t hash_block(const char* data, size_t n, uint64_t h) {
-    return n >= 8 ? hash_block(data + 8, n - 8, mix(h, fetch(data))) : fmix(rest(data, n, h));
+constexpr uint64_t block(const char* data, size_t n, uint64_t h) {
+    return n >= 8 ? block(data + 8, n - 8, mix(h, fetch(data))) : fmix(rest(data, n, h));
 }
 
-constexpr uint64_t hash_bytes(const char* data, size_t n) {
-    return hash_block(data, n, UINT64_C(0xe17a1465) ^ mul_m(n));
+constexpr uint64_t calc(const char* data, size_t n, uint64_t seed) {
+    return block(data, n, seed ^ mul_m(n));
 }
 
-constexpr size_t strlen(const char* data) {
-    return data[0] == 0 ? 0 : 1 + strlen(data + 1);
-}
+} // namespace hash
+} // namespace compiletime
 
-} // namespace compiletime_hash
-
-constexpr size_t hash_bytes(char const* data) {
-    return static_cast<size_t>(compiletime_hash::hash_bytes(data, compiletime_hash::strlen(data)));
+template <size_t N>
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
+constexpr size_t hash_bytes(char const (&data)[N], uint64_t seed = UINT64_C(0xe17a1465)) {
+    return static_cast<size_t>(compiletime::hash::calc(data, N - 1, seed));
 }
 
 } // namespace robin_hood
