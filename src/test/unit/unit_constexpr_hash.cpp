@@ -49,23 +49,30 @@ constexpr uint64_t hash_bytes(const char* data, size_t n) {
     return hash_block(data, n, UINT64_C(0xe17a1465) ^ mul_m(n));
 }
 
+constexpr size_t strlen(const char* data) {
+    return data[0] == 0 ? 0 : 1 + strlen(data + 1);
+}
+
 } // namespace compiletime_hash
 
-template <size_t N>
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
-constexpr size_t hash_bytes(char const (&data)[N]) {
-    return static_cast<size_t>(compiletime_hash::hash_bytes(data, N - 1));
+constexpr size_t hash_bytes(char const* data) {
+    return static_cast<size_t>(compiletime_hash::hash_bytes(data, compiletime_hash::strlen(data)));
 }
 
 } // namespace robin_hood
 
-template <size_t S>
-size_t forceCompileTime() {
-    return S;
-}
+#if defined(_MSC_VER)
+#    define ROBIN_HOOD_HASH(str)                                                           \
+        __pragma(warning(push)) __pragma(warning(disable : 4307))                          \
+            std::integral_constant<size_t, ::robin_hood::hash_bytes(str)>::value __pragma( \
+                warning(pop))
+#else
+#    define ROBIN_HOOD_HASH(str) \
+        std::integral_constant<size_t, ::robin_hood::hash_bytes(str)>::value
+#endif
 
 #define ROBIN_HOOD_HASH_CHECK(str) \
-    REQUIRE(robin_hood::hash<std::string>{}(str) == forceCompileTime<robin_hood::hash_bytes(str)>())
+    REQUIRE(robin_hood::hash<std::string>{}(str) == ROBIN_HOOD_HASH(str))
 
 TEST_CASE("constexpr_hash") {
     ROBIN_HOOD_HASH_CHECK("This is my test string. It's rather long, but that's ok.!");
