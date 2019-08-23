@@ -1767,7 +1767,7 @@ public:
     }
 
     ROBIN_HOOD(NODISCARD) size_t calcNumBytesInfo(size_t numElements) const {
-        return numElements + sizeof(uint64_t);
+        return numElements * sizeof(uint64_t);
     }
 
     // calculation ony allowed for 2^n values
