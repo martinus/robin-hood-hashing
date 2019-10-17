@@ -82,7 +82,7 @@
 #endif
 
 // endianess
-#ifdef _WIN32
+#ifdef _MSC_VER
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_LITTLE_ENDIAN() 1
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_BIG_ENDIAN() 0
 #else
@@ -92,7 +92,7 @@
 #endif
 
 // inline
-#ifdef _WIN32
+#ifdef _MSC_VER
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NOINLINE() __declspec(noinline)
 #else
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NOINLINE() __attribute__((noinline))
@@ -106,7 +106,7 @@
 #endif
 
 // count leading/trailing bits
-#ifdef _WIN32
+#ifdef _MSC_VER
 #    if ROBIN_HOOD(BITNESS) == 32
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward
 #    else
@@ -146,7 +146,7 @@
 #endif
 
 // likely/unlikely
-#if defined(_WIN32)
+#ifdef _MSC_VER
 #    define ROBIN_HOOD_LIKELY(condition) condition
 #    define ROBIN_HOOD_UNLIKELY(condition) condition
 #else
@@ -267,7 +267,7 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
     *high = static_cast<uint64_t>(result >> 64U);
     return static_cast<uint64_t>(result);
 }
-#elif (defined(_WIN32) && ROBIN_HOOD(BITNESS) == 64)
+#elif (defined(_MSC_VER) && ROBIN_HOOD(BITNESS) == 64)
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_UMUL128() 1
 #    include <intrin.h> // for __umulh
 #    pragma intrinsic(__umulh)
