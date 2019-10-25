@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
-// version 3.4.1
+// version 3.4.2
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 4 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 2 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -115,12 +115,11 @@
 #    include <intrin.h>
 #    pragma intrinsic(ROBIN_HOOD(BITSCANFORWARD))
 #    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                       \
-        [](size_t mask) noexcept->int {                                               \
+        [](size_t mask) noexcept -> int {                                             \
             unsigned long index;                                                      \
             return ROBIN_HOOD(BITSCANFORWARD)(&index, mask) ? static_cast<int>(index) \
                                                             : ROBIN_HOOD(BITNESS);    \
-        }                                                                             \
-        (x)
+        }(x)
 #else
 #    if ROBIN_HOOD(BITNESS) == 32
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzl
@@ -2009,7 +2008,14 @@ private:
 
         Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}
             .nodesDoNotDeallocate(*this);
-        free(mKeyVals);
+
+        // This protection against not deleting mMask shouldn't be needed as it's sufficiently
+        // protected with the 0==mMask check, but I have this anyways because g++ 7 otherwise
+        // reports a compile error: attempt to free a non-heap object ‘fm’
+        // [-Werror=free-nonheap-object]
+        if (mKeyVals != reinterpret_cast<Node*>(&mMask)) {
+            free(mKeyVals);
+        }
     }
 
     void init() noexcept {
