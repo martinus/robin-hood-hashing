@@ -53,6 +53,7 @@ CtorDtorVerifier& CtorDtorVerifier::operator=(CtorDtorVerifier&& o) {
     return *this;
 }
 
+// NOLINTNEXTLINE(bugprone-unhandled-self-assignment,cert-oop54-cpp)
 CtorDtorVerifier& CtorDtorVerifier::operator=(const CtorDtorVerifier& o) {
     REQUIRE(1 == constructedAddresses().count(this));
     REQUIRE(1 == constructedAddresses().count(&o));

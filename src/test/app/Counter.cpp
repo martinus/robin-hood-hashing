@@ -58,6 +58,7 @@ bool Counter::Obj::operator<(const Obj& o) const {
     return mData < o.mData;
 }
 
+// NOLINTNEXTLINE(bugprone-unhandled-self-assignment,cert-oop54-cpp)
 Counter::Obj& Counter::Obj::operator=(const Counter::Obj& o) {
     mCounts = o.mCounts;
     if (nullptr != mCounts) {
