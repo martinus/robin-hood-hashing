@@ -80,8 +80,7 @@ constexpr size_t hash_bytes(char const* data) {
 #endif
     return static_cast<size_t>(hash::calc(data, strlen(data), UINT64_C(0xe17a1465)));
 #if defined(_MSC_VER)
-#    pragma warning(push)
-#    pragma warning(disable : 4307)
+#    pragma warning(pop)
 #endif
 }
 
