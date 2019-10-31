@@ -165,7 +165,8 @@ TEST_CASE("constexpr_strlen") {
 TEST_CASE("constexpr_hash_usage") {
     std::string str = "affaseaseasasd fsdflaksdlflsdf";
     switch (ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(robin_hood::hash_bytes(str.data(), str.size()))) {
-    case robin_hood::compiletime::hash_bytes("affaseaseasasd fsdflaksdlflsdf"):
+    case ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(
+        robin_hood::compiletime::hash_bytes("affaseaseasasd fsdflaksdlflsdf")):
         // ok
         break;
 
