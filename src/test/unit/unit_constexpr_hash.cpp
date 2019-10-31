@@ -80,6 +80,8 @@ constexpr size_t strlen(char const* data, size_t offset = 0, size_t level = 64) 
 #    define ROBIN_HOOD_NO_WARN_MSC(warnings, x) x
 #endif
 
+#define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(op) ROBIN_HOOD_NO_WARN_MSC(4307, op)
+
 constexpr size_t hash_bytes(char const* data) {
     return static_cast<size_t>(hash::calc(data, strlen(data), UINT64_C(0xe17a1465)));
 }
@@ -89,12 +91,14 @@ constexpr size_t hash_bytes(char const* data) {
 
 TEST_CASE("constexpr_strlen") {
     constexpr auto x = "x";
-    constexpr auto hx = ROBIN_HOOD_NO_WARN_MSC(4307, robin_hood::compiletime::hash_bytes(x));
+    constexpr auto hx =
+        ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(robin_hood::compiletime::hash_bytes(x));
     REQUIRE(hx == robin_hood::hash_bytes(x, strlen(x)));
     REQUIRE(strlen(x) == robin_hood::compiletime::strlen(x));
 
     constexpr auto hello = "hello";
-    constexpr auto hhello = robin_hood::compiletime::hash_bytes(hello);
+    constexpr auto hhello =
+        ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(robin_hood::compiletime::hash_bytes(hello));
     REQUIRE(hhello == robin_hood::hash_bytes(hello, strlen(hello)));
     REQUIRE(strlen(hello) == robin_hood::compiletime::strlen(hello));
 
@@ -102,7 +106,8 @@ TEST_CASE("constexpr_strlen") {
                            "k kkkkkkkkkkkkkkkkkkkkkkakkkkkkkkkkk askdf kskdfk askdf kksakd "
                            "fksk dksakdfkaskd fkskadf kskxxxdfk skad fkksdfk ksdfk ksadkfk s "
                            "kdfkasdfk ksadfk ksakskdkasdfkaksdfk askdfk aksdfksadfksaskdfkas";
-    constexpr auto hwasdf = robin_hood::compiletime::hash_bytes(wasdf);
+    constexpr auto hwasdf =
+        ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(robin_hood::compiletime::hash_bytes(wasdf));
     REQUIRE(hwasdf == robin_hood::hash_bytes(wasdf, strlen(wasdf)));
     REQUIRE(strlen(wasdf) == robin_hood::compiletime::strlen(wasdf));
 
@@ -150,14 +155,16 @@ TEST_CASE("constexpr_strlen") {
         "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
         "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678"
         "9";
-    constexpr auto htxt = robin_hood::compiletime::hash_bytes(txt);
+
+    constexpr auto htxt =
+        ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(robin_hood::compiletime::hash_bytes(txt));
     REQUIRE(htxt == robin_hood::hash_bytes(txt, strlen(txt)));
     REQUIRE(strlen(txt) == robin_hood::compiletime::strlen(txt));
 }
 
 TEST_CASE("constexpr_hash_usage") {
     std::string str = "affaseaseasasd fsdflaksdlflsdf";
-    switch (robin_hood::hash_bytes(str.data(), str.size())) {
+    switch (ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(robin_hood::hash_bytes(str.data(), str.size()))) {
     case robin_hood::compiletime::hash_bytes("affaseaseasasd fsdflaksdlflsdf"):
         // ok
         break;
