@@ -5,17 +5,21 @@
 
 namespace {
 
-struct Dummy {
-    Dummy(size_t x)
-        : val(x) {}
+class Dummy {
+public:
+    explicit Dummy(size_t x) noexcept
+        : mVal(x) {}
 
-    Dummy() = default;
-
-    size_t val{};
-
-    bool operator==(Dummy const& other) const {
-        return val == other.val;
+    bool operator==(Dummy const& other) const noexcept {
+        return mVal == other.mVal;
     }
+
+    size_t val() const noexcept {
+        return mVal;
+    }
+
+private:
+    size_t mVal{};
 };
 
 } // namespace
@@ -26,7 +30,7 @@ namespace robin_hood {
 template <>
 struct hash<Dummy> {
     size_t operator()(Dummy const& d) const {
-        return d.val;
+        return d.val();
     }
 };
 
@@ -35,16 +39,16 @@ struct hash<Dummy> {
 TEST_CASE("iterator_twice_bug") {
     robin_hood::unordered_flat_map<Dummy, int> map;
 
-    map[31 + 1024 * 0] = 1;
-    map[31 + 1024 * 1] = 3;
+    map[Dummy(31U + 1024U * 0U)] = 1;
+    map[Dummy(31U + 1024U * 1U)] = 3;
 
     // it points to 1055, the first element which has wrapped around
     auto it = map.begin();
-    std::cout << it->first.val << " -> " << it->second << std::endl;
+    std::cout << it->first.val() << " -> " << it->second << std::endl;
 
     // it points to the last element, 1024 which is in its original bucket
     ++it;
-    std::cout << it->first.val << " -> " << it->second << std::endl;
+    std::cout << it->first.val() << " -> " << it->second << std::endl;
 
     // backward shift deletion removes 1024 and wraps back 2048, so it now (again!) points to 2048
     // and NOT end
