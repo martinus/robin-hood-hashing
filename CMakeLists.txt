@@ -1,3 +1,6 @@
+cmake_minimum_required(VERSION 3.5)
+project(robin-hood-hashing LANGUAGES CXX)
+
 # determine whether this is a standalone project or included by other projects
 set(RH_STANDALONE_PROJECT OFF)
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
@@ -5,9 +8,6 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 endif ()
 
 if (RH_STANDALONE_PROJECT)
-    cmake_minimum_required(VERSION 3.5)
-    project(robin-hood-hashing LANGUAGES CXX)
-
     option(RH_sanitizer "Address sanitizer" OFF)
     option(RH_coverage "Enable coverage" OFF)
     set(RH_cxx_standard "14" CACHE STRING "C++ standard, e.g. 11, 14, 17")
