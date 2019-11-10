@@ -1278,7 +1278,7 @@ private:
         // we don't retry, fail if overflowing
         // don't need to check max num elements
         if (0 == mMaxNumElementsAllowed && !try_increase_info()) {
-            throwOverflowError();
+            throwOverflowError(); // impossible to reach LCOV_EXCL_LINE
         }
 
         size_t idx;
