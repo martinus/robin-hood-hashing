@@ -24,13 +24,14 @@ function build() {
     CXX=$(which ${COMPILER}) cmake -G Ninja -DCMAKE_CXX_FLAGS=${CXXFLAGS} -DCMAKE_BUILD_TYPE=Debug -DRH_cxx_standard=${CXX_STANDARD} -DRH_sanitizer=${SANITIZER} ${ROOTDIR}
     ${NICE} cmake --build .
     ${NICE} ./rh -ns -ts=show
+    ${NICE} ./rh -ns -ts=nanobench
     ${NICE} ./rh
 
     cd ${ORIGINDIR}
 }
 
 build "g++" "17" "OFF"
-build "clang++" "14" "ON" "-m32"
+build "clang++" "14" "ON"
 
 
 #build "g++-4.9" "11" "OFF" "-m32"
@@ -59,10 +60,10 @@ build "clang++-6" "17" "OFF" "-m32"
 build "clang++-6" "20" "OFF" "-m32"
 
 build "clang++" "11" "OFF" "-m32"
-build "clang++" "11" "ON" "-m32"
-build "clang++" "17" "ON" "-m32"
+#build "clang++" "11" "ON" "-m32"
+#build "clang++" "17" "ON" "-m32"
 build "clang++" "17" "OFF" "-m32"
-build "clang++" "20" "ON" "-m32"
+#build "clang++" "20" "ON" "-m32"
 
 
 # all the rest

@@ -10,6 +10,7 @@ target_sources_local(rh PRIVATE
     CtorDtorVerifier.h
     CtorDtorVerifier.cpp
     doctest.h
+    nanobench.cpp
     PerformanceCounters.cpp
     PerformanceCounters.h
     randomseed.cpp

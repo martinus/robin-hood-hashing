@@ -79,7 +79,7 @@ TEST_CASE_TEMPLATE("bench_find_random" * doctest::test_suite("bench") * doctest:
                     ++i;
                 }
 
-                // the actual benchmark code which sohould be as fast as possible
+                // the actual benchmark code which should be as fast as possible
                 for (size_t j = 0; j < numFindsPerIter; ++j) {
                     if (++findCount > i) {
                         findCount = 0;

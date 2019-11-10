@@ -2,28 +2,27 @@
 
 #include <app/benchmark.h>
 #include <app/doctest.h>
+#include <thirdparty/nanobench/nanobench.h>
 
 #include <unordered_map>
 
 TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, uint64_t>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<uint64_t, uint64_t>);
 
-TEST_CASE_TEMPLATE("bench copy by iterating" * doctest::test_suite("bench") * doctest::skip(), Map,
+TEST_CASE_TEMPLATE("bench_copy_iterators" * doctest::test_suite("nanobench") * doctest::skip(), Map,
                    robin_hood::unordered_flat_map<uint64_t, uint64_t>,
                    robin_hood::unordered_node_map<uint64_t, uint64_t>) {
 
-    static constexpr size_t size = 1000000;
-    static constexpr size_t iters = 20;
-
-    Map map;
-    for (size_t i = 0; i < size; ++i) {
-        map.emplace(i, i);
+    Map a;
+    for (size_t i = 0; i < 1000; ++i) {
+        a.emplace(i, i);
     }
 
-    BENCHMARK("copy " + type_string(map), map.size() * iters, "op") {
-        for (size_t i = 0; i < 20; ++i) {
-            Map map_copy(map.begin(), map.end());
-            REQUIRE(map_copy.size() == map.size());
-        }
-    }
+    ankerl::nanobench::Config cfg;
+    Map b;
+    cfg.batch(a.size()).run("copy " + type_string(a), [&] {
+        b = a;
+        a = b;
+    });
+    REQUIRE(a.size() == b.size());
 }
