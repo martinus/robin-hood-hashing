@@ -39,13 +39,13 @@ struct hash<Dummy> {
 } // namespace robin_hood
 
 TEST_CASE("iterator_twice_bug") {
-    robin_hood::unordered_flat_map<Dummy, int> map;
+    robin_hood::unordered_flat_map<Dummy, size_t> map;
 
     auto a = 31U + 1024U * 0U;
     auto b = 31U + 1024U * 1U;
 
-    map[Dummy(a)] = 1;
-    map[Dummy(b)] = 3;
+    map[Dummy(a)] = 1U;
+    map[Dummy(b)] = 3U;
 
     // it points to 1055, the first element which has wrapped around
     auto it = map.begin();
