@@ -1263,7 +1263,9 @@ private:
         } while (info <= mInfo[idx]);
 
         // nothing found!
-        return mMask == 0 ? 0 : calcNumElementsWithBuffer(mMask + 1);
+        return mMask == 0 ? 0
+                          : static_cast<size_t>(std::distance(
+                                mKeyVals, reinterpret_cast_no_cast_align_warning<Node*>(mInfo)));
     }
 
     void cloneData(const unordered_map& o) {
