@@ -12,11 +12,11 @@ public:
     explicit Dummy(size_t x) noexcept
         : mVal(x) {}
 
-    bool operator==(Dummy const& other) const noexcept {
+    ROBIN_HOOD(NODISCARD) bool operator==(Dummy const& other) const noexcept {
         return mVal == other.mVal;
     }
 
-    size_t val() const noexcept {
+    ROBIN_HOOD(NODISCARD) size_t val() const noexcept {
         return mVal;
     }
 
