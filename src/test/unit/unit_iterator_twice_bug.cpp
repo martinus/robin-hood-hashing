@@ -5,6 +5,8 @@
 
 namespace {
 
+// adding a small wrapper around size_t so I can implement a robin_hood::hash for this, to
+// circumvent the safety mixer
 class Dummy {
 public:
     explicit Dummy(size_t x) noexcept
@@ -39,16 +41,19 @@ struct hash<Dummy> {
 TEST_CASE("iterator_twice_bug") {
     robin_hood::unordered_flat_map<Dummy, int> map;
 
-    map[Dummy(31U + 1024U * 0U)] = 1;
-    map[Dummy(31U + 1024U * 1U)] = 3;
+    auto a = 31U + 1024U * 0U;
+    auto b = 31U + 1024U * 1U;
+
+    map[Dummy(a)] = 1;
+    map[Dummy(b)] = 3;
 
     // it points to 1055, the first element which has wrapped around
     auto it = map.begin();
-    std::cout << it->first.val() << " -> " << it->second << std::endl;
+    REQUIRE(it->first.val() == a);
 
     // it points to the last element, 1024 which is in its original bucket
     ++it;
-    std::cout << it->first.val() << " -> " << it->second << std::endl;
+    REQUIRE(it->first.val() == b);
 
     // backward shift deletion removes 1024 and wraps back 2048, so it now (again!) points to 2048
     // and NOT end
