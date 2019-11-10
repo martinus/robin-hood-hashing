@@ -1,21 +1,3 @@
-cmake_minimum_required(VERSION 3.5)
-project(robin-hood-hashing LANGUAGES CXX)
-
-option(RH_sanitizer "Address sanitizer" OFF)
-option(RH_coverage "Enable coverage" OFF)
-set(RH_cxx_standard "14" CACHE STRING "C++ standard, e.g. 11, 14, 17")
-
-set(CMAKE_CXX_STANDARD ${RH_cxx_standard})
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-# configuration see .clang-tidy
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    # set(CMAKE_CXX_CLANG_TIDY clang-tidy-6)
-    set(CMAKE_CXX_CLANG_TIDY clang-tidy)
-endif()
-
-
 # determine whether this is a standalone project or included by other projects
 set(RH_STANDALONE_PROJECT OFF)
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
@@ -23,6 +5,23 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 endif ()
 
 if (RH_STANDALONE_PROJECT)
+    cmake_minimum_required(VERSION 3.5)
+    project(robin-hood-hashing LANGUAGES CXX)
+
+    option(RH_sanitizer "Address sanitizer" OFF)
+    option(RH_coverage "Enable coverage" OFF)
+    set(RH_cxx_standard "14" CACHE STRING "C++ standard, e.g. 11, 14, 17")
+
+    set(CMAKE_CXX_STANDARD ${RH_cxx_standard})
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_CXX_EXTENSIONS OFF)
+
+    # configuration see .clang-tidy
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        # set(CMAKE_CXX_CLANG_TIDY clang-tidy-6)
+        set(CMAKE_CXX_CLANG_TIDY clang-tidy)
+    endif()
+
     add_executable(rh "")
 
     if (RH_no_exceptions)
@@ -108,9 +107,7 @@ if (RH_STANDALONE_PROJECT)
 else()
     # creates a library robin_hood which is an interface (header files only)
     add_library(robin_hood INTERFACE)
-
     add_library(robin_hood::robin_hood ALIAS robin_hood)
-    target_compile_features(robin_hood INTERFACE ${RH_cxx_standard})
 
     target_include_directories(robin_hood INTERFACE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/include>
