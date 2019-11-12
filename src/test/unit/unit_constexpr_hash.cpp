@@ -74,13 +74,12 @@ constexpr size_t strlen(char const* data, size_t offset = 0, size_t level = 64) 
 }
 
 #if defined(_MSC_VER)
-#    define ROBIN_HOOD_NO_WARN_MSC(warnings, op) \
-        __pragma(warning(push)) __pragma(warning(disable : warnings)) op __pragma(warning(pop))
+// warning C4307: '*': integral constant overflow
+#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(op) \
+        __pragma(warning(push)) __pragma(warning(disable : 4307)) op __pragma(warning(pop))
 #else
-#    define ROBIN_HOOD_NO_WARN_MSC(warnings, x) x
+#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(op) op
 #endif
-
-#define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(op) ROBIN_HOOD_NO_WARN_MSC(4307, op)
 
 constexpr size_t hash_bytes(char const* data) {
     return static_cast<size_t>(hash::calc(data, strlen(data), UINT64_C(0xe17a1465)));
