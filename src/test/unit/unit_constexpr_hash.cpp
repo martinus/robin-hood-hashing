@@ -82,7 +82,8 @@ constexpr size_t strlen(char const* data, size_t offset = 0, size_t level = 64) 
 #endif
 
 constexpr size_t hash_bytes(char const* data) {
-    return static_cast<size_t>(hash::calc(data, strlen(data), UINT64_C(0xe17a1465)));
+    return ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT(
+        static_cast<size_t>(hash::calc(data, strlen(data), UINT64_C(0xe17a1465))));
 }
 
 } // namespace compiletime
