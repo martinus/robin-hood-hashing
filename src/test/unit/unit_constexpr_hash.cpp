@@ -6,6 +6,18 @@
 #include <iostream>
 #include <limits>
 
+#if defined(_MSC_VER)
+// warning C4307: '*': integral constant overflow
+#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN() \
+        __pragma(warning(push)) __pragma(warning(disable : 4307))
+#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END() __pragma(warning(pop))
+#else
+#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN()
+#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END()
+#endif
+
+ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN()
+
 // NOLINTNEXTLINE(modernize-concat-nested-namespaces)
 namespace robin_hood {
 
@@ -73,21 +85,8 @@ constexpr size_t strlen(char const* data, size_t offset = 0, size_t level = 64) 
                             : strlen(data, strlen(data, offset + 1, level - 1), level - 1);
 }
 
-#if defined(_MSC_VER)
-// warning C4307: '*': integral constant overflow
-#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN() \
-        __pragma(warning(push)) __pragma(warning(disable : 4307))
-
-#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END() __pragma(warning(pop))
-#else
-#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN()
-#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END()
-#endif
-
 constexpr size_t hash_bytes(char const* data) {
-    ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN()
     return static_cast<size_t>(hash::calc(data, strlen(data), UINT64_C(0xe17a1465)));
-    ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END()
 }
 
 } // namespace compiletime
@@ -237,3 +236,5 @@ TEST_CASE("constexpr_hash") {
     ROBIN_HOOD_HASH_CHECK("T");
     ROBIN_HOOD_HASH_CHECK("");
 }
+
+ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END()
