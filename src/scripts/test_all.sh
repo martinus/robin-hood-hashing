@@ -3,7 +3,11 @@ set -ex
 
 ROOTDIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd )"
 
+
 function build() {
+    #NICE="nice -n20"
+    NICE="schedtool -5 -e"
+
     ORIGINDIR=$(pwd)
 
     COMPILER=$1
@@ -18,16 +22,17 @@ function build() {
     cd ${DIRNAME}
 
     CXX=$(which ${COMPILER}) cmake -G Ninja -DCMAKE_CXX_FLAGS=${CXXFLAGS} -DCMAKE_BUILD_TYPE=Debug -DRH_cxx_standard=${CXX_STANDARD} -DRH_sanitizer=${SANITIZER} ${ROOTDIR}
-    nice -n20 cmake --build .
-    nice -n20 ./rh -ns -ts=show
-    nice -n20 ./rh
+    ${NICE} cmake --build .
+    ${NICE} ./rh -ns -ts=show
+    ${NICE} ./rh -ns -ts=nanobench
+    ${NICE} ./rh
 
     cd ${ORIGINDIR}
 }
 
 build "g++" "17" "OFF"
+build "clang++" "14" "ON"
 
-build "clang++" "14" "ON" "-m32"
 
 #build "g++-4.9" "11" "OFF" "-m32"
 #build "g++-4.9" "14" "OFF" "-m32"
@@ -55,10 +60,10 @@ build "clang++-6" "17" "OFF" "-m32"
 build "clang++-6" "20" "OFF" "-m32"
 
 build "clang++" "11" "OFF" "-m32"
-build "clang++" "11" "ON" "-m32"
-build "clang++" "17" "ON" "-m32"
+#build "clang++" "11" "ON" "-m32"
+#build "clang++" "17" "ON" "-m32"
 build "clang++" "17" "OFF" "-m32"
-build "clang++" "20" "ON" "-m32"
+#build "clang++" "20" "ON" "-m32"
 
 
 # all the rest

@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
-// version 3.4.1
+// version 3.4.3
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 4 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 3 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -82,7 +82,7 @@
 #endif
 
 // endianess
-#ifdef _WIN32
+#ifdef _MSC_VER
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_LITTLE_ENDIAN() 1
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_BIG_ENDIAN() 0
 #else
@@ -92,7 +92,7 @@
 #endif
 
 // inline
-#ifdef _WIN32
+#ifdef _MSC_VER
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NOINLINE() __declspec(noinline)
 #else
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NOINLINE() __attribute__((noinline))
@@ -106,7 +106,7 @@
 #endif
 
 // count leading/trailing bits
-#ifdef _WIN32
+#ifdef _MSC_VER
 #    if ROBIN_HOOD(BITNESS) == 32
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward
 #    else
@@ -115,12 +115,11 @@
 #    include <intrin.h>
 #    pragma intrinsic(ROBIN_HOOD(BITSCANFORWARD))
 #    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                       \
-        [](size_t mask) noexcept->int {                                               \
+        [](size_t mask) noexcept -> int {                                             \
             unsigned long index;                                                      \
             return ROBIN_HOOD(BITSCANFORWARD)(&index, mask) ? static_cast<int>(index) \
                                                             : ROBIN_HOOD(BITNESS);    \
-        }                                                                             \
-        (x)
+        }(x)
 #else
 #    if ROBIN_HOOD(BITNESS) == 32
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzl
@@ -146,7 +145,7 @@
 #endif
 
 // likely/unlikely
-#if defined(_WIN32)
+#ifdef _MSC_VER
 #    define ROBIN_HOOD_LIKELY(condition) condition
 #    define ROBIN_HOOD_UNLIKELY(condition) condition
 #else
@@ -267,7 +266,7 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
     *high = static_cast<uint64_t>(result >> 64U);
     return static_cast<uint64_t>(result);
 }
-#elif (defined(_WIN32) && ROBIN_HOOD(BITNESS) == 64)
+#elif (defined(_MSC_VER) && ROBIN_HOOD(BITNESS) == 64)
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_UMUL128() 1
 #    include <intrin.h> // for __umulh
 #    pragma intrinsic(__umulh)
@@ -361,6 +360,7 @@ public:
     }
 
     BulkPoolAllocator&
+    // NOLINTNEXTLINE(bugprone-unhandled-self-assignment,cert-oop54-cpp)
     operator=(const BulkPoolAllocator& ROBIN_HOOD_UNUSED(o) /*unused*/) noexcept {
         // does not do anything
         return *this;
@@ -1001,20 +1001,20 @@ private:
     template <typename M>
     struct Cloner<M, true> {
         void operator()(M const& source, M& target) const {
-            // std::memcpy(target.mKeyVals, source.mKeyVals,
-            //             target.calcNumBytesTotal(target.mMask + 1));
             auto src = reinterpret_cast<char const*>(source.mKeyVals);
             auto tgt = reinterpret_cast<char*>(target.mKeyVals);
-            std::copy(src, src + target.calcNumBytesTotal(target.mMask + 1), tgt);
+            auto const numElementsWithBuffer = target.calcNumElementsWithBuffer(target.mMask + 1);
+            std::copy(src, src + target.calcNumBytesTotal(numElementsWithBuffer), tgt);
         }
     };
 
     template <typename M>
     struct Cloner<M, false> {
         void operator()(M const& s, M& t) const {
-            std::copy(s.mInfo, s.mInfo + t.calcNumBytesInfo(t.mMask + 1), t.mInfo);
+            auto const numElementsWithBuffer = t.calcNumElementsWithBuffer(t.mMask + 1);
+            std::copy(s.mInfo, s.mInfo + t.calcNumBytesInfo(numElementsWithBuffer), t.mInfo);
 
-            for (size_t i = 0; i < t.mMask + 1; ++i) {
+            for (size_t i = 0; i < numElementsWithBuffer; ++i) {
                 if (t.mInfo[i]) {
                     ::new (static_cast<void*>(t.mKeyVals + i)) Node(t, *s.mKeyVals[i]);
                 }
@@ -1043,7 +1043,9 @@ private:
         void nodes(M& m) const noexcept {
             m.mNumElements = 0;
             // clear also resets mInfo to 0, that's sometimes not necessary.
-            for (size_t idx = 0; idx <= m.mMask; ++idx) {
+            auto const numElementsWithBuffer = m.calcNumElementsWithBuffer(m.mMask + 1);
+
+            for (size_t idx = 0; idx < numElementsWithBuffer; ++idx) {
                 if (0 != m.mInfo[idx]) {
                     Node& n = m.mKeyVals[idx];
                     n.destroy(m);
@@ -1055,7 +1057,8 @@ private:
         void nodesDoNotDeallocate(M& m) const noexcept {
             m.mNumElements = 0;
             // clear also resets mInfo to 0, that's sometimes not necessary.
-            for (size_t idx = 0; idx <= m.mMask; ++idx) {
+            auto const numElementsWithBuffer = m.calcNumElementsWithBuffer(m.mMask + 1);
+            for (size_t idx = 0; idx < numElementsWithBuffer; ++idx) {
                 if (0 != m.mInfo[idx]) {
                     Node& n = m.mKeyVals[idx];
                     n.destroyDoNotDeallocate();
@@ -1187,7 +1190,7 @@ private:
 
     // forwards the index by one, wrapping around at the end
     void next(InfoType* info, size_t* idx) const noexcept {
-        *idx = (*idx + 1) & mMask;
+        *idx = *idx + 1;
         *info += mInfoInc;
     }
 
@@ -1205,7 +1208,7 @@ private:
     shiftUp(size_t idx,
             size_t const insertion_idx) noexcept(std::is_nothrow_move_assignable<Node>::value) {
         while (idx != insertion_idx) {
-            size_t prev_idx = (idx - 1) & mMask;
+            size_t prev_idx = idx - 1;
             if (mInfo[idx]) {
                 mKeyVals[idx] = std::move(mKeyVals[prev_idx]);
             } else {
@@ -1225,12 +1228,12 @@ private:
         mKeyVals[idx].destroy(*this);
 
         // until we find one that is either empty or has zero offset.
-        size_t nextIdx = (idx + 1) & mMask;
+        size_t nextIdx = idx + 1;
         while (mInfo[nextIdx] >= 2 * mInfoInc) {
             mInfo[idx] = static_cast<uint8_t>(mInfo[nextIdx] - mInfoInc);
             mKeyVals[idx] = std::move(mKeyVals[nextIdx]);
             idx = nextIdx;
-            nextIdx = (idx + 1) & mMask;
+            nextIdx = idx + 1;
         }
 
         mInfo[idx] = 0;
@@ -1260,7 +1263,9 @@ private:
         } while (info <= mInfo[idx]);
 
         // nothing found!
-        return mMask == 0 ? 0 : mMask + 1;
+        return mMask == 0 ? 0
+                          : static_cast<size_t>(std::distance(
+                                mKeyVals, reinterpret_cast_no_cast_align_warning<Node*>(mInfo)));
     }
 
     void cloneData(const unordered_map& o) {
@@ -1273,7 +1278,7 @@ private:
         // we don't retry, fail if overflowing
         // don't need to check max num elements
         if (0 == mMaxNumElementsAllowed && !try_increase_info()) {
-            throwOverflowError();
+            throwOverflowError(); // impossible to reach LCOV_EXCL_LINE
         }
 
         size_t idx;
@@ -1282,7 +1287,7 @@ private:
 
         // skip forward. Use <= because we are certain that the element is not there.
         while (info <= mInfo[idx]) {
-            idx = (idx + 1) & mMask;
+            idx = idx + 1;
             info += mInfoInc;
         }
 
@@ -1403,10 +1408,11 @@ public:
             // not empty: create an exact copy. it is also possible to just iterate through all
             // elements and insert them, but copying is probably faster.
 
-            mKeyVals = static_cast<Node*>(
-                detail::assertNotNull<std::bad_alloc>(malloc(calcNumBytesTotal(o.mMask + 1))));
+            auto const numElementsWithBuffer = calcNumElementsWithBuffer(o.mMask + 1);
+            mKeyVals = static_cast<Node*>(detail::assertNotNull<std::bad_alloc>(
+                malloc(calcNumBytesTotal(numElementsWithBuffer))));
             // no need for calloc because clonData does memcpy
-            mInfo = reinterpret_cast<uint8_t*>(mKeyVals + o.mMask + 1);
+            mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
             mNumElements = o.mNumElements;
             mMask = o.mMask;
             mMaxNumElementsAllowed = o.mMaxNumElementsAllowed;
@@ -1453,11 +1459,12 @@ public:
                 free(mKeyVals);
             }
 
-            mKeyVals = static_cast<Node*>(
-                detail::assertNotNull<std::bad_alloc>(malloc(calcNumBytesTotal(o.mMask + 1))));
+            auto const numElementsWithBuffer = calcNumElementsWithBuffer(o.mMask + 1);
+            mKeyVals = static_cast<Node*>(detail::assertNotNull<std::bad_alloc>(
+                malloc(calcNumBytesTotal(numElementsWithBuffer))));
 
             // no need for calloc here because cloneData performs a memcpy.
-            mInfo = reinterpret_cast<uint8_t*>(mKeyVals + o.mMask + 1);
+            mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
             // sentinel is set in cloneData
         }
         WHash::operator=(static_cast<const WHash&>(o));
@@ -1491,10 +1498,11 @@ public:
 
         Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
 
+        auto const numElementsWithBuffer = calcNumElementsWithBuffer(mMask + 1);
         // clear everything except the sentinel
         // std::memset(mInfo, 0, sizeof(uint8_t) * (mMask + 1));
         uint8_t const z = 0;
-        std::fill(mInfo, mInfo + (sizeof(uint8_t) * (mMask + 1)), z);
+        std::fill(mInfo, mInfo + (sizeof(uint8_t) * numElementsWithBuffer), z);
 
         mInfoInc = InitialInfoInc;
         mInfoHashShift = InitialInfoHashShift;
@@ -1766,11 +1774,17 @@ public:
         return (maxElements / 100) * MaxLoadFactor100;
     }
 
-    ROBIN_HOOD(NODISCARD) size_t calcNumBytesInfo(size_t numElements) const {
+    ROBIN_HOOD(NODISCARD) size_t calcNumBytesInfo(size_t numElements) const noexcept {
         return numElements + sizeof(uint64_t);
     }
 
-    // calculation ony allowed for 2^n values
+    ROBIN_HOOD(NODISCARD)
+    size_t calcNumElementsWithBuffer(size_t numElements) const noexcept {
+        auto maxNumElementsAllowed = calcMaxNumElementsAllowed(numElements);
+        return numElements + (std::min)(maxNumElementsAllowed, (static_cast<size_t>(0xFF)));
+    }
+
+    // calculation only allowed for 2^n values
     ROBIN_HOOD(NODISCARD) size_t calcNumBytesTotal(size_t numElements) const {
 #if ROBIN_HOOD(BITNESS) == 64
         return numElements * sizeof(Node) + calcNumBytesInfo(numElements);
@@ -1799,12 +1813,12 @@ private:
         Node* const oldKeyVals = mKeyVals;
         uint8_t const* const oldInfo = mInfo;
 
-        const size_t oldMaxElements = mMask + 1;
+        const size_t oldMaxElementsWithBuffer = calcNumElementsWithBuffer(mMask + 1);
 
         // resize operation: move stuff
         init_data(numBuckets);
-        if (oldMaxElements > 1) {
-            for (size_t i = 0; i < oldMaxElements; ++i) {
+        if (oldMaxElementsWithBuffer > 1) {
+            for (size_t i = 0; i < oldMaxElementsWithBuffer; ++i) {
                 if (oldInfo[i] != 0) {
                     insert_move(std::move(oldKeyVals[i]));
                     // destroy the node but DON'T destroy the data.
@@ -1813,7 +1827,7 @@ private:
             }
 
             // don't destroy old data: put it into the pool instead
-            DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElements));
+            DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElementsWithBuffer));
         }
     }
 
@@ -1830,13 +1844,15 @@ private:
         mMask = max_elements - 1;
         mMaxNumElementsAllowed = calcMaxNumElementsAllowed(max_elements);
 
+        auto const numElementsWithBuffer = calcNumElementsWithBuffer(max_elements);
+
         // calloc also zeroes everything
-        mKeyVals = reinterpret_cast<Node*>(
-            detail::assertNotNull<std::bad_alloc>(calloc(1, calcNumBytesTotal(max_elements))));
-        mInfo = reinterpret_cast<uint8_t*>(mKeyVals + max_elements);
+        mKeyVals = reinterpret_cast<Node*>(detail::assertNotNull<std::bad_alloc>(
+            calloc(1, calcNumBytesTotal(numElementsWithBuffer))));
+        mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
 
         // set sentinel
-        mInfo[max_elements] = 1;
+        mInfo[numElementsWithBuffer] = 1;
 
         mInfoInc = InitialInfoInc;
         mInfoHashShift = InitialInfoHashShift;
@@ -1968,7 +1984,8 @@ private:
         // This is extremely fast because we can operate on 8 bytes at once.
         ++mInfoHashShift;
         auto const data = reinterpret_cast_no_cast_align_warning<uint64_t*>(mInfo);
-        auto const numEntries = (mMask + 1) / 8;
+        auto const numElementsWithBuffer = calcNumElementsWithBuffer(mMask + 1);
+        auto const numEntries = numElementsWithBuffer / 8;
 
         for (size_t i = 0; i < numEntries; ++i) {
             data[i] = (data[i] >> 1U) & UINT64_C(0x7f7f7f7f7f7f7f7f);
@@ -2009,7 +2026,14 @@ private:
 
         Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}
             .nodesDoNotDeallocate(*this);
-        free(mKeyVals);
+
+        // This protection against not deleting mMask shouldn't be needed as it's sufficiently
+        // protected with the 0==mMask check, but I have this anyways because g++ 7 otherwise
+        // reports a compile error: attempt to free a non-heap object ‘fm’
+        // [-Werror=free-nonheap-object]
+        if (mKeyVals != reinterpret_cast<Node*>(&mMask)) {
+            free(mKeyVals);
+        }
     }
 
     void init() noexcept {

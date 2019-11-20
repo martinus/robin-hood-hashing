@@ -19,7 +19,10 @@ Checks: "*,\
   -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
   -fuchsia-overloaded-operator,\
   -fuchsia-default-arguments,\
-  -fuchsia-multiple-inheritance,
+  -fuchsia-multiple-inheritance,\
+  -fuchsia-default-arguments-calls,\
+  -fuchsia-default-arguments-declarations,\
+  -modernize-use-trailing-return-type,\
   -cert-err58-cpp"
 WarningsAsErrors: "*"
 HeaderFilterRegex: 'robin_hood\.h'

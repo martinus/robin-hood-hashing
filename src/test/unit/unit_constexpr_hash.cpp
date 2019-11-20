@@ -4,9 +4,24 @@
 #include <app/fmt/hex.h>
 
 #include <iostream>
+#include <limits>
 
-namespace robin_hood {
+#if defined(_MSC_VER)
+// warning C4307: '*': integral constant overflow
+#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN() \
+        __pragma(warning(push)) __pragma(warning(disable : 4307))
+#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END() __pragma(warning(pop))
+#else
+#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN()
+#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END()
+#endif
+
+ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN()
+
 // NOLINTNEXTLINE(modernize-concat-nested-namespaces)
+namespace robin_hood {
+
+// contains C++11 compatible compile time calculations.
 namespace compiletime {
 namespace hash {
 
@@ -47,32 +62,119 @@ constexpr uint64_t block(const char* data, size_t n, uint64_t h) {
 }
 
 constexpr uint64_t calc(const char* data, size_t n, uint64_t seed) {
+#if defined(_MSC_VER)
+#    pragma warning(push)
+#    pragma warning(disable : 4307)
+#endif
     return block(data, n, seed ^ mul_m(n));
+#if defined(_MSC_VER)
+#    pragma warning(pop)
+#endif
 }
 
 } // namespace hash
-} // namespace compiletime
 
-template <size_t N>
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
-constexpr size_t hash_bytes(char const (&data)[N], uint64_t seed = UINT64_C(0xe17a1465)) {
-    return static_cast<size_t>(compiletime::hash::calc(data, N - 1, seed));
+constexpr const char* forward(const char* data, size_t len) {
+    return len == 0 || *data == '\0' ? data : forward(data + 1, len - 1);
 }
 
+constexpr size_t strlen(char const* data, size_t offset = 0, size_t level = 64) noexcept {
+    return data[offset] == '\0'
+               ? offset
+               : level == 0 ? offset + 1
+                            : strlen(data, strlen(data, offset + 1, level - 1), level - 1);
+}
+
+constexpr size_t hash_bytes(char const* data) {
+    return static_cast<size_t>(hash::calc(data, strlen(data), UINT64_C(0xe17a1465)));
+}
+
+} // namespace compiletime
 } // namespace robin_hood
 
-#if defined(_MSC_VER)
-#    define ROBIN_HOOD_HASH(str)                                                           \
-        __pragma(warning(push)) __pragma(warning(disable : 4307))                          \
-            std::integral_constant<size_t, ::robin_hood::hash_bytes(str)>::value __pragma( \
-                warning(pop))
-#else
-#    define ROBIN_HOOD_HASH(str) \
-        std::integral_constant<size_t, ::robin_hood::hash_bytes(str)>::value
-#endif
+TEST_CASE("constexpr_strlen") {
+    constexpr auto x = "x";
+    constexpr auto hx = robin_hood::compiletime::hash_bytes(x);
+    REQUIRE(hx == robin_hood::hash_bytes(x, strlen(x)));
+    REQUIRE(strlen(x) == robin_hood::compiletime::strlen(x));
+
+    constexpr auto hello = "hello";
+    constexpr auto hhello = robin_hood::compiletime::hash_bytes(hello);
+    REQUIRE(hhello == robin_hood::hash_bytes(hello, strlen(hello)));
+    REQUIRE(strlen(hello) == robin_hood::compiletime::strlen(hello));
+
+    constexpr auto wasdf = "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+                           "k kkkkkkkkkkkkkkkkkkkkkkakkkkkkkkkkk askdf kskdfk askdf kksakd "
+                           "fksk dksakdfkaskd fkskadf kskxxxdfk skad fkksdfk ksdfk ksadkfk s "
+                           "kdfkasdfk ksadfk ksakskdkasdfkaksdfk askdfk aksdfksadfksaskdfkas";
+    constexpr auto hwasdf = robin_hood::compiletime::hash_bytes(wasdf);
+    REQUIRE(hwasdf == robin_hood::hash_bytes(wasdf, strlen(wasdf)));
+    REQUIRE(strlen(wasdf) == robin_hood::compiletime::strlen(wasdf));
+
+    constexpr auto txt =
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+        "01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678"
+        "9";
+
+    constexpr auto htxt = robin_hood::compiletime::hash_bytes(txt);
+    REQUIRE(htxt == robin_hood::hash_bytes(txt, strlen(txt)));
+    REQUIRE(strlen(txt) == robin_hood::compiletime::strlen(txt));
+}
+
+TEST_CASE("constexpr_hash_usage") {
+    std::string str = "affaseaseasasd fsdflaksdlflsdf";
+    switch (robin_hood::hash_bytes(str.data(), str.size())) {
+    case robin_hood::compiletime::hash_bytes("affaseaseasasd fsdflaksdlflsdf"): // ok
+        break;
+
+    default:
+        FAIL("wrong case");
+        break;
+    }
+}
 
 #define ROBIN_HOOD_HASH_CHECK(str) \
-    REQUIRE(robin_hood::hash<std::string>{}(str) == ROBIN_HOOD_HASH(str))
+    REQUIRE(robin_hood::hash<std::string>{}(str) == robin_hood::compiletime::hash_bytes(str))
 
 TEST_CASE("constexpr_hash") {
     ROBIN_HOOD_HASH_CHECK("This is my test string. It's rather long, but that's ok.!");
@@ -134,3 +236,5 @@ TEST_CASE("constexpr_hash") {
     ROBIN_HOOD_HASH_CHECK("T");
     ROBIN_HOOD_HASH_CHECK("");
 }
+
+ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END()

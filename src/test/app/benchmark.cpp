@@ -38,17 +38,16 @@ Benchmark::~Benchmark() {
     std::cout << martinus::mup(runtime_sec / mCount) << "s/" << mOpName << ";   ";
     showMetric(mContextSwitches, "context-switches");
     showMetric(mSwPageFaults, "page-faults");
-    showMetric(mInstructions, "instructions");
-    showMetric(mCycles, "cycles");
-    showMetric(mInstructions, "instructions");
+    showMetric(mInstructions, "ins");
+    showMetric(mCycles, "cyc");
     if (mInsPerCycle > 0) {
-        std::cout << martinus::mup(mInsPerCycle) << " ins/cycle;   ";
+        std::cout << martinus::mup(mInsPerCycle) << " ins/cyc;   ";
     }
-    showMetric(mBranches, "branches");
-    showMetric(mMisses, "branch-misses");
+    showMetric(mBranches, "bra");
+    showMetric(mMisses, "mis");
     if (branchMissesPercent > 0) {
         std::cout << "(" << std::setprecision(2) << std::fixed << (branchMissesPercent * 100)
-                  << "% misses)   ";
+                  << "%)   ";
     }
 
     std::cout << mMsg << std::endl;
