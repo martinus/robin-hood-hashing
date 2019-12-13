@@ -634,6 +634,55 @@ struct pair {
     T2 second; // NOLINT(misc-non-private-member-variables-in-classes)
 };
 
+template <typename T1>
+struct pair<T1, void> {
+    using first_type = T1;
+
+    template <typename U1 = T1,
+              typename = typename std::enable_if<std::is_default_constructible<U1>::value>::type>
+    constexpr pair() noexcept(noexcept(U1()))
+        : first() {}
+
+    explicit constexpr pair(T1 const& o) noexcept(noexcept(T1(std::declval<T1 const&>())))
+        : first(o) {}
+
+    constexpr pair(T1&& a) noexcept(noexcept(T1(std::move(std::declval<T1&&>()))))
+        : first(std::move(a)) {}
+
+    template <typename U1>
+    constexpr pair(U1&& a) noexcept(noexcept(T1(std::forward<U1>(std::declval<U1&&>()))))
+        : first(std::forward<U1>(a)) {}
+
+    template <typename... U1>
+    constexpr pair(std::piecewise_construct_t /*unused*/, std::tuple<U1...> a) noexcept(noexcept(
+        pair(std::declval<std::tuple<U1...>&>(), ROBIN_HOOD_STD::index_sequence_for<U1...>())))
+        : pair(a, ROBIN_HOOD_STD::index_sequence_for<U1...>()) {}
+
+    // constructor called from the std::piecewise_construct_t ctor
+    template <typename... U1, size_t... I1>
+    pair(std::tuple<U1...>& a, ROBIN_HOOD_STD::index_sequence<I1...> /*unused*/) noexcept(
+        noexcept(T1(std::forward<U1>(std::get<I1>(std::declval<std::tuple<U1...>&>()))...)))
+        : first(std::forward<U1>(std::get<I1>(a))...) {
+        // make visual studio compiler happy about warning about unused a & b.
+        // Visual studio's pair implementation disables warning 4100.
+        (void)a;
+    }
+
+    ROBIN_HOOD(NODISCARD) first_type& getFirst() noexcept {
+        return first;
+    }
+    ROBIN_HOOD(NODISCARD) first_type const& getFirst() const noexcept {
+        return first;
+    }
+
+    void swap(pair<T1, void>& o) noexcept((detail::swappable::nothrow<T1>::value)) {
+        using std::swap;
+        swap(first, o.first);
+    }
+
+    T1 first; // NOLINT(misc-non-private-member-variables-in-classes)
+};
+
 template <typename A, typename B>
 void swap(pair<A, B>& a, pair<A, B>& b) noexcept(
     noexcept(std::declval<pair<A, B>&>().swap(std::declval<pair<A, B>&>()))) {
@@ -795,6 +844,54 @@ struct WrapKeyEqual : public T {
         : T(o) {}
 };
 
+template <typename value_type, bool has_second>
+class DataNodeAux {};
+
+template <typename value_type>
+class DataNodeAux<value_type, true> {
+public:
+    DataNodeAux(value_type&& data)
+        : mData(std::move(data)) {}
+
+    ROBIN_HOOD(NODISCARD) typename value_type::second_type& getSecond() noexcept {
+        return mData.second;
+    }
+
+    ROBIN_HOOD(NODISCARD) typename value_type::second_type const& getSecond() const noexcept {
+        return mData.second;
+    }
+
+protected:
+    value_type mData;
+};
+
+template <typename value_type>
+class DataNodeAux<value_type, false> {
+public:
+    DataNodeAux(value_type&& data)
+        : mData(std::move(data)) {}
+
+protected:
+    value_type mData;
+};
+
+template <typename const_iterator, typename value_type, bool AorB>
+struct Op;
+
+template <typename const_iterator, typename value_type>
+struct Op<const_iterator, value_type, true> {
+    static bool equal(const_iterator& l, value_type& r) {
+        return l->second == r.second;
+    }
+};
+
+template <typename const_iterator, typename value_type>
+struct Op<const_iterator, value_type, false> {
+    static bool equal(const_iterator& l, value_type& r) {
+        return true;
+    }
+};
+
 // A highly optimized hashmap implementation, using the Robin Hood algorithm.
 //
 // In most cases, this map should be usable as a drop-in replacement for std::unordered_map, but be
@@ -824,7 +921,7 @@ struct WrapKeyEqual : public T {
 // https://www.reddit.com/r/cpp/comments/ahp6iu/compile_time_binary_size_reductions_and_cs_future/eeguck4/
 template <bool IsFlatMap, size_t MaxLoadFactor100, typename Key, typename T, typename Hash,
           typename KeyEqual>
-class unordered_map
+class unordered_table
     : public WrapHash<Hash>,
       public WrapKeyEqual<KeyEqual>,
       detail::NodeAllocator<
@@ -832,17 +929,16 @@ class unordered_map
           IsFlatMap> {
 public:
     using key_type = Key;
-    using mapped_type = T;
+    static constexpr bool has_second = !std::is_same<void, T>::value;
     using value_type =
         robin_hood::pair<typename std::conditional<IsFlatMap, Key, Key const>::type, T>;
     using size_type = size_t;
     using hasher = Hash;
     using key_equal = KeyEqual;
-    using Self =
-        unordered_map<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
+    using Self = unordered_table<IsFlatMap, MaxLoadFactor100, key_type, T, hasher, key_equal>;
     static constexpr bool is_flat_map = IsFlatMap;
 
-private:
+protected:
     static_assert(MaxLoadFactor100 > 10 && MaxLoadFactor100 < 100,
                   "MaxLoadFactor100 needs to be >10 && < 100");
 
@@ -871,123 +967,103 @@ private:
 
     // Small: just allocate on the stack.
     template <typename M>
-    class DataNode<M, true> final {
+    class DataNode<M, true> final : public DataNodeAux<value_type, has_second> {
+        using Base = DataNodeAux<value_type, has_second>;
     public:
         template <typename... Args>
         explicit DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, Args&&... args) noexcept(
             noexcept(value_type(std::forward<Args>(args)...)))
-            : mData(std::forward<Args>(args)...) {}
+            : Base(value_type(std::forward<Args>(args)...)) {}
 
         DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, DataNode<M, true>&& n) noexcept(
             std::is_nothrow_move_constructible<value_type>::value)
-            : mData(std::move(n.mData)) {}
+            : Base(std::move(n.mData)) {}
 
         // doesn't do anything
         void destroy(M& ROBIN_HOOD_UNUSED(map) /*unused*/) noexcept {}
         void destroyDoNotDeallocate() noexcept {}
 
         value_type const* operator->() const noexcept {
-            return &mData;
+            return &this->mData;
         }
         value_type* operator->() noexcept {
-            return &mData;
+            return &this->mData;
         }
 
         const value_type& operator*() const noexcept {
-            return mData;
+            return this->mData;
         }
 
         value_type& operator*() noexcept {
-            return mData;
+            return this->mData;
         }
 
         ROBIN_HOOD(NODISCARD) typename value_type::first_type& getFirst() noexcept {
-            return mData.first;
+            return this->mData.first;
         }
 
         ROBIN_HOOD(NODISCARD) typename value_type::first_type const& getFirst() const noexcept {
-            return mData.first;
-        }
-
-        ROBIN_HOOD(NODISCARD) typename value_type::second_type& getSecond() noexcept {
-            return mData.second;
-        }
-
-        ROBIN_HOOD(NODISCARD) typename value_type::second_type const& getSecond() const noexcept {
-            return mData.second;
+            return this->mData.first;
         }
 
         void swap(DataNode<M, true>& o) noexcept(
             noexcept(std::declval<value_type>().swap(std::declval<value_type>()))) {
-            mData.swap(o.mData);
+            this->mData.swap(o.mData);
         }
-
-    private:
-        value_type mData;
     };
 
     // big object: allocate on heap.
     template <typename M>
-    class DataNode<M, false> {
+    class DataNode<M, false> : public DataNodeAux<value_type, has_second> {
+        using Base = DataNodeAux<value_type, has_second>;
     public:
         template <typename... Args>
         explicit DataNode(M& map, Args&&... args)
-            : mData(map.allocate()) {
-            ::new (static_cast<void*>(mData)) value_type(std::forward<Args>(args)...);
+            : Base(value_type(map.allocate())) {
+            ::new (static_cast<void*>(this->mData)) value_type(std::forward<Args>(args)...);
         }
 
         DataNode(M& ROBIN_HOOD_UNUSED(map) /*unused*/, DataNode<M, false>&& n) noexcept
-            : mData(std::move(n.mData)) {}
+            : Base(std::move(n.mData)) {}
 
         void destroy(M& map) noexcept {
             // don't deallocate, just put it into list of datapool.
-            mData->~value_type();
-            map.deallocate(mData);
+            this->mData->~value_type();
+            map.deallocate(this->mData);
         }
 
         void destroyDoNotDeallocate() noexcept {
-            mData->~value_type();
+            this->mData->~value_type();
         }
 
         value_type const* operator->() const noexcept {
-            return mData;
+            return this->mData;
         }
 
         value_type* operator->() noexcept {
-            return mData;
+            return this->mData;
         }
 
         const value_type& operator*() const {
-            return *mData;
+            return *this->mData;
         }
 
         value_type& operator*() {
-            return *mData;
+            return *this->mData;
         }
 
         ROBIN_HOOD(NODISCARD) typename value_type::first_type& getFirst() {
-            return mData->first;
+            return this->mData->first;
         }
 
         ROBIN_HOOD(NODISCARD) typename value_type::first_type const& getFirst() const {
-            return mData->first;
-        }
-
-        ROBIN_HOOD(NODISCARD) typename value_type::second_type& getSecond() {
-            return mData->second;
-        }
-
-        ROBIN_HOOD(NODISCARD) typename value_type::second_type const& getSecond() const {
-            return mData->second;
+            return this->mData->first;
         }
 
         void swap(DataNode<M, false>& o) noexcept {
             using std::swap;
-            swap(mData, o.mData);
+            swap(this->mData, o.mData);
         }
-
-    private:
-        value_type* mData;
     };
 
     using Node = DataNode<Self, IsFlatMap>;
@@ -1162,8 +1238,7 @@ private:
             } while (inc == static_cast<int>(sizeof(size_t)));
         }
 
-        friend class unordered_map<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher,
-                                   key_equal>;
+        friend class unordered_table<IsFlatMap, MaxLoadFactor100, key_type, T, hasher, key_equal>;
         NodePtr mKeyVals{nullptr};
         uint8_t const* mInfo{nullptr};
     };
@@ -1268,8 +1343,8 @@ private:
                                 mKeyVals, reinterpret_cast_no_cast_align_warning<Node*>(mInfo)));
     }
 
-    void cloneData(const unordered_map& o) {
-        Cloner<unordered_map, IsFlatMap && ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(Node)>()(o, *this);
+    void cloneData(const unordered_table& o) {
+        Cloner<unordered_table, IsFlatMap && ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(Node)>()(o, *this);
     }
 
     // inserts a keyval that is guaranteed to be new, e.g. when the hashmap is resized.
@@ -1327,34 +1402,33 @@ public:
     // payed at the first insert, and not before. Lookup of this empty map works because everybody
     // points to DummyInfoByte::b. parameter bucket_count is dictated by the standard, but we can
     // ignore it.
-    explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
-                           const Hash& h = Hash{},
-                           const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) &&
-                                                                        noexcept(KeyEqual(equal)))
+    explicit unordered_table(
+        size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
+        const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) && noexcept(KeyEqual(equal)))
         : WHash(h)
         , WKeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
     }
 
     template <typename Iter>
-    unordered_map(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
-                  const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
+    unordered_table(Iter first, Iter last, size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
+                    const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
         : WHash(h)
         , WKeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
         insert(first, last);
     }
 
-    unordered_map(std::initializer_list<value_type> initlist,
-                  size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
-                  const KeyEqual& equal = KeyEqual{})
+    unordered_table(std::initializer_list<value_type> initlist,
+                    size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
+                    const KeyEqual& equal = KeyEqual{})
         : WHash(h)
         , WKeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
         insert(initlist.begin(), initlist.end());
     }
 
-    unordered_map(unordered_map&& o) noexcept
+    unordered_table(unordered_table&& o) noexcept
         : WHash(std::move(static_cast<WHash&>(o)))
         , WKeyEqual(std::move(static_cast<WKeyEqual&>(o)))
         , DataPool(std::move(static_cast<DataPool&>(o))) {
@@ -1372,7 +1446,7 @@ public:
         }
     }
 
-    unordered_map& operator=(unordered_map&& o) noexcept {
+    unordered_table& operator=(unordered_table&& o) noexcept {
         ROBIN_HOOD_TRACE(this);
         if (&o != this) {
             if (o.mMask) {
@@ -1399,7 +1473,7 @@ public:
         return *this;
     }
 
-    unordered_map(const unordered_map& o)
+    unordered_table(const unordered_table& o)
         : WHash(static_cast<const WHash&>(o))
         , WKeyEqual(static_cast<const WKeyEqual&>(o))
         , DataPool(static_cast<const DataPool&>(o)) {
@@ -1423,7 +1497,7 @@ public:
     }
 
     // Creates a copy of the given map. Copy constructor of each entry is used.
-    unordered_map& operator=(unordered_map const& o) {
+    unordered_table& operator=(unordered_table const& o) {
         ROBIN_HOOD_TRACE(this);
         if (&o == this) {
             // prevent assigning of itself
@@ -1481,7 +1555,7 @@ public:
     }
 
     // Swaps everything between the two maps.
-    void swap(unordered_map& o) {
+    void swap(unordered_table& o) {
         ROBIN_HOOD_TRACE(this);
         using std::swap;
         swap(o, *this);
@@ -1509,40 +1583,29 @@ public:
     }
 
     // Destroys the map and all it's contents.
-    ~unordered_map() {
+    ~unordered_table() {
         ROBIN_HOOD_TRACE(this);
         destroy();
     }
 
     // Checks if both maps contain the same entries. Order is irrelevant.
-    bool operator==(const unordered_map& other) const {
+    bool operator==(const unordered_table& other) const {
         ROBIN_HOOD_TRACE(this);
         if (other.size() != size()) {
             return false;
         }
         for (auto const& otherEntry : other) {
             auto const myIt = find(otherEntry.first);
-            if (myIt == end() || !(myIt->second == otherEntry.second)) {
+            if (myIt != end() && !Op<const_iterator, value_type, has_second>::equal(myIt, otherEntry))
                 return false;
-            }
         }
 
         return true;
     }
 
-    bool operator!=(const unordered_map& other) const {
+    bool operator!=(const unordered_table& other) const {
         ROBIN_HOOD_TRACE(this);
         return !operator==(other);
-    }
-
-    mapped_type& operator[](const key_type& key) {
-        ROBIN_HOOD_TRACE(this);
-        return doCreateByKey(key);
-    }
-
-    mapped_type& operator[](key_type&& key) {
-        ROBIN_HOOD_TRACE(this);
-        return doCreateByKey(std::move(key));
     }
 
     template <typename Iter>
@@ -1583,28 +1646,6 @@ public:
             return 1;
         }
         return 0;
-    }
-
-    // Returns a reference to the value found for key.
-    // Throws std::out_of_range if element cannot be found
-    mapped_type& at(key_type const& key) {
-        ROBIN_HOOD_TRACE(this);
-        auto kv = mKeyVals + findIdx(key);
-        if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
-            doThrow<std::out_of_range>("key not found");
-        }
-        return kv->getSecond();
-    }
-
-    // Returns a reference to the value found for key.
-    // Throws std::out_of_range if element cannot be found
-    mapped_type const& at(key_type const& key) const { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
-        auto kv = mKeyVals + findIdx(key);
-        if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
-            doThrow<std::out_of_range>("key not found");
-        }
-        return kv->getSecond();
     }
 
     const_iterator find(const key_type& key) const { // NOLINT(modernize-use-nodiscard)
@@ -1858,63 +1899,6 @@ private:
         mInfoHashShift = InitialInfoHashShift;
     }
 
-    template <typename Arg>
-    mapped_type& doCreateByKey(Arg&& key) {
-        while (true) {
-            size_t idx;
-            InfoType info;
-            keyToIdx(key, &idx, &info);
-            nextWhileLess(&info, &idx);
-
-            // while we potentially have a match. Can't do a do-while here because when mInfo is 0
-            // we don't want to skip forward
-            while (info == mInfo[idx]) {
-                if (WKeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
-                    // key already exists, do not insert.
-                    return mKeyVals[idx].getSecond();
-                }
-                next(&info, &idx);
-            }
-
-            // unlikely that this evaluates to true
-            if (ROBIN_HOOD_UNLIKELY(mNumElements >= mMaxNumElementsAllowed)) {
-                increase_size();
-                continue;
-            }
-
-            // key not found, so we are now exactly where we want to insert it.
-            auto const insertion_idx = idx;
-            auto const insertion_info = info;
-            if (ROBIN_HOOD_UNLIKELY(insertion_info + mInfoInc > 0xFF)) {
-                mMaxNumElementsAllowed = 0;
-            }
-
-            // find an empty spot
-            while (0 != mInfo[idx]) {
-                next(&info, &idx);
-            }
-
-            auto& l = mKeyVals[insertion_idx];
-            if (idx == insertion_idx) {
-                // put at empty spot. This forwards all arguments into the node where the object is
-                // constructed exactly where it is needed.
-                ::new (static_cast<void*>(&l))
-                    Node(*this, std::piecewise_construct,
-                         std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
-            } else {
-                shiftUp(idx, insertion_idx);
-                l = Node(*this, std::piecewise_construct,
-                         std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
-            }
-
-            // mKeyVals[idx].getFirst() = std::move(key);
-            mInfo[insertion_idx] = static_cast<uint8_t>(insertion_info);
-
-            ++mNumElements;
-            return mKeyVals[insertion_idx].getSecond();
-        }
-    }
-
     // This is exactly the same code as operator[], except for the return values
     template <typename Arg>
     std::pair<iterator, bool> doInsert(Arg&& keyval) {
@@ -2057,7 +2041,126 @@ private:
                                                          // 16 byte 56 if NodeAllocator
 };
 
+template <bool IsFlatMap, size_t MaxLoadFactor100, typename Key, typename T, typename Hash,
+          typename KeyEqual>
+class unordered_map : public unordered_table<IsFlatMap, MaxLoadFactor100, Key, T, Hash, KeyEqual> {
+public:
+    using key_type = Key;
+    using mapped_type = T;
+    using Base = unordered_table<IsFlatMap, MaxLoadFactor100, Key, T, Hash, KeyEqual>;
+    using Node = typename Base::Node;
+    using InfoType = typename Base::InfoType;
+    using WKeyEqual = typename Base::WKeyEqual;
+
+    mapped_type& operator[](const key_type& key) {
+        ROBIN_HOOD_TRACE(this);
+        return doCreateByKey(key);
+    }
+
+    mapped_type& operator[](key_type&& key) {
+        ROBIN_HOOD_TRACE(this);
+        return doCreateByKey(std::move(key));
+    }
+
+    // Returns a reference to the value found for key.
+    // Throws std::out_of_range if element cannot be found
+    mapped_type& at(key_type const& key) {
+        ROBIN_HOOD_TRACE(this);
+        auto kv = this->mKeyVals + findIdx(key);
+        if (kv == reinterpret_cast_no_cast_align_warning<Node*>(this->mInfo)) {
+            doThrow<std::out_of_range>("key not found");
+        }
+        return kv->getSecond();
+    }
+
+    // Returns a reference to the value found for key.
+    // Throws std::out_of_range if element cannot be found
+    mapped_type const& at(key_type const& key) const { // NOLINT(modernize-use-nodiscard)
+        ROBIN_HOOD_TRACE(this);
+        auto kv = this->mKeyVals + findIdx(key);
+        if (kv == reinterpret_cast_no_cast_align_warning<Node*>(this->mInfo)) {
+            doThrow<std::out_of_range>("key not found");
+        }
+        return kv->getSecond();
+    }
+
+private:
+    template <typename Arg>
+    mapped_type& doCreateByKey(Arg&& key) {
+        while (true) {
+            size_t idx;
+            InfoType info;
+            keyToIdx(key, &idx, &info);
+            nextWhileLess(&info, &idx);
+
+            // while we potentially have a match. Can't do a do-while here because when mInfo is 0
+            // we don't want to skip forward
+            while (info == this->mInfo[idx]) {
+                if (WKeyEqual::operator()(key, this->mKeyVals[idx].getFirst())) {
+                    // key already exists, do not insert.
+                    return this->mKeyVals[idx].getSecond();
+                }
+                next(&info, &idx);
+            }
+
+            // unlikely that this evaluates to true
+            if (ROBIN_HOOD_UNLIKELY(this->mNumElements >= this->mMaxNumElementsAllowed)) {
+                this->increase_size();
+                continue;
+            }
+
+            // key not found, so we are now exactly where we want to insert it.
+            auto const insertion_idx = idx;
+            auto const insertion_info = info;
+            if (ROBIN_HOOD_UNLIKELY(insertion_info + this->mInfoInc > 0xFF)) {
+                this->mMaxNumElementsAllowed = 0;
+            }
+
+            // find an empty spot
+            while (0 != this->mInfo[idx]) {
+                next(&info, &idx);
+            }
+
+            auto& l = this->mKeyVals[insertion_idx];
+            if (idx == insertion_idx) {
+                // put at empty spot. This forwards all arguments into the node where the object is
+                // constructed exactly where it is needed.
+                ::new (static_cast<void*>(&l))
+                    Node(*this, std::piecewise_construct,
+                         std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
+            } else {
+                this->shiftUp(idx, insertion_idx);
+                l = Node(*this, std::piecewise_construct,
+                         std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
+            }
+
+            // mKeyVals[idx].getFirst() = std::move(key);
+            this->mInfo[insertion_idx] = static_cast<uint8_t>(insertion_info);
+
+            ++this->mNumElements;
+            return this->mKeyVals[insertion_idx].getSecond();
+        }
+    }
+};
+
 } // namespace detail
+
+template <typename Key, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>,
+          size_t MaxLoadFactor100 = 80>
+using unordered_flat_set =
+    detail::unordered_table<true, MaxLoadFactor100, Key, void, Hash, KeyEqual>;
+
+template <typename Key, typename T, typename Hash = hash<Key>,
+          typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
+using unordered_node_set =
+    detail::unordered_table<false, MaxLoadFactor100, Key, void, Hash, KeyEqual>;
+
+template <typename Key, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>,
+          size_t MaxLoadFactor100 = 80>
+using unordered_set = detail::unordered_table<sizeof(Key) <= sizeof(size_t) * 6 &&
+                                                  std::is_nothrow_move_constructible<Key>::value &&
+                                                  std::is_nothrow_move_assignable<Key>::value,
+                                              MaxLoadFactor100, Key, void, Hash, KeyEqual>;
 
 template <typename Key, typename T, typename Hash = hash<Key>,
           typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
