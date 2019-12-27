@@ -24,6 +24,9 @@ if (RH_STANDALONE_PROJECT)
 
     add_executable(rh "")
 
+    # necessary so aes works
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+
     if (RH_no_exceptions)
         target_compile_options(rh PRIVATE -fno-exceptions)
         target_link_libraries(rh PRIVATE -fno-exceptions)

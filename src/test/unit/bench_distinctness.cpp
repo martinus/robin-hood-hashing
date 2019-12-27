@@ -7,12 +7,17 @@
 TYPE_TO_STRING(robin_hood::unordered_flat_map<int, int>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<int, int>);
 
+template <typename T>
+uint64_t ror(T v, int r) {
+    return (v >> r) | (v << (static_cast<int>(sizeof(T)) * 8 - r));
+}
+
 // benchmark adapted from https://github.com/attractivechaos/udb2
 // this implementation should have less overhead, because sfc64 and it's uniform() is extremely
 // fast.
 TEST_CASE_TEMPLATE("bench_distinctness" * doctest::test_suite("bench") * doctest::skip(), Map,
-                   robin_hood::unordered_flat_map<int, int>,
-                   robin_hood::unordered_node_map<int, int>) {
+                   robin_hood::unordered_flat_map<uint64_t, uint64_t>,
+                   robin_hood::unordered_node_map<uint64_t, uint64_t>) {
     using mt = typename Map::mapped_type;
 
     static mt const upper = 50000000;
@@ -22,7 +27,7 @@ TEST_CASE_TEMPLATE("bench_distinctness" * doctest::test_suite("bench") * doctest
 
     mt divisor = 0;
     std::string title;
-    int required_checksum = 0;
+    mt required_checksum = 0;
 
     SUBCASE("5%") {
         divisor = 20;
@@ -39,22 +44,26 @@ TEST_CASE_TEMPLATE("bench_distinctness" * doctest::test_suite("bench") * doctest
         title = " 50% distinct";
         required_checksum = 179988809;
     }
+
     SUBCASE("100%") {
         divisor = 0;
         title = "100% distinct";
-        required_checksum = 1516798;
+        required_checksum = 0;
     }
 
     sfc64 rng(123);
-    int checksum = 0;
+    mt checksum = 0;
     {
         Benchmark bench(title + " " + type_string(Map{}));
         mt count = 0;
         for (mt n = lower; n <= upper; n += step_width) {
-            mt const max_rng = divisor == 0 ? (std::numeric_limits<mt>::max)() : n / divisor;
+            mt const max_rng =
+                (divisor == static_cast<mt>(0)) ? (std::numeric_limits<mt>::max)() : n / divisor;
             Map map;
             for (mt i = 0; i < n; ++i) {
-                checksum += map[rng.uniform(max_rng)]++;
+                auto num = rng.uniform(max_rng);
+                num = ror(num, 17);
+                checksum += map[num]++;
             }
             count += n;
         }

@@ -56,7 +56,7 @@ public:
 
     template <typename T>
     void count(T c) {
-        mCount = c;
+        mCount = static_cast<double>(c);
     }
 
 private:

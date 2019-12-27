@@ -21,7 +21,7 @@ Hex<T> hex(T value) {
 template <typename T>
 std::ostream& operator<<(std::ostream& os, Hex<T> const& h) {
     streamstate ss(os);
-    os << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << h.value;
+    os << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << std::right << h.value;
     return os;
 }
 

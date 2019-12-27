@@ -88,6 +88,14 @@
 #    define ANKERL_NANOBENCH_NO_SANITIZE(...)
 #endif
 
+// workaround missing "is_trivially_copyable" in g++ < 5.0
+// See https://stackoverflow.com/a/31798726/48181
+#if defined(__GNUC__) && __GNUC__ < 5
+#    define ANKERL_NANOBENCH_IS_TRIVIALLY_COPYABLE(...) __has_trivial_copy(__VA_ARGS__)
+#else
+#    define ANKERL_NANOBENCH_IS_TRIVIALLY_COPYABLE(...) std::is_trivially_copyable<__VA_ARGS__>::value
+#endif
+
 // declarations ///////////////////////////////////////////////////////////////////////////////////
 
 namespace ankerl {
@@ -112,6 +120,11 @@ char const* htmlBoxplot() noexcept;
 char const* json() noexcept;
 
 } // namespace templates
+
+// BigO calculation
+namespace complexity {
+class BigO;
+}
 
 namespace detail {
 
@@ -176,7 +189,7 @@ private:
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Result {
 public:
-    Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch) noexcept;
+    Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complN) noexcept;
     Result() noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
@@ -198,6 +211,8 @@ public:
     ANKERL_NANOBENCH(NODISCARD) double medianBranchMissesPerUnit() const noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool hasMedianBranchMissesPerUnit() const noexcept;
 
+    ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
+
     ANKERL_NANOBENCH(NODISCARD) Clock::duration total() const noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) bool empty() const noexcept;
@@ -211,6 +226,8 @@ private:
     double mMedianInstructionsPerUnit{};
     double mMedianBranchesPerUnit{};
     double mMedianBranchMissesPerUnit{};
+
+    double mComplexityN{};
 
     detail::PerfCountSet<bool> mHas{};
 };
@@ -284,11 +301,11 @@ public:
     ANKERL_NANOBENCH(NODISCARD) bool performanceCounters() const noexcept;
 
     // Operation unit. Defaults to "op", could be e.g. "byte" for string processing. This is used for the table header, e.g. to show
-    // `ns/byte`. Use singular (byte, not bytes).
+    // `ns/byte`. Use singular (byte, not bytes). A change clears the currently collected results.
     Config& unit(std::string unit);
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
 
-    // Title of the benchmark, will be shown in the table header.
+    // Title of the benchmark, will be shown in the table header. A change clears the currently collected results.
     Config& title(std::string benchmarkTitle);
     ANKERL_NANOBENCH(NODISCARD) std::string const& title() const noexcept;
 
@@ -346,10 +363,23 @@ public:
     // Parses the mustache-like template and renders the output into os.
     Config& render(char const* templateContent, std::ostream& os);
 
+    // Set the length of N for the next benchmark run, so it is possible to calculate bigO.
+    template <typename T>
+    Config& complexityN(T b) noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
+
+    // calculates bigO of the results with all preconfigured complexity functions
+    std::vector<complexity::BigO> complexityBigO() const;
+
+    // calculates bigO for a custom function
+    template <typename Op>
+    complexity::BigO complexityBigO(std::string const& name, Op op) const;
+
 private:
     std::string mBenchmarkTitle = "benchmark";
     std::string mUnit = "op";
     double mBatch = 1.0;
+    double mComplexityN = -1.0;
     size_t mNumEpochs = 11;
     size_t mClockResolutionMultiple = static_cast<size_t>(1000);
     std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
@@ -371,13 +401,31 @@ namespace detail {
 
 #if defined(_MSC_VER)
 void doNotOptimizeAwaySink(void const*);
-#else
-template <typename T>
-void doNotOptimizeAway(T& value);
-#endif
 
 template <typename T>
 void doNotOptimizeAway(T const& val);
+
+#else
+
+// see folly's Benchmark.h
+template <typename T>
+constexpr bool doNotOptimizeNeedsIndirect() {
+    using Decayed = typename std::decay<T>::type;
+    return !ANKERL_NANOBENCH_IS_TRIVIALLY_COPYABLE(Decayed) || sizeof(Decayed) > sizeof(long) || std::is_pointer<Decayed>::value;
+}
+
+template <typename T>
+typename std::enable_if<!doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway(T const& val) {
+    // NOLINTNEXTLINE(hicpp-no-assembler)
+    asm volatile("" ::"r"(val));
+}
+
+template <typename T>
+typename std::enable_if<doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway(T const& val) {
+    // NOLINTNEXTLINE(hicpp-no-assembler)
+    asm volatile("" ::"m"(val) : "memory");
+}
+#endif
 
 // internally used, but visible because run() is templated
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
@@ -440,6 +488,42 @@ ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 PerformanceCounters& performanceCounters();
 
 } // namespace detail
+
+namespace complexity {
+
+class BigO {
+public:
+    using RangeMeasure = std::vector<std::pair<double, double>>;
+
+    template <typename Op>
+    static RangeMeasure mapRangeMeasure(RangeMeasure data, Op op) {
+        for (auto& rangeMeasure : data) {
+            rangeMeasure.first = op(rangeMeasure.first);
+        }
+        return data;
+    }
+
+    static RangeMeasure collectRangeMeasure(std::vector<Result> const& results);
+
+    template <typename Op>
+    BigO(std::string const& bigOName, RangeMeasure const& rangeMeasure, Op rangeToN)
+        : BigO(bigOName, mapRangeMeasure(rangeMeasure, rangeToN)) {}
+
+    BigO(std::string const& bigOName, RangeMeasure const& scaledRangeMeasure);
+    ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double constant() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double normalizedRootMeanSquare() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) bool operator<(BigO const& other) const noexcept;
+
+private:
+    std::string mName{};
+    double mConstant{};
+    double mNormalizedRootMeanSquare{};
+};
+std::ostream& operator<<(std::ostream& os, BigO const& bigO);
+
+} // namespace complexity
+
 } // namespace nanobench
 } // namespace ankerl
 
@@ -505,11 +589,23 @@ Config& Config::run(std::string const& name, Op op) {
     return *this;
 }
 
+template <typename Op>
+complexity::BigO Config::complexityBigO(std::string const& name, Op op) const {
+    return complexity::BigO(name, complexity::BigO::collectRangeMeasure(mResults), op);
+}
+
 // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
 // Any argument is cast to double.
 template <typename T>
 Config& Config::batch(T b) noexcept {
     mBatch = static_cast<double>(b);
+    return *this;
+}
+
+// Sets the computation complexity of the next run. Any argument is cast to double.
+template <typename T>
+Config& Config::complexityN(T n) noexcept {
+    mComplexityN = static_cast<double>(n);
     return *this;
 }
 
@@ -534,24 +630,6 @@ void doNotOptimizeAway(T const& val) {
     doNotOptimizeAwaySink(&val);
 }
 
-#else
-
-template <typename T>
-void doNotOptimizeAway(T const& val) {
-    // NOLINTNEXTLINE(hicpp-no-assembler)
-    asm volatile("" : : "r,m"(val) : "memory");
-}
-
-template <typename T>
-void doNotOptimizeAway(T& value) {
-#    if defined(__clang__)
-    // NOLINTNEXTLINE(hicpp-no-assembler)
-    asm volatile("" : "+r,m"(value) : : "memory");
-#    else
-    // NOLINTNEXTLINE(hicpp-no-assembler)
-    asm volatile("" : "+m,r"(value) : : "memory");
-#    endif
-}
 #endif
 
 } // namespace detail
@@ -617,9 +695,10 @@ namespace ankerl {
 namespace nanobench {
 namespace templates {
 char const* csv() noexcept {
-    return R"DELIM({{title}}; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "error %"; "measurements"; "instructions/{{unit}}"; "branch/{{unit}}"; "branch misses/{{unit}}"
+    return R"DELIM("{{title}}"; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "error %"; "measurements"; "instructions/{{unit}}"; "branch/{{unit}}"; "branch misses/{{unit}}"
 {{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}; {{median_ins_per_unit}}; {{median_branches_per_unit}}; {{median_branchmisses_per_unit}}
-{{/benchmarks}})DELIM";
+{{/benchmarks}}
+)DELIM";
 }
 //
 char const* htmlBoxplot() noexcept {
@@ -684,11 +763,10 @@ template <typename T>
 T parseFile(std::string const& filename);
 
 void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations);
-void printStabilityInformationOnce();
+void printStabilityInformationOnce(std::ostream* os);
 
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-uint64_t& singletonLastTableSettingsHash() noexcept;
-uint64_t calcTableSettingsHash(std::string const& unit, std::string const& title) noexcept;
+bool& singletonShowHeader() noexcept;
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
 Clock::duration calcClockResolution(size_t numEvaluations) noexcept;
@@ -902,9 +980,10 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
     }
 }
 
-void printStabilityInformationOnce() {
+void printStabilityInformationOnce(std::ostream* outStream) {
     static bool shouldPrint = true;
-    if (shouldPrint) {
+    if (shouldPrint && outStream) {
+        auto& os = *outStream;
         shouldPrint = false;
         std::vector<std::string> warnings;
         std::vector<std::string> recommendations;
@@ -913,22 +992,22 @@ void printStabilityInformationOnce() {
             return;
         }
 
-        std::cerr << "Warning, results might be unstable:" << std::endl;
+        os << "Warning, results might be unstable:" << std::endl;
         for (auto const& w : warnings) {
-            std::cerr << "* " << w << std::endl;
+            os << "* " << w << std::endl;
         }
 
-        std::cerr << std::endl << "Recommendations" << std::endl;
+        os << std::endl << "Recommendations" << std::endl;
         for (auto const& r : recommendations) {
-            std::cerr << "* " << r << std::endl;
+            os << "* " << r << std::endl;
         }
     }
 }
 
 // remembers the last table settings used. When it changes, a new table header is automatically written for the new entry.
-uint64_t& singletonLastTableSettingsHash() noexcept {
-    static uint64_t sTableSettingHash = {};
-    return sTableSettingHash;
+bool& singletonShowHeader() noexcept {
+    static bool sShowHeader = true;
+    return sShowHeader;
 }
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
@@ -943,13 +1022,6 @@ inline uint64_t fnv1a(std::string const& str) noexcept {
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
 inline void hash_combine(uint64_t* seed, uint64_t val) {
     *seed ^= val + UINT64_C(0x9e3779b9) + (*seed << 6U) + (*seed >> 2U);
-}
-
-inline uint64_t calcTableSettingsHash(Config const& cfg) noexcept {
-    uint64_t h = 0;
-    hash_combine(&h, fnv1a(cfg.unit()));
-    hash_combine(&h, fnv1a(cfg.title()));
-    return h;
 }
 
 // determines resolution of the given clock. This is done by measuring multiple times and returning the minimum time difference.
@@ -976,7 +1048,7 @@ Clock::duration clockResolution() noexcept {
 IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
     : mConfig(config)
     , mName(std::move(name)) {
-    printStabilityInformationOnce();
+    printStabilityInformationOnce(mConfig.output());
 
     // determine target runtime per epoch
     mTargetRuntimePerEpoch = detail::clockResolution() * mConfig.clockResolutionMultiple();
@@ -1110,7 +1182,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
     ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
     Result r;
     if (errorMessage.empty()) {
-        r = Result(mName, mMeasurements, mConfig.batch());
+        r = Result(mName, mMeasurements, mConfig.batch(), mConfig.complexityN());
     }
 
     if (mConfig.output() != nullptr) {
@@ -1120,13 +1192,13 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
         if (mConfig.relative()) {
             double d = 100.0;
             if (!mConfig.results().empty()) {
-                d = mConfig.results().front().median() / r.median() * 100;
+                d = r.median() <= decltype(r.median())::zero() ? 0.0 : mConfig.results().front().median() / r.median() * 100;
             }
             columns.emplace_back(11, 1, "relative", "%", d);
         }
 
         columns.emplace_back(22, 2, "ns/" + mConfig.unit(), "", 1e9 * r.median().count());
-        columns.emplace_back(22, 2, mConfig.unit() + "/s", "", 1.0 / r.median().count());
+        columns.emplace_back(22, 2, mConfig.unit() + "/s", "", r.median().count() <= 0.0 ? 0.0 : 1.0 / r.median().count());
         columns.emplace_back(10, 1, "err%", "%", r.medianAbsolutePercentError() * 100);
 
         if (mConfig.performanceCounters()) {
@@ -1137,7 +1209,9 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
                 columns.emplace_back(18, 2, "cyc/" + mConfig.unit(), "", r.medianCpuCyclesPerUnit());
             }
             if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
-                columns.emplace_back(9, 3, "IPC", "", r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit());
+                columns.emplace_back(9, 3, "IPC", "",
+                                     r.medianCpuCyclesPerUnit() <= 0.0 ? 0.0
+                                                                       : r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit());
             }
             if (r.hasMedianBranchesPerUnit()) {
                 columns.emplace_back(17, 2, "bra/" + mConfig.unit(), "", r.medianBranchesPerUnit());
@@ -1151,15 +1225,15 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             }
         }
 
-        columns.emplace_back(12, 2, "tot", "", std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count());
+        columns.emplace_back(12, 2, "total", "", std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count());
 
         // write everything
         auto& os = *mConfig.output();
 
-        auto h = calcTableSettingsHash(mConfig);
-        if (h != singletonLastTableSettingsHash()) {
-            singletonLastTableSettingsHash() = h;
+        if (singletonShowHeader()) {
+            singletonShowHeader() = false;
 
+            // no result yet, print header
             os << std::endl;
             for (auto const& col : columns) {
                 os << col.title();
@@ -1186,7 +1260,7 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             if (showUnstable) {
                 os << ":wavy_dash: ";
             }
-            os << mName;
+            os << fmt::MarkDownCode(mName);
             if (showUnstable) {
                 auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mConfig.epochs());
                 // NOLINTNEXTLINE(bugprone-incorrect-roundings)
@@ -1307,12 +1381,15 @@ public:
         {
             // calibrate loop overhead. For branches & instructions this makes sense, not so much for everything else like cycles.
             // with g++, atomic operation compiles exactly to one instruction. see https://godbolt.org/z/dEXYd1
-            std::atomic<int> atomicVal(0);
             uint64_t const numIters = 100000U + (std::random_device{}() & 3);
             uint64_t n = numIters;
-            int y = 123;
-
-            auto fn = [&]() { atomicVal.compare_exchange_strong(y, 0); };
+            uint32_t x = 0;
+            auto fn = [&]() {
+                // sub, shr, xor, imul
+                x += UINT32_C(0x9065e173);
+                x ^= (x >> 11);
+                x *= UINT32_C(0xbac28739);
+            };
 
             beginMeasure();
             Clock::time_point before = Clock::now();
@@ -1321,20 +1398,28 @@ public:
             }
             Clock::time_point after = Clock::now();
             endMeasure();
+            detail::doNotOptimizeAway(x);
 
             if ((after - before).count() == 0) {
                 std::cerr << "could not calibrate loop overhead" << std::endl;
             }
 
             for (size_t i = 0; i < mCounters.size(); ++i) {
-                auto sub = mCalibratedOverhead[i] + 1U * numIters;
+                // factor 2 because we have two instructions per loop
                 auto val = mCounters[i];
+                auto sub = mCalibratedOverhead[i];
                 if (val > sub) {
                     val -= sub;
                 } else {
                     val = 0;
                 }
+                // minus 3 for the dummy-hash above
                 mLoopOverhead[i] = divRounded(val, numIters);
+                if (mLoopOverhead[i] > 4) {
+                    mLoopOverhead[i] -= 4;
+                } else {
+                    mLoopOverhead[i] = 0;
+                }
             }
         }
     }
@@ -1963,9 +2048,10 @@ private:
 };
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch) noexcept
+Result::Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complN) noexcept
     : mName(std::move(benchmarkName))
     , mSortedMeasurements(std::move(measurements))
+    , mComplexityN(complN)
     , mHas(detail::performanceCounters().has()) {
 
     std::sort(mSortedMeasurements.begin(), mSortedMeasurements.end());
@@ -2006,6 +2092,10 @@ Result::Result() noexcept
 
 std::string const& Result::name() const noexcept {
     return mName;
+}
+
+double Result::complexityN() const noexcept {
+    return mComplexityN;
 }
 
 std::chrono::duration<double> Result::median() const noexcept {
@@ -2090,6 +2180,10 @@ double Config::batch() const noexcept {
     return mBatch;
 }
 
+double Config::complexityN() const noexcept {
+    return mComplexityN;
+}
+
 // Set a baseline to compare it to. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline, <100%
 // means it is slower than the baseline.
 Config& Config::relative(bool isRelativeEnabled) noexcept {
@@ -2109,8 +2203,13 @@ bool Config::performanceCounters() const noexcept {
 }
 
 // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
+// If u differs from currently set unit, the stored results will be cleared.
 // Use singular (byte, not bytes).
 Config& Config::unit(std::string u) {
+    if (u != mUnit) {
+        mResults.clear();
+        detail::singletonShowHeader() = true;
+    }
     mUnit = std::move(u);
     return *this;
 }
@@ -2118,7 +2217,12 @@ std::string const& Config::unit() const noexcept {
     return mUnit;
 }
 
+// If benchmarkTitle differs from currently set title, the stored results will be cleared.
 Config& Config::title(std::string benchmarkTitle) {
+    if (benchmarkTitle != mBenchmarkTitle) {
+        mResults.clear();
+        detail::singletonShowHeader() = true;
+    }
     mBenchmarkTitle = std::move(benchmarkTitle);
     return *this;
 }
@@ -2196,6 +2300,22 @@ Config& Config::render(char const* templateContent, std::ostream& os) {
     return *this;
 }
 
+std::vector<complexity::BigO> Config::complexityBigO() const {
+    // collect data
+    std::vector<complexity::BigO> bigOs;
+    auto rangeMeasure = complexity::BigO::collectRangeMeasure(mResults);
+    bigOs.emplace_back("O(1)", rangeMeasure, [](double) { return 1.0; });
+    bigOs.emplace_back("O(n)", rangeMeasure, [](double n) { return n; });
+    bigOs.emplace_back("O(log n)", rangeMeasure, [](double n) { return std::log2(n); });
+    bigOs.emplace_back("O(n log n)", rangeMeasure, [](double n) { return n * std::log2(n); });
+    bigOs.emplace_back("O(n^2)", rangeMeasure, [](double n) { return n * n; });
+    bigOs.emplace_back("O(n^3)", rangeMeasure, [](double n) { return n * n * n; });
+    std::sort(bigOs.begin(), bigOs.end());
+    return bigOs;
+
+    return {};
+}
+
 Rng::Rng()
     : Rng(UINT64_C(0xd3b45fd780a1b6a3)) {}
 
@@ -2225,6 +2345,67 @@ void Rng::assign(Rng const& other) noexcept {
     mCounter = other.mCounter;
 }
 
+namespace complexity {
+
+BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results) {
+    BigO::RangeMeasure rangeMeasure;
+    for (auto const& result : results) {
+        if (result.complexityN() > 0.0) {
+            rangeMeasure.emplace_back(result.complexityN(), result.median().count());
+        }
+    }
+    return rangeMeasure;
+}
+
+BigO::BigO(std::string const& bigOName, RangeMeasure const& rangeMeasure)
+    : mName(bigOName) {
+
+    // estimate the constant factor
+    double sumRangeMeasure = 0.0;
+    double sumRangeRange = 0.0;
+
+    for (size_t i = 0; i < rangeMeasure.size(); ++i) {
+        sumRangeMeasure += rangeMeasure[i].first * rangeMeasure[i].second;
+        sumRangeRange += rangeMeasure[i].first * rangeMeasure[i].first;
+    }
+    mConstant = sumRangeMeasure / sumRangeRange;
+
+    // calculate root mean square
+    double err = 0.0;
+    double sumMeasure = 0.0;
+    for (size_t i = 0; i < rangeMeasure.size(); ++i) {
+        auto diff = mConstant * rangeMeasure[i].first - rangeMeasure[i].second;
+        err += diff * diff;
+
+        sumMeasure += rangeMeasure[i].second;
+    }
+
+    auto n = static_cast<double>(rangeMeasure.size());
+    auto mean = sumMeasure / n;
+    mNormalizedRootMeanSquare = std::sqrt(err / n) / mean;
+}
+
+std::string const& BigO::name() const noexcept {
+    return mName;
+}
+
+double BigO::constant() const noexcept {
+    return mConstant;
+}
+
+double BigO::normalizedRootMeanSquare() const noexcept {
+    return mNormalizedRootMeanSquare;
+}
+
+bool BigO::operator<(BigO const& other) const noexcept {
+    return std::tie(mNormalizedRootMeanSquare, mName) < std::tie(other.mNormalizedRootMeanSquare, other.mName);
+}
+
+std::ostream& operator<<(std::ostream& os, BigO const& bigO) {
+    return os << bigO.constant() << " * " << bigO.name() << ", rms=" << bigO.normalizedRootMeanSquare();
+}
+
+} // namespace complexity
 } // namespace nanobench
 } // namespace ankerl
 

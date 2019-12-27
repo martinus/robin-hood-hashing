@@ -170,5 +170,7 @@ function(add_compile_flags_target target)
         # warns in doctest.h :(
         #target_compile_options(robinhood-test PRIVATE -fsanitize=memory)
         #target_link_libraries(robinhood-test PRIVATE -fsanitize=memory)
+
+        target_link_libraries(${target} PRIVATE -pthread)
     endif()
 endfunction()

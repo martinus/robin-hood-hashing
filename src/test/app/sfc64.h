@@ -105,6 +105,16 @@ public:
         m_counter = s[3];
     }
 
+    // see http://prng.di.unimi.it/
+    double uniform01() noexcept {
+        auto i = (UINT64_C(0x3ff) << 52U) | (operator()() >> 12U);
+        // can't use union in c++ here for type puning, it's undefined behavior.
+        // std::memcpy is optimized away anyways.
+        double d;
+        std::memcpy(&d, &i, sizeof(double));
+        return d - 1.0;
+    }
+
 private:
     template <typename T>
     T rotl(T const x, size_t k) {

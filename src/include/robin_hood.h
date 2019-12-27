@@ -48,6 +48,9 @@
 #include <type_traits>
 #include <utility>
 
+#include <immintrin.h>
+#include <nmmintrin.h>
+
 // #define ROBIN_HOOD_LOG_ENABLED
 #ifdef ROBIN_HOOD_LOG_ENABLED
 #    include <iostream>
@@ -696,27 +699,100 @@ static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     return static_cast<size_t>(h);
 }
 
-inline size_t hash_int(uint64_t obj) noexcept {
-#if ROBIN_HOOD(HAS_UMUL128)
-    // 167079903232 masksum, 120428523 ops best: 0xde5fb9d2630458e9
-    static constexpr uint64_t k = UINT64_C(0xde5fb9d2630458e9);
+inline uint64_t ror64(uint64_t v, int r) {
+    return (v >> r) | (v << (64 - r));
+}
+
+inline size_t hash_int(uint64_t v) noexcept {
+#if 0
+    // rrmxmx
+    // 75.79 ns/op;   0 context-switches/op;   3.868 m page-faults/op;   135.5 ins/op;   224.9
+    // cyc/op;   602.5 m ins/cyc;   17.40 bra/op;   1.886 mis/op;   (10.84%)    50% distinct
+    v ^= ror64(v, 49) ^ ror64(v, 24);
+    v *= 0x9FB21C651E98DF25L;
+    v ^= v >> 28;
+    v *= 0x9FB21C651E98DF25L;
+    return v ^ v >> 28;
+#endif
+
+#if 0
+    __m128i hash_64 = _mm_set1_epi64x(static_cast<int64_t>(v));
+    for (int i = 0; i < 10; ++i) {
+        hash_64 = _mm_aesenc_si128(hash_64, _mm_set1_epi32(-559038737));
+    }
+
+    uint64_t result;
+    std::memcpy(&result, &hash_64, sizeof(uint64_t));
+    return result;
+#endif
+
+    //#if 0
+    // 16909: accepted=(0.0390154, 3.6235e-07)=0.0001189, best=(0.0390154, 3.6235e-07)=0.0001189
+    // UINT64_C(0xea054c65f6328a3b) // Mul128XorMul
     uint64_t h;
-    uint64_t l = detail::umul128(obj, k, &h);
+    uint64_t l = robin_hood::detail::umul128(v, UINT64_C(0xea054c65f6328a3b), &h);
+    return (h ^ l) * UINT64_C(0xea054c65f6328a3b);
+    //#endif
+
+#if 0
+    // 70.05 ns/op;   0 context-switches/op;   3.868 m page-faults/op;   116.2 ins/op;   204.4
+    // cyc/op;   568.3 m ins/cyc;   16.52 bra/op;   1.712 mis/op;   (10.36%)    50% distinct
+    uint64_t h;
+    uint64_t l = detail::umul128(v, UINT64_C(0x1172e17895fbc5d7), &h);
     return h + l;
-#elif ROBIN_HOOD(BITNESS) == 32
-    uint64_t const r = obj * UINT64_C(0xca4bcaa75ec3f625);
-    auto h = static_cast<uint32_t>(r >> 32U);
-    auto l = static_cast<uint32_t>(r);
-    return h + l;
-#else
-    // murmurhash 3 finalizer
-    uint64_t h = obj;
+#endif
+
+#if 0
+    // 17168: accepted=(0.00629202, 0.00146349)=0.00303452, best=(0.00672049, 0.00130806)=0.00296493
+    uint64_t h;
+    uint64_t l = detail::umul128(v, UINT64_C(0xddd442448b71ddf0), &h);
+    return h ^ l;
+#endif
+
+#if 0
+    // 73.05 ns/op;   0 context-switches/op;   3.868 m page-faults/op;   125.4 ins/op;   216.3
+    // cyc/op;   579.7 m ins/cyc;   17.34 bra/op;   1.862 mis/op;   (10.73%)    50% distinct
+    uint64_t h;
+    uint64_t l = detail::umul128(v, UINT64_C(0x5b9ee17366143779), &h);
+    return (h ^ l) * UINT64_C(0x5b9ee17366143779);
+#endif
+
+#if 0
+    // 61.14 ns/op;   0 context-switches/op;   3.868 m page-faults/op;   106.3 ins/op;   177.9
+    // cyc/op;   597.6 m ins/cyc;   15.55 bra/op;   1.211 mis/op;   (7.79%)    50% distinct
+    return _mm_crc32_u64(0, v) * UINT64_C(0xc6be7c863b64568b);
+#endif
+
+#if 0
+    // 4093: 18.82160 17.59531: UINT64_C(0x5604023f69d87197), UINT64_C(0x7313c3a1d7524819),
+    // UINT64_C(0xd5b425c8268e2ae1), UINT64_C(0xb28fb371f62c4627)
+    //  MurmurMin
+    uint64_t h = v;
+    h ^= h >> 23;
+    h *= 0x7313c3a1d7524819;
+    h ^= h >> 33;
+    h *= 0xb28fb371f62c4627;
+    return h;
+#endif
+
+#if 0
+    // 72.87 ns/op;   0 context-switches/op;   3.868 m page-faults/op;   131.6 ins/op;   215.7
+    // cyc/op;   610.0 m ins/cyc;   17.41 bra/op;   1.863 mis/op;   (10.70%)    50% distinct
+    uint64_t h = v;
     h ^= h >> 33;
     h *= 0xff51afd7ed558ccd;
     h ^= h >> 33;
     h *= 0xc4ceb9fe1a85ec53;
     h ^= h >> 33;
-    return static_cast<size_t>(h);
+    return h;
+#endif
+
+#if 0
+    // 9.22003e+06 4194303 1.37442e-06
+    // 17.78865 17.78865: UINT64_C(0xf89f199221d6a52d) // Mul128XorMul NEW BEST
+    uint64_t h;
+    uint64_t l = detail::umul128(v, UINT64_C(0xa213cc9a3de2354f), &h);
+    return (h ^ l) * UINT64_C(0xa213cc9a3de2354f);
 #endif
 }
 
@@ -1175,14 +1251,18 @@ private:
     // The upper 1-5 bits need to be a reasonable good hash, to save comparisons.
     template <typename HashKey>
     void keyToIdx(HashKey&& key, size_t* idx, InfoType* info) const {
-        // for a user-specified hash that is *not* robin_hood::hash, apply robin_hood::hash as an
-        // additional mixing step. This serves as a bad hash prevention, if the given data is badly
-        // mixed.
+// for a user-specified hash that is *not* robin_hood::hash, apply robin_hood::hash as an
+// additional mixing step. This serves as a bad hash prevention, if the given data is badly
+// mixed.
+#if 0
         using Mix =
             typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
                                       ::robin_hood::detail::identity_hash<size_t>,
                                       ::robin_hood::hash<size_t>>::type;
         *idx = Mix{}(WHash::operator()(key));
+#else
+        *idx = WHash::operator()(key);
+#endif
 
         *info = mInfoInc + static_cast<InfoType>(*idx >> mInfoHashShift);
         *idx &= mMask;
@@ -1321,6 +1401,23 @@ private:
 public:
     using iterator = Iter<false>;
     using const_iterator = Iter<true>;
+
+    InfoType debugInfoInc() const {
+        return mInfoInc;
+    }
+
+    uint8_t const* debugInfoBegin() const {
+        return mInfo;
+    }
+
+    uint8_t const* debugInfoEnd() const {
+        return mInfo + calcNumElementsWithBuffer(mMask + 1);
+    }
+
+    // if we get 0, it's an indication that next insert will increase size
+    size_t debugMaxNumElementsAllowed() const {
+        return mMaxNumElementsAllowed;
+    }
 
     // Creates an empty hash map. Nothing is allocated yet, this happens at the first insert. This
     // tremendously speeds up ctor & dtor of a map that never receives an element. The penalty is
@@ -1869,7 +1966,7 @@ private:
             // while we potentially have a match. Can't do a do-while here because when mInfo is 0
             // we don't want to skip forward
             while (info == mInfo[idx]) {
-                if (WKeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+                if (ROBIN_HOOD_UNLIKELY(WKeyEqual::operator()(key, mKeyVals[idx].getFirst()))) {
                     // key already exists, do not insert.
                     return mKeyVals[idx].getSecond();
                 }
