@@ -30,12 +30,12 @@ function build() {
     cd ${ORIGINDIR}
 }
 
-build "g++" "17" "OFF"
-build "clang++" "14" "ON"
+#build "g++" "17" "OFF"
+#build "clang++" "14" "ON"
 
 
-#build "g++-4.9" "11" "OFF" "-m32"
-#build "g++-4.9" "14" "OFF" "-m32"
+build "g++-4.9" "11" "OFF" "-m32"
+build "g++-4.9" "14" "OFF" "-m32"
 
 #build "g++-5" "11" "OFF" "-m32"
 #build "g++-5" "14" "OFF" "-m32"

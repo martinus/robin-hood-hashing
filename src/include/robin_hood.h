@@ -6,12 +6,12 @@
 //                                      _/_____/
 //
 // Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
-// version 3.4.3
+// version 3.4.4
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2018-2019 Martin Ankerl <http://martin.ankerl.com>
+// Copyright (c) 2018-2020 Martin Ankerl <http://martin.ankerl.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 4 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 3 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 4 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -1499,10 +1499,10 @@ public:
         Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
 
         auto const numElementsWithBuffer = calcNumElementsWithBuffer(mMask + 1);
-        // clear everything except the sentinel
-        // std::memset(mInfo, 0, sizeof(uint8_t) * (mMask + 1));
+        // clear everything, then set the sentinel again
         uint8_t const z = 0;
-        std::fill(mInfo, mInfo + (sizeof(uint8_t) * numElementsWithBuffer), z);
+        std::fill(mInfo, mInfo + calcNumBytesInfo(numElementsWithBuffer), z);
+        mInfo[numElementsWithBuffer] = 1;
 
         mInfoInc = InitialInfoInc;
         mInfoHashShift = InitialInfoHashShift;
@@ -1775,6 +1775,8 @@ public:
     }
 
     ROBIN_HOOD(NODISCARD) size_t calcNumBytesInfo(size_t numElements) const noexcept {
+        // we add a uint64_t, which houses the sentinel (first byte) and padding so we can load
+        // 64bit types.
         return numElements + sizeof(uint64_t);
     }
 
@@ -1983,13 +1985,16 @@ private:
         // remove one bit of the hash, leaving more space for the distance info.
         // This is extremely fast because we can operate on 8 bytes at once.
         ++mInfoHashShift;
-        auto const data = reinterpret_cast_no_cast_align_warning<uint64_t*>(mInfo);
         auto const numElementsWithBuffer = calcNumElementsWithBuffer(mMask + 1);
-        auto const numEntries = numElementsWithBuffer / 8;
 
-        for (size_t i = 0; i < numEntries; ++i) {
-            data[i] = (data[i] >> 1U) & UINT64_C(0x7f7f7f7f7f7f7f7f);
+        for (size_t i = 0; i < numElementsWithBuffer; i += 8) {
+            auto val = unaligned_load<uint64_t>(mInfo + i);
+            val = (val >> 1U) & UINT64_C(0x7f7f7f7f7f7f7f7f);
+            std::memcpy(mInfo + i, &val, sizeof(val));
         }
+        // update sentinel, which might have been cleared out!
+        mInfo[numElementsWithBuffer] = 1;
+
         mMaxNumElementsAllowed = calcMaxNumElementsAllowed(mMask + 1);
         return true;
     }
