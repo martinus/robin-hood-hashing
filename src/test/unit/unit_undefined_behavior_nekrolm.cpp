@@ -48,7 +48,7 @@ public:
         return value == other.value;
     }
 
-    inline size_t Hash() const noexcept {
+    ROBIN_HOOD(NODISCARD) inline size_t Hash() const noexcept {
         static const robin_hood::hash<T> hasher;
         return hasher(value);
     }
@@ -67,10 +67,10 @@ public:
         : first_state(f)
         , second_state(s) {}
 
-    inline const First& FirstState() const noexcept {
+    ROBIN_HOOD(NODISCARD) inline const First& FirstState() const noexcept {
         return first_state;
     }
-    inline const Second& SecondState() const noexcept {
+    ROBIN_HOOD(NODISCARD) inline const Second& SecondState() const noexcept {
         return second_state;
     }
 
@@ -83,7 +83,7 @@ public:
                                                   : first_state < other.first_state;
     }
 
-    inline size_t Hash() const noexcept {
+    ROBIN_HOOD(NODISCARD) inline size_t Hash() const noexcept {
         return CombineHashes(second_state.Hash(), first_state.Hash());
     }
 };
@@ -102,7 +102,7 @@ public:
     inline StatePair(First f, VoidState ROBIN_HOOD_UNUSED(x) /*unused*/) noexcept
         : first_state(std::move(f)) {}
 
-    inline const First& FirstState() const noexcept {
+    ROBIN_HOOD(NODISCARD) inline const First& FirstState() const noexcept {
         return first_state;
     }
     inline static VoidState SecondState() noexcept {
@@ -117,7 +117,7 @@ public:
         return first_state < other.first_state;
     }
 
-    inline size_t Hash() const noexcept {
+    ROBIN_HOOD(NODISCARD) inline size_t Hash() const noexcept {
         return first_state.Hash();
     }
 };
@@ -128,7 +128,7 @@ private:
     Second second_state{};
 
 public:
-    inline StatePair(VoidState ROBIN_HOOD_UNUSED(x) /*unused*/, Second s) noexcept
+    explicit inline StatePair(VoidState ROBIN_HOOD_UNUSED(x) /*unused*/, Second s) noexcept
         : second_state(std::move(s)) {}
 
     inline StatePair() noexcept = default;
@@ -148,7 +148,7 @@ public:
         return second_state < other.second_state;
     }
 
-    inline size_t Hash() const noexcept {
+    ROBIN_HOOD(NODISCARD) inline size_t Hash() const noexcept {
         return second_state.Hash();
     }
 };
@@ -181,7 +181,7 @@ public:
                                                 : inner_state < other.inner_state;
     }
 
-    size_t Hash() const noexcept {
+    ROBIN_HOOD(NODISCARD) size_t Hash() const noexcept {
         static const robin_hood::hash<uint64_t> hasher;
         return hasher((static_cast<uint64_t>(inner_state) << 32U) |
                       static_cast<uint32_t>(outer_state));
@@ -208,7 +208,9 @@ TEST_CASE_TEMPLATE("undefined_behavior_nekrolm", Map, robin_hood::unordered_flat
 
     for (int i = 0; i < 1000; ++i) {
         for (int j = 0; j < 1000; ++j) {
-            IState s = {{i, j}, FState{}};
+            FstStatePair lhs(i, j);
+            FState rhs{};
+            IState s(lhs, rhs);
             map[s] = static_cast<int>(map.size());
         }
     }
