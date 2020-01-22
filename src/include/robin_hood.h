@@ -65,6 +65,28 @@
 #    define ROBIN_HOOD_TRACE(x)
 #endif
 
+// #define ROBIN_HOOD_COUNT_ENABLED
+#ifdef ROBIN_HOOD_COUNT_ENABLED
+#    include <iostream>
+#    define ROBIN_HOOD_COUNT(x) ++counts().x;
+namespace robin_hood {
+struct Counts {
+    uint64_t shiftUp{};
+    uint64_t shiftDown{};
+};
+inline std::ostream& operator<<(std::ostream& os, Counts const& c) {
+    return os << c.shiftUp << " shiftUp" << std::endl << c.shiftDown << " shiftDown" << std::endl;
+}
+
+static Counts& counts() {
+    static Counts counts{};
+    return counts;
+}
+} // namespace robin_hood
+#else
+#    define ROBIN_HOOD_COUNT(x)
+#endif
+
 // all non-argument macros should use this facility. See
 // https://www.fluentcpp.com/2019/05/28/better-macros-better-flags/
 #define ROBIN_HOOD(x) ROBIN_HOOD_PRIVATE_DEFINITION_##x()
@@ -1202,23 +1224,23 @@ private:
     }
 
     // Shift everything up by one element. Tries to move stuff around.
-    // True if some shifting has occured (entry under idx is a constructed object)
-    // Fals if no shift has occured (entry under idx is unconstructed memory)
     void
-    shiftUp(size_t idx,
+    shiftUp(size_t startIdx,
             size_t const insertion_idx) noexcept(std::is_nothrow_move_assignable<Node>::value) {
+        auto idx = startIdx;
+        ::new (static_cast<void*>(mKeyVals + idx)) Node(std::move(mKeyVals[idx - 1]));
+        while (--idx != insertion_idx) {
+            mKeyVals[idx] = std::move(mKeyVals[idx - 1]);
+        }
+
+        idx = startIdx;
         while (idx != insertion_idx) {
-            size_t prev_idx = idx - 1;
-            if (mInfo[idx]) {
-                mKeyVals[idx] = std::move(mKeyVals[prev_idx]);
-            } else {
-                ::new (static_cast<void*>(mKeyVals + idx)) Node(std::move(mKeyVals[prev_idx]));
-            }
-            mInfo[idx] = static_cast<uint8_t>(mInfo[prev_idx] + mInfoInc);
+            ROBIN_HOOD_COUNT(shiftUp);
+            mInfo[idx] = static_cast<uint8_t>(mInfo[idx - 1] + mInfoInc);
             if (ROBIN_HOOD_UNLIKELY(mInfo[idx] + mInfoInc > 0xFF)) {
                 mMaxNumElementsAllowed = 0;
             }
-            idx = prev_idx;
+            --idx;
         }
     }
 
@@ -1228,12 +1250,11 @@ private:
         mKeyVals[idx].destroy(*this);
 
         // until we find one that is either empty or has zero offset.
-        size_t nextIdx = idx + 1;
-        while (mInfo[nextIdx] >= 2 * mInfoInc) {
-            mInfo[idx] = static_cast<uint8_t>(mInfo[nextIdx] - mInfoInc);
-            mKeyVals[idx] = std::move(mKeyVals[nextIdx]);
-            idx = nextIdx;
-            nextIdx = idx + 1;
+        while (mInfo[idx + 1] >= 2 * mInfoInc) {
+            ROBIN_HOOD_COUNT(shiftDown);
+            mInfo[idx] = static_cast<uint8_t>(mInfo[idx + 1] - mInfoInc);
+            mKeyVals[idx] = std::move(mKeyVals[idx + 1]);
+            ++idx;
         }
 
         mInfo[idx] = 0;
@@ -1252,11 +1273,13 @@ private:
 
         do {
             // unrolling this twice gives a bit of a speedup. More unrolling did not help.
-            if (info == mInfo[idx] && WKeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+            if (info == mInfo[idx] &&
+                ROBIN_HOOD_LIKELY(WKeyEqual::operator()(key, mKeyVals[idx].getFirst()))) {
                 return idx;
             }
             next(&info, &idx);
-            if (info == mInfo[idx] && WKeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
+            if (info == mInfo[idx] &&
+                ROBIN_HOOD_LIKELY(WKeyEqual::operator()(key, mKeyVals[idx].getFirst()))) {
                 return idx;
             }
             next(&info, &idx);
