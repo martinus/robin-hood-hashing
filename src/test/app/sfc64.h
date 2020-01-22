@@ -105,6 +105,10 @@ public:
         m_counter = s[3];
     }
 
+    uint64_t counter() const {
+        return m_counter;
+    }
+
 private:
     template <typename T>
     T rotl(T const x, size_t k) {

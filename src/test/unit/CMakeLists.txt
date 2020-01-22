@@ -8,6 +8,7 @@ target_sources_local(rh PRIVATE
     bench_hash_int.cpp
     bench_hash_string.cpp
     bench_iterate.cpp
+    bench_quick_overall.cpp
     bench_random_insert_erase.cpp
 
     # count
