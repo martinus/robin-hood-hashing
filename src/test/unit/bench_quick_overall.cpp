@@ -47,7 +47,6 @@ inline void randomizeKey(sfc64& rng, int n, std::string& key) {
 
 // Random insert & erase
 template <typename Map>
-ROBIN_HOOD(NOINLINE)
 void benchRandomInsertErase(ankerl::nanobench::Config& cfg) {
 
     cfg.run("random insert erase", [&] {
@@ -70,7 +69,6 @@ void benchRandomInsertErase(ankerl::nanobench::Config& cfg) {
 
 // iterate
 template <typename Map>
-ROBIN_HOOD(NOINLINE)
 void benchIterate(ankerl::nanobench::Config& cfg) {
     size_t numElements = 5000;
 
@@ -103,7 +101,6 @@ void benchIterate(ankerl::nanobench::Config& cfg) {
 }
 
 template <typename Map>
-ROBIN_HOOD(NOINLINE)
 void benchRandomFind(ankerl::nanobench::Config& cfg) {
     cfg.run("50% probability to find", [&] {
         sfc64 numberesInsertRng(222);
@@ -148,7 +145,6 @@ void benchRandomFind(ankerl::nanobench::Config& cfg) {
 }
 
 template <typename Map>
-ROBIN_HOOD(NOINLINE)
 void benchAll(ankerl::nanobench::Config& cfg) {
     cfg.title("benchmarking " + type_string(Map{}));
     benchIterate<Map>(cfg);
@@ -156,27 +152,40 @@ void benchAll(ankerl::nanobench::Config& cfg) {
     benchRandomFind<Map>(cfg);
 }
 
+double geomean1(ankerl::nanobench::Config const& cfg) {
+    return geomean(cfg.results(),
+                   [](ankerl::nanobench::Result const& result) { return result.median().count(); });
+}
+
 } // namespace
 
 // A relatively quick benchmark that should get a relatively good single number of how good the map
 // is. It calculates geometric mean of several benchmarks.
-TEST_CASE("bench_quick_overall" * doctest::test_suite("bench") * doctest::skip()) {
+TEST_CASE("bench_quick_overall_flat" * doctest::test_suite("bench") * doctest::skip()) {
     ankerl::nanobench::Config cfg;
-    // benchAll<std::unordered_map<uint64_t, size_t>>(cfg);
-    // benchAll<std::unordered_map<std::string, size_t>>(cfg);
-
     benchAll<robin_hood::unordered_flat_map<uint64_t, size_t>>(cfg);
     benchAll<robin_hood::unordered_flat_map<std::string, size_t>>(cfg);
-
-    // benchAll<robin_hood::unordered_node_map<uint64_t, size_t>>(cfg);
-    // benchAll<robin_hood::unordered_node_map<std::string, size_t>>(cfg);
-
-    auto mean = geomean(cfg.results(), [](ankerl::nanobench::Result const& result) {
-        return result.median().count();
-    });
+    std::cout << geomean1(cfg) << std::endl;
 
 #ifdef ROBIN_HOOD_COUNT_ENABLED
     std::cout << robin_hood::counts() << std::endl;
 #endif
-    std::cout << mean << std::endl;
+}
+
+TEST_CASE("bench_quick_overall_node" * doctest::test_suite("bench") * doctest::skip()) {
+    ankerl::nanobench::Config cfg;
+    benchAll<robin_hood::unordered_node_map<uint64_t, size_t>>(cfg);
+    benchAll<robin_hood::unordered_node_map<std::string, size_t>>(cfg);
+    std::cout << geomean1(cfg) << std::endl;
+
+#ifdef ROBIN_HOOD_COUNT_ENABLED
+    std::cout << robin_hood::counts() << std::endl;
+#endif
+}
+
+TEST_CASE("bench_quick_overall_std" * doctest::test_suite("bench") * doctest::skip()) {
+    ankerl::nanobench::Config cfg;
+    benchAll<std::unordered_map<uint64_t, size_t>>(cfg);
+    benchAll<std::unordered_map<std::string, size_t>>(cfg);
+    std::cout << geomean1(cfg) << std::endl;
 }
