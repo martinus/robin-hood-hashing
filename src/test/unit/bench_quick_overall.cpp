@@ -47,6 +47,7 @@ inline void randomizeKey(sfc64& rng, int n, std::string& key) {
 
 // Random insert & erase
 template <typename Map>
+ROBIN_HOOD(NOINLINE)
 void benchRandomInsertErase(ankerl::nanobench::Config& cfg) {
 
     cfg.run("random insert erase", [&] {
@@ -69,6 +70,7 @@ void benchRandomInsertErase(ankerl::nanobench::Config& cfg) {
 
 // iterate
 template <typename Map>
+ROBIN_HOOD(NOINLINE)
 void benchIterate(ankerl::nanobench::Config& cfg) {
     size_t numElements = 5000;
 
@@ -101,6 +103,7 @@ void benchIterate(ankerl::nanobench::Config& cfg) {
 }
 
 template <typename Map>
+ROBIN_HOOD(NOINLINE)
 void benchRandomFind(ankerl::nanobench::Config& cfg) {
     cfg.run("50% probability to find", [&] {
         sfc64 numberesInsertRng(222);
@@ -145,6 +148,7 @@ void benchRandomFind(ankerl::nanobench::Config& cfg) {
 }
 
 template <typename Map>
+ROBIN_HOOD(NOINLINE)
 void benchAll(ankerl::nanobench::Config& cfg) {
     cfg.title("benchmarking " + type_string(Map{}));
     benchIterate<Map>(cfg);
