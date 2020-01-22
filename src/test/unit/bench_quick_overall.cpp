@@ -49,7 +49,7 @@ inline void randomizeKey(sfc64& rng, int n, std::string& key) {
 template <typename Map>
 void benchRandomInsertErase(ankerl::nanobench::Config& cfg) {
 
-    cfg.run("random insert erase", [&] {
+    cfg.run(type_string(Map{}) + " random insert erase", [&] {
         sfc64 rng(123);
         size_t verifier{};
         Map map;
@@ -75,7 +75,7 @@ void benchIterate(ankerl::nanobench::Config& cfg) {
     auto key = initKey<typename Map::key_type>();
 
     // insert
-    cfg.run("iterate while adding then removing", [&] {
+    cfg.run(type_string(Map{}) + " iterate while adding then removing", [&] {
         sfc64 rng(555);
         Map map;
         size_t result = 0;
@@ -102,7 +102,7 @@ void benchIterate(ankerl::nanobench::Config& cfg) {
 
 template <typename Map>
 void benchRandomFind(ankerl::nanobench::Config& cfg) {
-    cfg.run("50% probability to find", [&] {
+    cfg.run(type_string(Map{}) + " 50% probability to find", [&] {
         sfc64 numberesInsertRng(222);
         sfc64 numbersSearchRng(222);
 
@@ -146,7 +146,7 @@ void benchRandomFind(ankerl::nanobench::Config& cfg) {
 
 template <typename Map>
 void benchAll(ankerl::nanobench::Config& cfg) {
-    cfg.title("benchmarking " + type_string(Map{}));
+    cfg.title("benchmarking");
     benchIterate<Map>(cfg);
     benchRandomInsertErase<Map>(cfg);
     benchRandomFind<Map>(cfg);
