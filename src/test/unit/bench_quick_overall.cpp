@@ -111,8 +111,6 @@ void benchRandomFind(ankerl::nanobench::Config* cfg) {
         size_t found = 0;
         size_t notFound = 0;
 
-        RandomBool rbool;
-
         Map map;
         auto key = initKey<typename Map::key_type>();
         for (size_t i = 0; i < 10000; ++i) {
