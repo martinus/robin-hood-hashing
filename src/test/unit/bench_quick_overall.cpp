@@ -27,10 +27,10 @@ inline uint64_t initKey<uint64_t>() {
     return {};
 }
 
-inline void randomizeKey(sfc64& rng, int n, uint64_t& key) {
+inline void randomizeKey(sfc64* rng, int n, uint64_t* key) {
     // we limit ourselfes to 32bit n
-    auto limited = ((rng() >> 32U) * static_cast<uint64_t>(n)) >> 32U;
-    key = limited;
+    auto limited = (((*rng)() >> 32U) * static_cast<uint64_t>(n)) >> 32U;
+    *key = limited;
 }
 
 template <>
@@ -39,26 +39,25 @@ inline std::string initKey<std::string>() {
     str.resize(200);
     return str;
 }
-inline void randomizeKey(sfc64& rng, int n, std::string& key) {
+inline void randomizeKey(sfc64* rng, int n, std::string* key) {
     uint64_t k;
-    randomizeKey(rng, n, k);
-    std::memcpy(&key[0], &k, sizeof(k));
+    randomizeKey(rng, n, &k);
+    std::memcpy(&(*key)[0], &k, sizeof(k));
 }
 
 // Random insert & erase
 template <typename Map>
-void benchRandomInsertErase(ankerl::nanobench::Config& cfg) {
-
-    cfg.run(type_string(Map{}) + " random insert erase", [&] {
+void benchRandomInsertErase(ankerl::nanobench::Config* cfg) {
+    cfg->run(type_string(Map{}) + " random insert erase", [&] {
         sfc64 rng(123);
         size_t verifier{};
         Map map;
         auto key = initKey<typename Map::key_type>();
         for (int n = 1; n < 20000; ++n) {
             for (int i = 0; i < 200; ++i) {
-                randomizeKey(rng, n, key);
+                randomizeKey(&rng, n, &key);
                 map[key];
-                randomizeKey(rng, n, key);
+                randomizeKey(&rng, n, &key);
                 verifier += map.erase(key);
             }
         }
@@ -69,18 +68,18 @@ void benchRandomInsertErase(ankerl::nanobench::Config& cfg) {
 
 // iterate
 template <typename Map>
-void benchIterate(ankerl::nanobench::Config& cfg) {
+void benchIterate(ankerl::nanobench::Config* cfg) {
     size_t numElements = 5000;
 
     auto key = initKey<typename Map::key_type>();
 
     // insert
-    cfg.run(type_string(Map{}) + " iterate while adding then removing", [&] {
+    cfg->run(type_string(Map{}) + " iterate while adding then removing", [&] {
         sfc64 rng(555);
         Map map;
         size_t result = 0;
         for (size_t n = 0; n < numElements; ++n) {
-            randomizeKey(rng, 1000000, key);
+            randomizeKey(&rng, 1000000, &key);
             map[key] = n;
             for (auto const& keyVal : map) {
                 result += keyVal.second;
@@ -89,7 +88,7 @@ void benchIterate(ankerl::nanobench::Config& cfg) {
 
         rng.seed(555);
         do {
-            randomizeKey(rng, 1000000, key);
+            randomizeKey(&rng, 1000000, &key);
             map.erase(key);
             for (auto const& keyVal : map) {
                 result += keyVal.second;
@@ -101,8 +100,8 @@ void benchIterate(ankerl::nanobench::Config& cfg) {
 }
 
 template <typename Map>
-void benchRandomFind(ankerl::nanobench::Config& cfg) {
-    cfg.run(type_string(Map{}) + " 50% probability to find", [&] {
+void benchRandomFind(ankerl::nanobench::Config* cfg) {
+    cfg->run(type_string(Map{}) + " 50% probability to find", [&] {
         sfc64 numberesInsertRng(222);
         sfc64 numbersSearchRng(222);
 
@@ -117,14 +116,14 @@ void benchRandomFind(ankerl::nanobench::Config& cfg) {
         Map map;
         auto key = initKey<typename Map::key_type>();
         for (size_t i = 0; i < 10000; ++i) {
-            randomizeKey(numberesInsertRng, 1000000, key);
+            randomizeKey(&numberesInsertRng, 1000000, &key);
             if (insertionRng.uniform(100) < 50) {
                 map[key] = i;
             }
 
             // search 1000 entries in the map
             for (size_t search = 0; search < 1000; ++search) {
-                randomizeKey(numbersSearchRng, 1000000, key);
+                randomizeKey(&numbersSearchRng, 1000000, &key);
                 auto it = map.find(key);
                 if (it != map.end()) {
                     checksum += it->second;
@@ -145,8 +144,8 @@ void benchRandomFind(ankerl::nanobench::Config& cfg) {
 }
 
 template <typename Map>
-void benchAll(ankerl::nanobench::Config& cfg) {
-    cfg.title("benchmarking");
+void benchAll(ankerl::nanobench::Config* cfg) {
+    cfg->title("benchmarking");
     benchIterate<Map>(cfg);
     benchRandomInsertErase<Map>(cfg);
     benchRandomFind<Map>(cfg);
@@ -163,8 +162,8 @@ double geomean1(ankerl::nanobench::Config const& cfg) {
 // is. It calculates geometric mean of several benchmarks.
 TEST_CASE("bench_quick_overall_flat" * doctest::test_suite("bench") * doctest::skip()) {
     ankerl::nanobench::Config cfg;
-    benchAll<robin_hood::unordered_flat_map<uint64_t, size_t>>(cfg);
-    benchAll<robin_hood::unordered_flat_map<std::string, size_t>>(cfg);
+    benchAll<robin_hood::unordered_flat_map<uint64_t, size_t>>(&cfg);
+    benchAll<robin_hood::unordered_flat_map<std::string, size_t>>(&cfg);
     std::cout << geomean1(cfg) << std::endl;
 
 #ifdef ROBIN_HOOD_COUNT_ENABLED
@@ -174,8 +173,8 @@ TEST_CASE("bench_quick_overall_flat" * doctest::test_suite("bench") * doctest::s
 
 TEST_CASE("bench_quick_overall_node" * doctest::test_suite("bench") * doctest::skip()) {
     ankerl::nanobench::Config cfg;
-    benchAll<robin_hood::unordered_node_map<uint64_t, size_t>>(cfg);
-    benchAll<robin_hood::unordered_node_map<std::string, size_t>>(cfg);
+    benchAll<robin_hood::unordered_node_map<uint64_t, size_t>>(&cfg);
+    benchAll<robin_hood::unordered_node_map<std::string, size_t>>(&cfg);
     std::cout << geomean1(cfg) << std::endl;
 
 #ifdef ROBIN_HOOD_COUNT_ENABLED
@@ -185,7 +184,7 @@ TEST_CASE("bench_quick_overall_node" * doctest::test_suite("bench") * doctest::s
 
 TEST_CASE("bench_quick_overall_std" * doctest::test_suite("bench") * doctest::skip()) {
     ankerl::nanobench::Config cfg;
-    benchAll<std::unordered_map<uint64_t, size_t>>(cfg);
-    benchAll<std::unordered_map<std::string, size_t>>(cfg);
+    benchAll<std::unordered_map<uint64_t, size_t>>(&cfg);
+    benchAll<std::unordered_map<std::string, size_t>>(&cfg);
     std::cout << geomean1(cfg) << std::endl;
 }
