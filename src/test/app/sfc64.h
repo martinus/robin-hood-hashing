@@ -18,11 +18,11 @@ public:
     sfc64()
         : sfc64(randomseed()) {}
 
-    sfc64(uint64_t a, uint64_t b, uint64_t c, uint64_t counter)
+    sfc64(uint64_t a, uint64_t b, uint64_t c, uint64_t count)
         : m_a{a}
         , m_b{b}
         , m_c{c}
-        , m_counter{counter} {}
+        , m_counter{count} {}
 
     sfc64(std::array<uint64_t, 4> const& st)
         : m_a{st[0]}
