@@ -61,8 +61,8 @@ void benchRandomInsertErase(ankerl::nanobench::Config* cfg) {
                 verifier += map.erase(key);
             }
         }
-        REQUIRE(verifier == 1996311U);
-        REQUIRE(map.size() == 9966U);
+        CHECK(verifier == 1996311U);
+        CHECK(map.size() == 9966U);
     });
 }
 
@@ -95,7 +95,7 @@ void benchIterate(ankerl::nanobench::Config* cfg) {
             }
         } while (!map.empty());
 
-        REQUIRE(result == 62343599601U);
+        CHECK(result == 62343599601U);
     });
 }
 
@@ -135,9 +135,9 @@ void benchRandomFind(ankerl::nanobench::Config* cfg) {
             }
         }
 
-        REQUIRE(checksum == 12570603553U);
-        REQUIRE(found == 4972187U);
-        REQUIRE(notFound == 5027813U);
+        CHECK(checksum == 12570603553U);
+        CHECK(found == 4972187U);
+        CHECK(notFound == 5027813U);
     });
 }
 
@@ -158,7 +158,7 @@ double geomean1(ankerl::nanobench::Config const& cfg) {
 
 // A relatively quick benchmark that should get a relatively good single number of how good the map
 // is. It calculates geometric mean of several benchmarks.
-TEST_CASE("bench_quick_overall_flat" * doctest::test_suite("bench") * doctest::skip()) {
+TEST_CASE("bench_quick_overall_map_flat" * doctest::test_suite("bench") * doctest::skip()) {
     ankerl::nanobench::Config cfg;
     benchAll<robin_hood::unordered_flat_map<uint64_t, size_t>>(&cfg);
     benchAll<robin_hood::unordered_flat_map<std::string, size_t>>(&cfg);
@@ -169,7 +169,7 @@ TEST_CASE("bench_quick_overall_flat" * doctest::test_suite("bench") * doctest::s
 #endif
 }
 
-TEST_CASE("bench_quick_overall_node" * doctest::test_suite("bench") * doctest::skip()) {
+TEST_CASE("bench_quick_overall_map_node" * doctest::test_suite("bench") * doctest::skip()) {
     ankerl::nanobench::Config cfg;
     benchAll<robin_hood::unordered_node_map<uint64_t, size_t>>(&cfg);
     benchAll<robin_hood::unordered_node_map<std::string, size_t>>(&cfg);
@@ -180,9 +180,23 @@ TEST_CASE("bench_quick_overall_node" * doctest::test_suite("bench") * doctest::s
 #endif
 }
 
-TEST_CASE("bench_quick_overall_std" * doctest::test_suite("bench") * doctest::skip()) {
+TEST_CASE("bench_quick_overall_map_std" * doctest::test_suite("bench") * doctest::skip()) {
     ankerl::nanobench::Config cfg;
     benchAll<std::unordered_map<uint64_t, size_t>>(&cfg);
     benchAll<std::unordered_map<std::string, size_t>>(&cfg);
     std::cout << geomean1(cfg) << std::endl;
+}
+
+// 3345972 kb unordered_flat_map
+// 2616020 kb unordered_node_map
+// 4071892 kb std::unordered_map
+TEST_CASE_TEMPLATE("memory_map_huge" * doctest::test_suite("bench") * doctest::skip(), Map,
+                   robin_hood::unordered_flat_map<uint64_t, size_t>,
+                   robin_hood::unordered_node_map<uint64_t, size_t>,
+                   std::unordered_map<uint64_t, size_t>) {
+    Map map;
+    for (uint64_t n = 0; n < 80000000; ++n) {
+        map[n];
+    }
+    std::cout << map.size() << std::endl;
 }
