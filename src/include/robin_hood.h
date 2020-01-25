@@ -564,6 +564,11 @@ struct nothrow {
 
 struct is_transparent_tag {};
 
+// in_place_t exists in c++17
+struct in_place_tag {
+    explicit in_place_tag() = default;
+};
+
 // A custom pair implementation is used in the map because std::pair is not is_trivially_copyable,
 // which means it would  not be allowed to be used in std::memcpy. This struct is copyable, which is
 // also tested.
@@ -669,12 +674,12 @@ struct pair<T1, void> {
     constexpr pair() noexcept(noexcept(U1()))
         : first() {}
 
-    constexpr pair(T1&& a) noexcept(noexcept(T1(std::move(std::declval<T1&&>()))))
+    constexpr explicit pair(T1&& a) noexcept(noexcept(T1(std::move(std::declval<T1&&>()))))
         : first(std::move(a)) {}
 
-    template <typename U1>
-    constexpr pair(U1&& a) noexcept(noexcept(T1(std::forward<U1>(std::declval<U1&&>()))))
-        : first(std::forward<U1>(a)) {}
+    template <typename... Args>
+    constexpr explicit pair(in_place_tag ROBIN_HOOD_UNUSED(ip) /*unused*/, Args&&... args)
+        : first(std::forward<Args>(args)...) {}
 
     ROBIN_HOOD(NODISCARD) first_type& getFirst() noexcept {
         return first;
