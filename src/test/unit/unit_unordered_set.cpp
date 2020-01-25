@@ -25,3 +25,19 @@ TEST_CASE_TEMPLATE("unordered_set", Set, robin_hood::unordered_flat_set<uint64_t
     set.erase(UINT64_C(123));
     REQUIRE(set.size() == 1U);
 }
+
+TEST_CASE_TEMPLATE("unordered_set_string", Set, robin_hood::unordered_flat_set<std::string>,
+                   robin_hood::unordered_node_set<std::string>) {
+    Set set;
+    REQUIRE(set.begin() == set.end());
+
+    set.emplace(static_cast<size_t>(2000), 'a');
+    REQUIRE(set.size() == 1);
+
+    REQUIRE(set.begin() != set.end());
+    std::string& str = *set.begin();
+    REQUIRE(str == std::string(static_cast<size_t>(2000), 'a'));
+
+    auto it = set.begin();
+    REQUIRE(++it == set.end());
+}

@@ -1,4 +1,4 @@
-➵ robin_hood::unordered_map  [![Release](https://img.shields.io/github/release/martinus/robin-hood-hashing.svg)](https://github.com/martinus/robin-hood-hashing/releases) [![GitHub license](https://img.shields.io/github/license/martinus/robin-hood-hashing.svg)](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/LICENSE)
+➵ robin_hood unordered map & set  [![Release](https://img.shields.io/github/release/martinus/robin-hood-hashing.svg)](https://github.com/martinus/robin-hood-hashing/releases) [![GitHub license](https://img.shields.io/github/license/martinus/robin-hood-hashing.svg)](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/LICENSE)
 ============
 
 
@@ -9,12 +9,13 @@
 [![Language grade: C/C++](https://img.shields.io/lgtm/grade/cpp/g/martinus/robin-hood-hashing.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/martinus/robin-hood-hashing/context:cpp)
 [![Coverage Status](https://coveralls.io/repos/github/martinus/robin-hood-hashing/badge.svg)](https://coveralls.io/github/martinus/robin-hood-hashing)
 
-`robin_hood::unordered_map` is a platform independent replacement for `std::unordered_map` which is both faster and more memory efficient for real-world use cases.
+`robin_hood::unordered_map` and `robin_hood::unordered_set` is a platform independent replacement for `std::unordered_map` / `std::unordered_set` which is both faster and more memory efficient for real-world use cases.
 
 ## Installation & Usage
 
 1. Add [`robin_hood.h`](https://github.com/martinus/robin-hood-hashing/releases) to your C++ project.
-1. Use `robin_hood::unordered_map` instead of `std::unordered_map`.
+1. Use `robin_hood::unordered_map` instead of `std::unordered_map`
+1. Use `robin_hood::unordered_set` instead of `std::unordered_set`
 
 ## Benchmarks
 
