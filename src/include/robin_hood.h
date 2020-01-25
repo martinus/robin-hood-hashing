@@ -656,6 +656,41 @@ struct pair {
     T2 second; // NOLINT(misc-non-private-member-variables-in-classes)
 };
 
+// A specialization of pair to allow void second type, thus disabling the second type. This is used
+// to be able to support an unordered_set. We need to disable a few functions throughout the
+// robin_hood code though (by checking against is_void)
+template <typename T1>
+struct pair<T1, void> {
+    using first_type = T1;
+    using second_type = void;
+
+    template <typename U1 = T1,
+              typename = typename std::enable_if<std::is_default_constructible<U1>::value>::type>
+    constexpr pair() noexcept(noexcept(U1()))
+        : first() {}
+
+    constexpr pair(T1&& a) noexcept(noexcept(T1(std::move(std::declval<T1&&>()))))
+        : first(std::move(a)) {}
+
+    template <typename U1>
+    constexpr pair(U1&& a) noexcept(noexcept(T1(std::forward<U1>(std::declval<U1&&>()))))
+        : first(std::forward<U1>(a)) {}
+
+    ROBIN_HOOD(NODISCARD) first_type& getFirst() noexcept {
+        return first;
+    }
+    ROBIN_HOOD(NODISCARD) first_type const& getFirst() const noexcept {
+        return first;
+    }
+
+    void swap(pair<T1, void>& o) noexcept(detail::swappable::nothrow<T1>::value) {
+        using std::swap;
+        swap(first, o.first);
+    }
+
+    T1 first; // NOLINT(misc-non-private-member-variables-in-classes)
+};
+
 template <typename A, typename B>
 void swap(pair<A, B>& a, pair<A, B>& b) noexcept(
     noexcept(std::declval<pair<A, B>&>().swap(std::declval<pair<A, B>&>()))) {
@@ -801,8 +836,8 @@ ROBIN_HOOD_HASH_INT(unsigned long long);
 #endif
 namespace detail {
 
-// using wrapper classes for hash and key_equal prevents the diamond problem when the same type is
-// used. see https://stackoverflow.com/a/28771920/48181
+// using wrapper classes for hash and key_equal prevents the diamond problem when the same type
+// is used. see https://stackoverflow.com/a/28771920/48181
 template <typename T>
 struct WrapHash : public T {
     WrapHash() = default;
@@ -819,8 +854,8 @@ struct WrapKeyEqual : public T {
 
 // A highly optimized hashmap implementation, using the Robin Hood algorithm.
 //
-// In most cases, this map should be usable as a drop-in replacement for std::unordered_map, but be
-// about 2x faster in most cases and require much less allocations.
+// In most cases, this map should be usable as a drop-in replacement for std::unordered_map, but
+// be about 2x faster in most cases and require much less allocations.
 //
 // This implementation uses the following memory layout:
 //
@@ -828,8 +863,8 @@ struct WrapKeyEqual : public T {
 //
 // * Node: either a DataNode that directly has the std::pair<key, val> as member,
 //   or a DataNode with a pointer to std::pair<key,val>. Which DataNode representation to use
-//   depends on how fast the swap() operation is. Heuristically, this is automatically choosen based
-//   on sizeof(). there are always 2^n Nodes.
+//   depends on how fast the swap() operation is. Heuristically, this is automatically choosen
+//   based on sizeof(). there are always 2^n Nodes.
 //
 // * info: Each Node in the map has a corresponding info byte, so there are 2^n info bytes.
 //   Each byte is initialized to 0, meaning the corresponding Node is empty. Set to 1 means the
@@ -837,12 +872,11 @@ struct WrapKeyEqual : public T {
 //   actually belongs to the previous position and was pushed out because that place is already
 //   taken.
 //
-// * infoSentinel: Sentinel byte set to 1, so that iterator's ++ can stop at end() without the need
-// for a idx
-//   variable.
+// * infoSentinel: Sentinel byte set to 1, so that iterator's ++ can stop at end() without the
+//   need for a idx   variable.
 //
-// According to STL, order of templates has effect on throughput. That's why I've moved the boolean
-// to the front.
+// According to STL, order of templates has effect on throughput. That's why I've moved the
+// boolean to the front.
 // https://www.reddit.com/r/cpp/comments/ahp6iu/compile_time_binary_size_reductions_and_cs_future/eeguck4/
 template <bool IsFlatMap, size_t MaxLoadFactor100, typename Key, typename T, typename Hash,
           typename KeyEqual>
@@ -886,8 +920,8 @@ private:
     // DataNode ////////////////////////////////////////////////////////
 
     // Primary template for the data node. We have special implementations for small and big
-    // objects. For large objects it is assumed that swap() is fairly slow, so we allocate these on
-    // the heap so swap merely swaps a pointer.
+    // objects. For large objects it is assumed that swap() is fairly slow, so we allocate these
+    // on the heap so swap merely swaps a pointer.
     template <typename M, bool>
     class DataNode {};
 
@@ -931,11 +965,16 @@ private:
             return mData.first;
         }
 
-        ROBIN_HOOD(NODISCARD) typename value_type::second_type& getSecond() noexcept {
+        template <typename Q = typename value_type::second_type>
+        ROBIN_HOOD(NODISCARD)
+        typename std::enable_if<!std::is_void<Q>::value, Q&>::type getSecond() noexcept {
             return mData.second;
         }
 
-        ROBIN_HOOD(NODISCARD) typename value_type::second_type const& getSecond() const noexcept {
+        template <typename Q = typename value_type::second_type>
+        ROBIN_HOOD(NODISCARD)
+        typename std::enable_if<!std::is_void<Q>::value, Q const&>::type getSecond() const
+            noexcept {
             return mData.second;
         }
 
@@ -995,11 +1034,15 @@ private:
             return mData->first;
         }
 
-        ROBIN_HOOD(NODISCARD) typename value_type::second_type& getSecond() {
+        template <typename Q = typename value_type::second_type>
+        ROBIN_HOOD(NODISCARD)
+        typename std::enable_if<!std::is_void<Q>::value, Q&>::type getSecond() {
             return mData->second;
         }
 
-        ROBIN_HOOD(NODISCARD) typename value_type::second_type const& getSecond() const {
+        template <typename Q = typename value_type::second_type>
+        ROBIN_HOOD(NODISCARD)
+        typename std::enable_if<!std::is_void<Q>::value, Q const&>::type getSecond() const {
             return mData->second;
         }
 
@@ -1112,8 +1155,8 @@ private:
         // compared to end().
         Iter() = default;
 
-        // Rule of zero: nothing specified. The conversion constructor is only enabled for iterator
-        // to const_iterator, so it doesn't accidentally work as a copy ctor.
+        // Rule of zero: nothing specified. The conversion constructor is only enabled for
+        // iterator to const_iterator, so it doesn't accidentally work as a copy ctor.
 
         // Conversion constructor from iterator to const_iterator.
         template <bool OtherIsConst,
@@ -1197,9 +1240,9 @@ private:
     // The upper 1-5 bits need to be a reasonable good hash, to save comparisons.
     template <typename HashKey>
     void keyToIdx(HashKey&& key, size_t* idx, InfoType* info) const {
-        // for a user-specified hash that is *not* robin_hood::hash, apply robin_hood::hash as an
-        // additional mixing step. This serves as a bad hash prevention, if the given data is badly
-        // mixed.
+        // for a user-specified hash that is *not* robin_hood::hash, apply robin_hood::hash as
+        // an additional mixing step. This serves as a bad hash prevention, if the given data is
+        // badly mixed.
         using Mix =
             typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
                                       ::robin_hood::detail::identity_hash<size_t>,
@@ -1246,7 +1289,8 @@ private:
 
     void shiftDown(size_t idx) noexcept(std::is_nothrow_move_assignable<Node>::value) {
         // until we find one that is either empty or has zero offset.
-        // TODO(martinus) we don't need to move everything, just the last one for the same bucket.
+        // TODO(martinus) we don't need to move everything, just the last one for the same
+        // bucket.
         mKeyVals[idx].destroy(*this);
 
         // until we find one that is either empty or has zero offset.
@@ -1345,11 +1389,11 @@ public:
     using iterator = Iter<false>;
     using const_iterator = Iter<true>;
 
-    // Creates an empty hash map. Nothing is allocated yet, this happens at the first insert. This
-    // tremendously speeds up ctor & dtor of a map that never receives an element. The penalty is
-    // payed at the first insert, and not before. Lookup of this empty map works because everybody
-    // points to DummyInfoByte::b. parameter bucket_count is dictated by the standard, but we can
-    // ignore it.
+    // Creates an empty hash map. Nothing is allocated yet, this happens at the first insert.
+    // This tremendously speeds up ctor & dtor of a map that never receives an element. The
+    // penalty is payed at the first insert, and not before. Lookup of this empty map works
+    // because everybody points to DummyInfoByte::b. parameter bucket_count is dictated by the
+    // standard, but we can ignore it.
     explicit unordered_map(size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
                            const Hash& h = Hash{},
                            const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) &&
@@ -1453,8 +1497,8 @@ public:
             return *this;
         }
 
-        // we keep using the old allocator and not assign the new one, because we want to keep the
-        // memory available. when it is the same size.
+        // we keep using the old allocator and not assign the new one, because we want to keep
+        // the memory available. when it is the same size.
         if (o.empty()) {
             if (0 == mMask) {
                 // nothing to do, we are empty too
@@ -1514,8 +1558,8 @@ public:
     void clear() {
         ROBIN_HOOD_TRACE(this);
         if (empty()) {
-            // don't do anything! also important because we don't want to write to DummyInfoByte::b,
-            // even though we would just write 0 to it.
+            // don't do anything! also important because we don't want to write to
+            // DummyInfoByte::b, even though we would just write 0 to it.
             return;
         }
 
@@ -1558,12 +1602,14 @@ public:
         return !operator==(other);
     }
 
-    mapped_type& operator[](const key_type& key) {
+    template <typename Q = mapped_type>
+    typename std::enable_if<!std::is_void<Q>::value, Q&>::type operator[](const key_type& key) {
         ROBIN_HOOD_TRACE(this);
         return doCreateByKey(key);
     }
 
-    mapped_type& operator[](key_type&& key) {
+    template <typename Q = mapped_type>
+    typename std::enable_if<!std::is_void<Q>::value, Q&>::type operator[](key_type&& key) {
         ROBIN_HOOD_TRACE(this);
         return doCreateByKey(std::move(key));
     }
@@ -1610,7 +1656,8 @@ public:
 
     // Returns a reference to the value found for key.
     // Throws std::out_of_range if element cannot be found
-    mapped_type& at(key_type const& key) {
+    template <typename Q = mapped_type>
+    typename std::enable_if<!std::is_void<Q>::value, Q&>::type at(key_type const& key) {
         ROBIN_HOOD_TRACE(this);
         auto kv = mKeyVals + findIdx(key);
         if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
@@ -1621,7 +1668,9 @@ public:
 
     // Returns a reference to the value found for key.
     // Throws std::out_of_range if element cannot be found
-    mapped_type const& at(key_type const& key) const { // NOLINT(modernize-use-nodiscard)
+    template <typename Q = mapped_type>
+    typename std::enable_if<!std::is_void<Q>::value, Q const&>::type
+    at(key_type const& key) const { // NOLINT(modernize-use-nodiscard)
         ROBIN_HOOD_TRACE(this);
         auto kv = mKeyVals + findIdx(key);
         if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
@@ -1814,7 +1863,8 @@ public:
 #if ROBIN_HOOD(BITNESS) == 64
         return numElements * sizeof(Node) + calcNumBytesInfo(numElements);
 #else
-        // make sure we're doing 64bit operations, so we are at least safe against 32bit overflows.
+        // make sure we're doing 64bit operations, so we are at least safe against 32bit
+        // overflows.
         auto const ne = static_cast<uint64_t>(numElements);
         auto const s = static_cast<uint64_t>(sizeof(Node));
         auto const infos = static_cast<uint64_t>(calcNumBytesInfo(numElements));
@@ -1883,16 +1933,16 @@ private:
         mInfoHashShift = InitialInfoHashShift;
     }
 
-    template <typename Arg>
-    mapped_type& doCreateByKey(Arg&& key) {
+    template <typename Arg, typename Q = mapped_type>
+    typename std::enable_if<!std::is_void<Q>::value, Q&>::type doCreateByKey(Arg&& key) {
         while (true) {
             size_t idx;
             InfoType info;
             keyToIdx(key, &idx, &info);
             nextWhileLess(&info, &idx);
 
-            // while we potentially have a match. Can't do a do-while here because when mInfo is 0
-            // we don't want to skip forward
+            // while we potentially have a match. Can't do a do-while here because when mInfo is
+            // 0 we don't want to skip forward
             while (info == mInfo[idx]) {
                 if (WKeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
                     // key already exists, do not insert.
@@ -1921,8 +1971,8 @@ private:
 
             auto& l = mKeyVals[insertion_idx];
             if (idx == insertion_idx) {
-                // put at empty spot. This forwards all arguments into the node where the object is
-                // constructed exactly where it is needed.
+                // put at empty spot. This forwards all arguments into the node where the object
+                // is constructed exactly where it is needed.
                 ::new (static_cast<void*>(&l))
                     Node(*this, std::piecewise_construct,
                          std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());

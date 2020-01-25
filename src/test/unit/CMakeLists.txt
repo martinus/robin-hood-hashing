@@ -1,4 +1,6 @@
 target_sources_local(rh PRIVATE
+    unit_unordered_set.cpp
+    
     main.cpp # first because its slowest
 
     # benchmarks
