@@ -7,10 +7,14 @@
 TYPE_TO_STRING(robin_hood::unordered_flat_set<uint64_t>);
 TYPE_TO_STRING(robin_hood::unordered_node_set<uint64_t>);
 
+TEST_CASE_TEMPLATE("unordered_set_asserts", Set, robin_hood::unordered_flat_set<uint64_t>,
+                   robin_hood::unordered_node_set<uint64_t>) {
+    static_assert(std::is_same<typename Set::key_type, uint64_t>::value, "key_type same");
+    static_assert(std::is_same<typename Set::value_type, uint64_t>::value, "value_type same");
+}
+
 TEST_CASE_TEMPLATE("unordered_set", Set, robin_hood::unordered_flat_set<uint64_t>,
                    robin_hood::unordered_node_set<uint64_t>) {
-
-    REQUIRE(sizeof(typename Set::value_type) == sizeof(uint64_t));
 
     Set set;
     set.emplace(UINT64_C(123));
