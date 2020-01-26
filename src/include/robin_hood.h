@@ -525,7 +525,7 @@ private:
     T** mListForFree{nullptr};
 };
 
-template <typename T, size_t MinSize, size_t MaxSize, bool IsFlatMap>
+template <typename T, size_t MinSize, size_t MaxSize, bool IsFlat>
 struct NodeAllocator;
 
 // dummy allocator that does nothing
@@ -630,19 +630,6 @@ struct pair {
         // Visual studio's pair implementation disables warning 4100.
         (void)a;
         (void)b;
-    }
-
-    ROBIN_HOOD(NODISCARD) first_type& getFirst() noexcept {
-        return first;
-    }
-    ROBIN_HOOD(NODISCARD) first_type const& getFirst() const noexcept {
-        return first;
-    }
-    ROBIN_HOOD(NODISCARD) second_type& getSecond() noexcept {
-        return second;
-    }
-    ROBIN_HOOD(NODISCARD) second_type const& getSecond() const noexcept {
-        return second;
     }
 
     void swap(pair<T1, T2>& o) noexcept((detail::swappable::nothrow<T1>::value) &&
@@ -844,27 +831,30 @@ struct WrapKeyEqual : public T {
 // According to STL, order of templates has effect on throughput. That's why I've moved the boolean
 // to the front.
 // https://www.reddit.com/r/cpp/comments/ahp6iu/compile_time_binary_size_reductions_and_cs_future/eeguck4/
-template <bool IsFlatMap, size_t MaxLoadFactor100, typename Key, typename T, typename Hash,
+template <bool IsFlat, size_t MaxLoadFactor100, typename Key, typename T, typename Hash,
           typename KeyEqual>
-class Table : public WrapHash<Hash>,
-              public WrapKeyEqual<KeyEqual>,
-              detail::NodeAllocator<
-                  typename std::conditional<
-                      std::is_void<T>::value, Key,
-                      robin_hood::pair<typename std::conditional<IsFlatMap, Key, Key const>::type,
-                                       T>>::type,
-                  4, 16384, IsFlatMap> {
+class Table
+    : public WrapHash<Hash>,
+      public WrapKeyEqual<KeyEqual>,
+      detail::NodeAllocator<
+          typename std::conditional<
+              std::is_void<T>::value, Key,
+              robin_hood::pair<typename std::conditional<IsFlat, Key, Key const>::type, T>>::type,
+          4, 16384, IsFlat> {
 public:
+    static constexpr bool is_flat = IsFlat;
+    static constexpr bool is_map = !std::is_void<T>::value;
+    static constexpr bool is_set = !is_map;
+
     using key_type = Key;
     using mapped_type = T;
     using value_type = typename std::conditional<
-        std::is_void<T>::value, Key,
-        robin_hood::pair<typename std::conditional<IsFlatMap, Key, Key const>::type, T>>::type;
+        is_set, Key,
+        robin_hood::pair<typename std::conditional<is_flat, Key, Key const>::type, T>>::type;
     using size_type = size_t;
     using hasher = Hash;
     using key_equal = KeyEqual;
-    using Self = Table<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
-    static constexpr bool is_flat_map = IsFlatMap;
+    using Self = Table<IsFlat, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
 
 private:
     static_assert(MaxLoadFactor100 > 10 && MaxLoadFactor100 < 100,
@@ -880,7 +870,7 @@ private:
     static constexpr uint32_t InitialInfoNumBits = 5;
     static constexpr uint8_t InitialInfoInc = 1U << InitialInfoNumBits;
     static constexpr uint8_t InitialInfoHashShift = sizeof(size_t) * 8 - InitialInfoNumBits;
-    using DataPool = detail::NodeAllocator<value_type, 4, 16384, IsFlatMap>;
+    using DataPool = detail::NodeAllocator<value_type, 4, 16384, IsFlat>;
 
     // type needs to be wider than uint8_t.
     using InfoType = uint32_t;
@@ -925,40 +915,38 @@ private:
             return mData;
         }
 
-        template <typename Q = mapped_type, typename V = value_type>
+        template <typename VT = value_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<!std::is_void<Q>::value, typename V::first_type&>::type
-            getFirst() noexcept {
+        typename std::enable_if<is_map, typename VT::first_type&>::type getFirst() noexcept {
             return mData.first;
         }
-        template <typename Q = mapped_type, typename V = value_type>
+        template <typename VT = value_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<std::is_void<Q>::value, V&>::type getFirst() noexcept {
+        typename std::enable_if<is_set, VT&>::type getFirst() noexcept {
             return mData;
         }
 
-        template <typename Q = mapped_type, typename V = value_type>
+        template <typename VT = value_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<!std::is_void<Q>::value, typename V::first_type const&>::type
-            getFirst() const noexcept {
+        typename std::enable_if<is_map, typename VT::first_type const&>::type getFirst() const
+            noexcept {
             return mData.first;
         }
-        template <typename Q = mapped_type, typename V = value_type>
+        template <typename VT = value_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<std::is_void<Q>::value, V const&>::type getFirst() const noexcept {
+        typename std::enable_if<is_set, VT const&>::type getFirst() const noexcept {
             return mData;
         }
 
-        template <typename Q = mapped_type>
+        template <typename MT = mapped_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<!std::is_void<Q>::value, Q&>::type getSecond() noexcept {
+        typename std::enable_if<is_map, MT&>::type getSecond() noexcept {
             return mData.second;
         }
 
-        template <typename Q = mapped_type>
+        template <typename MT = mapped_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<!std::is_void<Q>::value, Q const&>::type getSecond() const
-            noexcept {
+        typename std::enable_if<is_set, MT const&>::type getSecond() const noexcept {
             return mData.second;
         }
 
@@ -1010,40 +998,38 @@ private:
             return *mData;
         }
 
-        template <typename Q = mapped_type, typename V = value_type>
+        template <typename VT = value_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<!std::is_void<Q>::value, typename V::first_type&>::type
-            getFirst() noexcept {
+        typename std::enable_if<is_map, typename VT::first_type&>::type getFirst() noexcept {
             return mData->first;
         }
-        template <typename Q = mapped_type, typename V = value_type>
+        template <typename VT = value_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<std::is_void<Q>::value, V&>::type getFirst() noexcept {
+        typename std::enable_if<is_set, VT&>::type getFirst() noexcept {
             return *mData;
         }
 
-        template <typename Q = mapped_type, typename V = value_type>
+        template <typename VT = value_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<!std::is_void<Q>::value, typename V::first_type const&>::type
-            getFirst() const noexcept {
+        typename std::enable_if<is_map, typename VT::first_type const&>::type getFirst() const
+            noexcept {
             return mData->first;
         }
-        template <typename Q = mapped_type, typename V = value_type>
+        template <typename VT = value_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<std::is_void<Q>::value, V const&>::type getFirst() const noexcept {
+        typename std::enable_if<is_set, VT const&>::type getFirst() const noexcept {
             return *mData;
         }
 
-        template <typename Q = mapped_type>
+        template <typename MT = mapped_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<!std::is_void<Q>::value, Q&>::type getSecond() noexcept {
+        typename std::enable_if<is_map, MT&>::type getSecond() noexcept {
             return mData->second;
         }
 
-        template <typename Q = mapped_type>
+        template <typename MT = mapped_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<!std::is_void<Q>::value, Q const&>::type getSecond() const
-            noexcept {
+        typename std::enable_if<is_map, MT const&>::type getSecond() const noexcept {
             return mData->second;
         }
 
@@ -1056,7 +1042,7 @@ private:
         value_type* mData;
     };
 
-    using Node = DataNode<Self, IsFlatMap>;
+    using Node = DataNode<Self, IsFlat>;
 
     // helpers for doInsert: extract first entry (only const required)
     ROBIN_HOOD(NODISCARD) key_type const& getFirstConst(Node const& n) const noexcept {
@@ -1109,7 +1095,7 @@ private:
 
     // Destroyer ///////////////////////////////////////////////////////
 
-    template <typename M, bool IsFlatMapAndTrivial>
+    template <typename M, bool IsFlatAndTrivial>
     struct Destroyer {};
 
     template <typename M>
@@ -1247,7 +1233,7 @@ private:
             } while (inc == static_cast<int>(sizeof(size_t)));
         }
 
-        friend class Table<IsFlatMap, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
+        friend class Table<IsFlat, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
         NodePtr mKeyVals{nullptr};
         uint8_t const* mInfo{nullptr};
     };
@@ -1354,7 +1340,7 @@ private:
     }
 
     void cloneData(const Table& o) {
-        Cloner<Table, IsFlatMap && ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(Node)>()(o, *this);
+        Cloner<Table, IsFlat && ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(Node)>()(o, *this);
     }
 
     // inserts a keyval that is guaranteed to be new, e.g. when the hashmap is resized.
@@ -1534,7 +1520,7 @@ public:
         }
 
         // clean up old stuff
-        Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
+        Destroyer<Self, IsFlat && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
 
         if (mMask != o.mMask) {
             // no luck: we don't have the same array size allocated, so we need to realloc.
@@ -1580,7 +1566,7 @@ public:
             return;
         }
 
-        Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
+        Destroyer<Self, IsFlat && std::is_trivially_destructible<Node>::value>{}.nodes(*this);
 
         auto const numElementsWithBuffer = calcNumElementsWithBuffer(mMask + 1);
         // clear everything, then set the sentinel again
@@ -1669,6 +1655,10 @@ public:
             return 1;
         }
         return 0;
+    }
+
+    bool contains(const key_type& key) const { // NOLINT(modernize-use-nodiscard)
+        return 1U == count(key);
     }
 
     // Returns a reference to the value found for key.
@@ -2119,7 +2109,7 @@ private:
             return;
         }
 
-        Destroyer<Self, IsFlatMap && std::is_trivially_destructible<Node>::value>{}
+        Destroyer<Self, IsFlat && std::is_trivially_destructible<Node>::value>{}
             .nodesDoNotDeallocate(*this);
 
         // This protection against not deleting mMask shouldn't be needed as it's sufficiently
