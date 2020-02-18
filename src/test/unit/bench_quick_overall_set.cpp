@@ -169,6 +169,7 @@ TEST_CASE("bench_quick_overall_set_flat" * doctest::test_suite("bench") * doctes
     ankerl::nanobench::Config cfg;
     benchAll<robin_hood::unordered_flat_set<uint64_t>>(&cfg);
     benchAll<robin_hood::unordered_flat_set<std::string>>(&cfg);
+    benchAll<robin_hood::unordered_set<std::string>>(&cfg);
     std::cout << geomean1(cfg) << std::endl;
 
 #ifdef ROBIN_HOOD_COUNT_ENABLED

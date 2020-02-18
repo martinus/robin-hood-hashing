@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
-// version 3.5.0
+// version 3.5.1
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 5 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -2172,8 +2172,8 @@ template <typename Key, typename Hash = hash<Key>, typename KeyEqual = std::equa
           size_t MaxLoadFactor100 = 80>
 using unordered_node_set = detail::Table<false, MaxLoadFactor100, Key, void, Hash, KeyEqual>;
 
-template <typename Key, typename T, typename Hash = hash<Key>,
-          typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
+template <typename Key, typename Hash = hash<Key>, typename KeyEqual = std::equal_to<Key>,
+          size_t MaxLoadFactor100 = 80>
 using unordered_set = detail::Table<sizeof(Key) <= sizeof(size_t) * 6 &&
                                         std::is_nothrow_move_constructible<Key>::value &&
                                         std::is_nothrow_move_assignable<Key>::value,
