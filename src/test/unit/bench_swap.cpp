@@ -17,7 +17,7 @@ TEST_CASE_TEMPLATE("bench_swap" * doctest::test_suite("nanobench") * doctest::sk
 
     ankerl::nanobench::Bench bench;
     for (size_t i = 0; i < 10; ++i) {
-        for (size_t j = 0; j < 10000; ++j) {
+        for (size_t j = 0; j < 10U * (1U << i); ++j) {
             a[rng()];
             b[rng()];
         }
