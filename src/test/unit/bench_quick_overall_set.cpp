@@ -54,8 +54,8 @@ inline void randomizeKey(sfc64* rng, int n, std::string* key) {
 
 // Random insert & erase
 template <typename Set>
-void benchRandomInsertErase(ankerl::nanobench::Config* cfg) {
-    cfg->run(type_string(Set{}) + " random insert erase", [&] {
+void benchRandomInsertErase(ankerl::nanobench::Bench* bench) {
+    bench->run(type_string(Set{}) + " random insert erase", [&] {
         sfc64 rng(123);
         size_t verifier{};
         Set set;
@@ -75,13 +75,13 @@ void benchRandomInsertErase(ankerl::nanobench::Config* cfg) {
 
 // iterate
 template <typename Set>
-void benchIterate(ankerl::nanobench::Config* cfg) {
+void benchIterate(ankerl::nanobench::Bench* bench) {
     size_t numElements = 5000;
 
     auto key = initKey<typename Set::key_type>();
 
     // insert
-    cfg->run(type_string(Set{}) + " iterate while adding then removing", [&] {
+    bench->run(type_string(Set{}) + " iterate while adding then removing", [&] {
         sfc64 rng(555);
         Set set;
         size_t result = 0;
@@ -107,8 +107,8 @@ void benchIterate(ankerl::nanobench::Config* cfg) {
 }
 
 template <typename Set>
-void benchRandomFind(ankerl::nanobench::Config* cfg) {
-    cfg->run(type_string(Set{}) + " 50% probability to find", [&] {
+void benchRandomFind(ankerl::nanobench::Bench* bench) {
+    bench->run(type_string(Set{}) + " 50% probability to find", [&] {
         sfc64 numberesInsertRng(222);
         sfc64 numbersSearchRng(222);
 
@@ -149,16 +149,17 @@ void benchRandomFind(ankerl::nanobench::Config* cfg) {
 }
 
 template <typename Set>
-void benchAll(ankerl::nanobench::Config* cfg) {
-    cfg->title("benchmarking");
-    benchIterate<Set>(cfg);
-    benchRandomInsertErase<Set>(cfg);
-    benchRandomFind<Set>(cfg);
+void benchAll(ankerl::nanobench::Bench* bench) {
+    bench->title("benchmarking");
+    benchIterate<Set>(bench);
+    benchRandomInsertErase<Set>(bench);
+    benchRandomFind<Set>(bench);
 }
 
-double geomean1(ankerl::nanobench::Config const& cfg) {
-    return geomean(cfg.results(),
-                   [](ankerl::nanobench::Result const& result) { return result.median().count(); });
+double geomean1(ankerl::nanobench::Bench const& bench) {
+    return geomean(bench.results(), [](ankerl::nanobench::Result const& result) {
+        return result.median("elapsed");
+    });
 }
 
 } // namespace
@@ -166,11 +167,11 @@ double geomean1(ankerl::nanobench::Config const& cfg) {
 // A relatively quick benchmark that should get a relatively good single number of how good the set
 // is. It calculates geometric mean of several benchmarks.
 TEST_CASE("bench_quick_overall_set_flat" * doctest::test_suite("bench") * doctest::skip()) {
-    ankerl::nanobench::Config cfg;
-    benchAll<robin_hood::unordered_flat_set<uint64_t>>(&cfg);
-    benchAll<robin_hood::unordered_flat_set<std::string>>(&cfg);
-    benchAll<robin_hood::unordered_set<std::string>>(&cfg);
-    std::cout << geomean1(cfg) << std::endl;
+    ankerl::nanobench::Bench bench;
+    benchAll<robin_hood::unordered_flat_set<uint64_t>>(&bench);
+    benchAll<robin_hood::unordered_flat_set<std::string>>(&bench);
+    benchAll<robin_hood::unordered_set<std::string>>(&bench);
+    std::cout << geomean1(bench) << std::endl;
 
 #ifdef ROBIN_HOOD_COUNT_ENABLED
     std::cout << robin_hood::counts() << std::endl;
@@ -178,10 +179,10 @@ TEST_CASE("bench_quick_overall_set_flat" * doctest::test_suite("bench") * doctes
 }
 
 TEST_CASE("bench_quick_overall_set_node" * doctest::test_suite("bench") * doctest::skip()) {
-    ankerl::nanobench::Config cfg;
-    benchAll<robin_hood::unordered_node_set<uint64_t>>(&cfg);
-    benchAll<robin_hood::unordered_node_set<std::string>>(&cfg);
-    std::cout << geomean1(cfg) << std::endl;
+    ankerl::nanobench::Bench bench;
+    benchAll<robin_hood::unordered_node_set<uint64_t>>(&bench);
+    benchAll<robin_hood::unordered_node_set<std::string>>(&bench);
+    std::cout << geomean1(bench) << std::endl;
 
 #ifdef ROBIN_HOOD_COUNT_ENABLED
     std::cout << robin_hood::counts() << std::endl;
@@ -189,10 +190,10 @@ TEST_CASE("bench_quick_overall_set_node" * doctest::test_suite("bench") * doctes
 }
 
 TEST_CASE("bench_quick_overall_set_std" * doctest::test_suite("bench") * doctest::skip()) {
-    ankerl::nanobench::Config cfg;
-    benchAll<std::unordered_set<uint64_t>>(&cfg);
-    benchAll<std::unordered_set<std::string>>(&cfg);
-    std::cout << geomean1(cfg) << std::endl;
+    ankerl::nanobench::Bench bench;
+    benchAll<std::unordered_set<uint64_t>>(&bench);
+    benchAll<std::unordered_set<std::string>>(&bench);
+    std::cout << geomean1(bench) << std::endl;
 }
 
 // 1773116 kb unordered_flat_set

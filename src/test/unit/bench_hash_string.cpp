@@ -36,8 +36,8 @@ TEST_CASE("bench_hash_string" * doctest::test_suite("nanobench") * doctest::skip
         ch = rng.uniform<char>();
     }
 
-    ankerl::nanobench::Config cfg;
-    cfg.unit("B")
+    ankerl::nanobench::Bench bench;
+    bench.unit("B")
         .batch(str.size())
         .run("std::string " + std::to_string(len),
              [&] {

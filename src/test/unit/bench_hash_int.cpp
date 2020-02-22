@@ -10,9 +10,9 @@ TEST_CASE_TEMPLATE("bench_hash_int" * doctest::test_suite("nanobench") * doctest
     sfc64 rng(123);
 
     // add a (neglectible) bit of randomization so the compiler can't optimize this away
-    ankerl::nanobench::Config cfg;
+    ankerl::nanobench::Bench bench;
     robin_hood::hash<T> hasher;
     T i = 0;
     size_t a = 0;
-    cfg.run("robin_hood::hash " + type_string(i), [&] { a += hasher(i++); }).doNotOptimizeAway(a);
+    bench.run("robin_hood::hash " + type_string(i), [&] { a += hasher(i++); }).doNotOptimizeAway(a);
 }

@@ -18,9 +18,9 @@ TEST_CASE_TEMPLATE("bench_copy_iterators" * doctest::test_suite("nanobench") * d
         a.emplace(i, i);
     }
 
-    ankerl::nanobench::Config cfg;
+    ankerl::nanobench::Bench bench;
     Map b;
-    cfg.batch(a.size()).run("copy " + type_string(a), [&] {
+    bench.batch(a.size()).run("copy " + type_string(a), [&] {
         b = a;
         a = b;
     });

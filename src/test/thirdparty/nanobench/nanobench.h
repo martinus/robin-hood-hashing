@@ -31,8 +31,8 @@
 #define ANKERL_NANOBENCH_H_INCLUDED
 
 // see https://semver.org/
-#define ANKERL_NANOBENCH_VERSION_MAJOR 3 // incompatible API changes
-#define ANKERL_NANOBENCH_VERSION_MINOR 2 // backwards-compatible changes
+#define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
+#define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +44,7 @@
 #include <initializer_list> // for doNotOptimizeAway
 #include <iosfwd>           // for std::ostream* custom output target in Config
 #include <string>           // all names
+#include <unordered_map>    // used by Result
 #include <vector>           // holds all results
 
 #define ANKERL_NANOBENCH(x) ANKERL_NANOBENCH_PRIVATE_##x()
@@ -108,8 +109,8 @@ namespace ankerl {
 namespace nanobench {
 
 using Clock = std::chrono::high_resolution_clock;
-class Config;
-class Measurement;
+class Bench;
+struct Config;
 class Result;
 class Rng;
 class BigO;
@@ -125,6 +126,9 @@ char const* htmlBoxplot() noexcept;
 
 // JSON that contains all result data
 char const* json() noexcept;
+
+// Generates output from the template and results into the given stream
+void generate(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
 
 } // namespace templates
 
@@ -162,76 +166,54 @@ struct PerfCountSet {
 
 } // namespace detail
 
-// Holds measurement results of one epoch of a benchmark.
-class Measurement {
-public:
-    Measurement(Clock::duration totalElapsed, uint64_t iters, double batch, detail::PerformanceCounters const& pc) noexcept;
-
-    // sortable fastest to slowest
-    ANKERL_NANOBENCH(NODISCARD) bool operator<(Measurement const& other) const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) Clock::duration const& elapsed() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> secPerUnit() const noexcept;
-
-    ANKERL_NANOBENCH(NODISCARD) uint64_t pageFaults() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t cpuCycles() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t contextSwitches() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t instructions() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t branchInstructions() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) uint64_t branchMisses() const noexcept;
-
-private:
-    Clock::duration mTotalElapsed;
-    uint64_t mNumIters;
-    std::chrono::duration<double> mSecPerUnit;
-    detail::PerfCountSet<uint64_t> mVal;
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+struct Config {
+    // actual benchmark config
+    std::string mBenchmarkTitle = "benchmark";
+    std::string mBenchmarkName = "noname";
+    std::string mUnit = "op";
+    double mBatch = 1.0;
+    double mComplexityN = -1.0;
+    size_t mNumEpochs = 11;
+    size_t mClockResolutionMultiple = static_cast<size_t>(1000);
+    std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
+    std::chrono::nanoseconds mMinEpochTime{};
+    uint64_t mMinEpochIterations{1};
+    uint64_t mWarmup = 0;
+    std::ostream* mOut = nullptr;
+    bool mShowPerformanceCounters = true;
+    bool mIsRelative = false;
 };
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class Result {
 public:
-    Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complN) noexcept;
-    Result() noexcept;
+    Result(Config const& benchmarkConfig);
 
-    ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::vector<Measurement> const& sortedMeasurements() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> median() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> minimum() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> maximum() const noexcept;
+    // adds new measurement results
+    // all values are scaled by iters (except iters...)
+    void add(Clock::duration totalElapsed, uint64_t iters, detail::PerformanceCounters const& pc);
 
-    ANKERL_NANOBENCH(NODISCARD) double medianCpuCyclesPerUnit() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) bool hasMedianCpuCyclesPerUnit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
 
-    ANKERL_NANOBENCH(NODISCARD) double medianInstructionsPerUnit() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) bool hasMedianInstructionsPerUnit() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double median(std::string const& query) const;
+    ANKERL_NANOBENCH(NODISCARD) double medianAbsolutePercentError(std::string const& query) const;
+    ANKERL_NANOBENCH(NODISCARD) double average(std::string const& query) const;
+    ANKERL_NANOBENCH(NODISCARD) double sum(std::string const& query) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double sumProduct(std::string const& query1, std::string const& query2) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double minimum(std::string const& query) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double maximum(std::string const& query) const noexcept;
 
-    ANKERL_NANOBENCH(NODISCARD) double medianBranchesPerUnit() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) bool hasMedianBranchesPerUnit() const noexcept;
-
-    ANKERL_NANOBENCH(NODISCARD) double medianBranchMissesPerUnit() const noexcept;
-    ANKERL_NANOBENCH(NODISCARD) bool hasMedianBranchMissesPerUnit() const noexcept;
-
-    ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
-
-    ANKERL_NANOBENCH(NODISCARD) Clock::duration total() const noexcept;
-
+    ANKERL_NANOBENCH(NODISCARD) bool has(std::string const& query) const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) double get(size_t idx, std::string const& query) const;
     ANKERL_NANOBENCH(NODISCARD) bool empty() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) size_t size() const noexcept;
 
 private:
-    std::string mName{};
-    std::vector<Measurement> mSortedMeasurements{};
-    double mMedianAbsolutePercentError{};
-
-    double mMedianCpuCyclesPerUnit{};
-    double mMedianInstructionsPerUnit{};
-    double mMedianBranchesPerUnit{};
-    double mMedianBranchMissesPerUnit{};
-
-    double mComplexityN{};
-
-    detail::PerfCountSet<bool> mHas{};
+    Config mConfig{};
+    std::unordered_map<std::string, std::vector<double>> mNameToMeasurements{};
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -274,46 +256,50 @@ private:
     uint64_t mCounter;
 };
 
-// Configuration of a microbenchmark.
+// Main entry class for the microbenchmark framework.
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
-class Config {
+class Bench {
 public:
-    Config();
+    Bench();
 
-    Config(Config&& other);
-    Config& operator=(Config&& other);
-    Config(Config const& other);
-    Config& operator=(Config const& other);
+    Bench(Bench&& other);
+    Bench& operator=(Bench&& other);
+    Bench(Bench const& other);
+    Bench& operator=(Bench const& other);
 
-    ~Config() noexcept;
+    ~Bench() noexcept;
 
     // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
     // Best used in combination with `unit`. Any argument is cast to double.
     template <typename T>
-    Config& batch(T b) noexcept;
+    Bench& batch(T b) noexcept;
     ANKERL_NANOBENCH(NODISCARD) double batch() const noexcept;
 
     // Marks the next run as the baseline. The following runs will be compared to this run. 100% will mean it is exactly as fast as the
     // baseline, >100% means it is faster than the baseline. It is calculated by `100% * runtime_baseline / runtime`. So e.g. 200%
     // means the current run is twice as fast as the baseline.
-    Config& relative(bool isRelativeEnabled) noexcept;
+    Bench& relative(bool isRelativeEnabled) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool relative() const noexcept;
 
-    Config& performanceCounters(bool showPerformanceCounters) noexcept;
+    Bench& performanceCounters(bool showPerformanceCounters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) bool performanceCounters() const noexcept;
 
     // Operation unit. Defaults to "op", could be e.g. "byte" for string processing. This is used for the table header, e.g. to show
     // `ns/byte`. Use singular (byte, not bytes). A change clears the currently collected results.
-    Config& unit(std::string unit);
+    Bench& unit(std::string unit);
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
 
     // Title of the benchmark, will be shown in the table header. A change clears the currently collected results.
-    Config& title(std::string benchmarkTitle);
+    Bench& title(std::string benchmarkTitle);
     ANKERL_NANOBENCH(NODISCARD) std::string const& title() const noexcept;
+
+    // Name of the benchmark, will be shown in the table row.
+    Bench& name(std::string benchmarkName);
+    ANKERL_NANOBENCH(NODISCARD) std::string const& name() const noexcept;
 
     // Set the output stream where the resulting markdown table will be printed to. The default is `&std::cout`. You can disable all
     // output by setting `nullptr`.
-    Config& output(std::ostream* outstream) noexcept;
+    Bench& output(std::ostream* outstream) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::ostream* output() const noexcept;
 
     // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch. Defaults to 11. The higher you
@@ -321,34 +307,34 @@ public:
     // high to be able to filter most outliers.
     //
     // For slow benchmarks you might want to reduce this number.
-    Config& epochs(size_t numEpochs) noexcept;
+    Bench& epochs(size_t numEpochs) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t epochs() const noexcept;
 
     // Modern processors have a very accurate clock, being able to measure as low as 20 nanoseconds. This allows nanobech to be so
     // fast: we only run the benchmark sufficiently often so that the clock's accuracy is good enough. The default is to run one epoch
     // for 2000 times the clock resolution. So for 20ns resolution and 11 epochs, this gives a total runtime of `20ns * 8000 * 11 ~
     // 2ms` for a benchmark to get accurate results.
-    Config& clockResolutionMultiple(size_t multiple) noexcept;
+    Bench& clockResolutionMultiple(size_t multiple) noexcept;
     ANKERL_NANOBENCH(NODISCARD) size_t clockResolutionMultiple() const noexcept;
 
     // As a safety precausion if the clock is not very accurate, we can set an upper limit for the maximum evaluation time per epoch.
     // Default is 100ms.
-    Config& maxEpochTime(std::chrono::nanoseconds t) noexcept;
+    Bench& maxEpochTime(std::chrono::nanoseconds t) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds maxEpochTime() const noexcept;
 
     // Sets the minimum time each epoch should take. Default is zero, so clockResolutionMultiple() can do it's best guess. You can
     // increase this if you have the time and results are not accurate enough.
-    Config& minEpochTime(std::chrono::nanoseconds t) noexcept;
+    Bench& minEpochTime(std::chrono::nanoseconds t) noexcept;
     ANKERL_NANOBENCH(NODISCARD) std::chrono::nanoseconds minEpochTime() const noexcept;
 
     // Sets the minimum number of iterations each epoch should take. Default is 1. For high median average percentage error (MdAPE),
     // which happens when your benchmark is unstable, you might want to increase the minimum number to get more accurate reslts.
-    Config& minEpochIterations(uint64_t numIters) noexcept;
+    Bench& minEpochIterations(uint64_t numIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t minEpochIterations() const noexcept;
 
     // Set a number of iterations that are initially performed without any measurements, to warmup caches / database / whatever.
     // Normally this is not needed, since we show the median result so initial outliers will be filtered away automatically.
-    Config& warmup(uint64_t numWarmupIters) noexcept;
+    Bench& warmup(uint64_t numWarmupIters) noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t warmup() const noexcept;
 
     // Gets all benchmark results
@@ -357,18 +343,25 @@ public:
     // Repeatedly calls op() based on the configuration, and performs measurements.
     // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
     template <typename Op>
-    ANKERL_NANOBENCH(NOINLINE) Config& run(std::string const& name, Op op);
+    ANKERL_NANOBENCH(NOINLINE)
+    Bench& run(std::string const& benchmarkName, Op op);
+
+    // Repeatedly calls op() based on the configuration, and performs measurements. Uses previously set name.
+    // Make sure this is noinline to prevent the compiler to optimize beyond different benchmarks. This can have quite a big effect
+    template <typename Op>
+    ANKERL_NANOBENCH(NOINLINE)
+    Bench& run(Op op);
 
     // Convenience: makes sure none of the given arguments are optimized away by the compiler.
     template <typename... Args>
-    Config& doNotOptimizeAway(Args&&... args);
+    Bench& doNotOptimizeAway(Args&&... args);
 
     // Parses the mustache-like template and renders the output into os.
-    Config& render(char const* templateContent, std::ostream& os);
+    Bench& render(char const* templateContent, std::ostream& os);
 
     // Set the length of N for the next benchmark run, so it is possible to calculate bigO.
     template <typename T>
-    Config& complexityN(T b) noexcept;
+    Bench& complexityN(T b) noexcept;
     ANKERL_NANOBENCH(NODISCARD) double complexityN() const noexcept;
 
     // calculates bigO of the results with all preconfigured complexity functions
@@ -378,21 +371,15 @@ public:
     template <typename Op>
     BigO complexityBigO(std::string const& name, Op op) const;
 
+    // Set all the configuration.
+    Bench& config(Config const& benchmarkConfig);
+    ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
+
 private:
-    std::string mBenchmarkTitle = "benchmark";
-    std::string mUnit = "op";
-    double mBatch = 1.0;
-    double mComplexityN = -1.0;
-    size_t mNumEpochs = 11;
-    size_t mClockResolutionMultiple = static_cast<size_t>(1000);
-    std::chrono::nanoseconds mMaxEpochTime = std::chrono::milliseconds(100);
-    std::chrono::nanoseconds mMinEpochTime{};
-    uint64_t mMinEpochIterations{1};
-    uint64_t mWarmup = 0;
+    Config mConfig{};
+
+    // results
     std::vector<Result> mResults{};
-    std::ostream* mOut = nullptr;
-    bool mIsRelative = false;
-    bool mShowPerformanceCounters = true;
 };
 ANKERL_NANOBENCH(IGNORE_PADDED_POP)
 
@@ -434,7 +421,7 @@ typename std::enable_if<doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway
 ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
 class IterationLogic {
 public:
-    IterationLogic(Config const& config, std::string name) noexcept;
+    IterationLogic(Bench const& config) noexcept;
 
     ANKERL_NANOBENCH(NODISCARD) uint64_t numIters() const noexcept;
     void add(std::chrono::nanoseconds elapsed, PerformanceCounters const& pc) noexcept;
@@ -443,17 +430,15 @@ public:
 private:
     enum class State { warmup, upscaling_runtime, measuring, endless };
 
-    ANKERL_NANOBENCH(NODISCARD) Result showResult(std::string const& errorMessage) const;
+    void showResult(std::string const& errorMessage) const;
     ANKERL_NANOBENCH(NODISCARD) bool isCloseEnoughForMeasurements(std::chrono::nanoseconds elapsed) const noexcept;
     ANKERL_NANOBENCH(NODISCARD) uint64_t calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept;
     void upscale(std::chrono::nanoseconds elapsed);
 
     uint64_t mNumIters = 1;
-    Config const& mConfig;
+    Bench const& mBench;
     std::chrono::nanoseconds mTargetRuntimePerEpoch{};
-    std::string mName;
-    Result mResult{};
-    std::vector<Measurement> mMeasurements{};
+    Result mResult;
     Rng mRng{};
     std::chrono::nanoseconds mTotalElapsed{};
     uint64_t mTotalNumIters = 0;
@@ -566,12 +551,11 @@ constexpr uint64_t Rng::rotl(uint64_t x, unsigned k) noexcept {
     return (x << k) | (x >> (64U - k));
 }
 
-// Performs all evaluations.
 template <typename Op>
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
-Config& Config::run(std::string const& name, Op op) {
+Bench& Bench::run(Op op) {
     // It is important that this method is kept short so the compiler can do better optimizations/ inlining of op()
-    detail::IterationLogic iterationLogic(*this, name);
+    detail::IterationLogic iterationLogic(*this);
     auto& pc = detail::performanceCounters();
 
     while (auto n = iterationLogic.numIters()) {
@@ -589,29 +573,36 @@ Config& Config::run(std::string const& name, Op op) {
     return *this;
 }
 
+// Performs all evaluations.
 template <typename Op>
-BigO Config::complexityBigO(std::string const& name, Op op) const {
-    return BigO(name, BigO::collectRangeMeasure(mResults), op);
+Bench& Bench::run(std::string const& benchmarkName, Op op) {
+    name(benchmarkName);
+    return run(std::move(op));
+}
+
+template <typename Op>
+BigO Bench::complexityBigO(std::string const& benchmarkName, Op op) const {
+    return BigO(benchmarkName, BigO::collectRangeMeasure(mResults), op);
 }
 
 // Set the batch size, e.g. number of processed bytes, or some other metric for the size of the processed data in each iteration.
 // Any argument is cast to double.
 template <typename T>
-Config& Config::batch(T b) noexcept {
-    mBatch = static_cast<double>(b);
+Bench& Bench::batch(T b) noexcept {
+    mConfig.mBatch = static_cast<double>(b);
     return *this;
 }
 
 // Sets the computation complexity of the next run. Any argument is cast to double.
 template <typename T>
-Config& Config::complexityN(T n) noexcept {
-    mComplexityN = static_cast<double>(n);
+Bench& Bench::complexityN(T n) noexcept {
+    mConfig.mComplexityN = static_cast<double>(n);
     return *this;
 }
 
 // Convenience: makes sure none of the given arguments are optimized away by the compiler.
 template <typename... Args>
-Config& Config::doNotOptimizeAway(Args&&... args) {
+Bench& Bench::doNotOptimizeAway(Args&&... args) {
     (void)std::initializer_list<int>{(detail::doNotOptimizeAway(std::forward<Args>(args)), 0)...};
     return *this;
 }
@@ -642,18 +633,18 @@ void doNotOptimizeAway(T const& val) {
 // implementation part
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#    include <algorithm> // sort
+#    include <algorithm> // sort, reverse
 #    include <atomic>    // compare_exchange_strong in loop overhead
 #    include <cstdlib>   // getenv
 #    include <cstring>   // strstr, strncmp
 #    include <fstream>   // ifstream to parse proc files
 #    include <iomanip>   // setw, setprecision
 #    include <iostream>  // cout
+#    include <numeric>   // accumulate
 #    include <random>    // random_device
 #    include <sstream>   // to_s in Number
 #    include <stdexcept> // throw for rendering templates
 #    include <tuple>     // std::tie
-#    include <vector>    // manage results
 #    if defined(__linux__)
 #        include <unistd.h> //sysconf
 #    endif
@@ -694,11 +685,25 @@ class MarkDownCode;
 
 namespace ankerl {
 namespace nanobench {
+namespace detail {
+
+// helpers to get double values
+template <typename T>
+inline double d(T t) noexcept {
+    return static_cast<double>(t);
+}
+inline double d(Clock::duration dur) noexcept {
+    return std::chrono::duration_cast<std::chrono::duration<double>>(dur).count();
+}
+
+} // namespace detail
+
 namespace templates {
+
 char const* csv() noexcept {
-    return R"DELIM("{{title}}"; "relative %"; "s/{{unit}}"; "min/{{unit}}"; "max/{{unit}}"; "error %"; "measurements"; "instructions/{{unit}}"; "branch/{{unit}}"; "branch misses/{{unit}}"
-{{#benchmarks}}"{{name}}"; {{relative}}; {{median_sec_per_unit}}; {{min}}; {{max}}; {{md_ape}}; {{num_measurements}}; {{median_ins_per_unit}}; {{median_branches_per_unit}}; {{median_branchmisses_per_unit}}
-{{/benchmarks}}
+    return R"DELIM("title"; "name"; "unit"; "batch"; "elapsed"; "error %"; "instructions"; "branches"; "branch misses"; "total"
+{{#result}}"{{title}}"; "{{name}}"; "{{unit}}"; {{batch}}; {{median(elapsed)}}; {{medianAbsolutePercentError(elapsed)}}; {{median(instructions)}}; {{median(branchinstructions)}}; {{median(branchmisses)}}; {{sumProduct(iterations, elapsed)}}
+{{/result}}
 )DELIM";
 }
 //
@@ -713,16 +718,16 @@ char const* htmlBoxplot() noexcept {
     <div id="myDiv" style="width:1024px; height:768px"></div>
     <script>
         var data = [
-            {{#benchmarks}}{
+            {{#result}}{
                 name: '{{name}}',
-                y: [{{#results}}{{elapsed_ns}}e-9/{{iters}}{{^-last}}, {{/last}}{{/results}}],
+                y: [{{#measurement}}{{elapsed}}{{^-last}}, {{/last}}{{/measurement}}],
             },
-            {{/benchmarks}}
+            {{/result}}
         ];
-        var title = '{{title}}';
+        var title = 'benchmark';
 
         data = data.map(a => Object.assign(a, { boxpoints: 'all', pointpos: 0, type: 'box' }));
-        var layout = { title: { text: title }, showlegend: false, yaxis: { title: 'time per {{unit}}', rangemode: 'tozero', autorange: true } }; Plotly.newPlot('myDiv', data, layout, {responsive: true});
+        var layout = { title: { text: title }, showlegend: false, yaxis: { title: 'time per unit', rangemode: 'tozero', autorange: true } }; Plotly.newPlot('myDiv', data, layout, {responsive: true});
     </script>
 </body>
 
@@ -731,25 +736,319 @@ char const* htmlBoxplot() noexcept {
 
 char const* json() noexcept {
     return R"DELIM({
- "title": "{{title}}",
- "unit": "{{unit}}",
- "batch": {{batch}},
- "benchmarks": [
-{{#benchmarks}}  {
-   "name": "{{name}}",
-   "median_sec_per_unit": {{median_sec_per_unit}},
-   "md_ape": {{md_ape}},
-   "min": {{min}},
-   "max": {{max}},
-   "relative": {{relative}},
-   "num_measurements": {{num_measurements}},
-   "results": [
-{{#results}}    { "sec_per_unit": {{sec_per_unit}}, "iters": {{iters}}, "elapsed_ns": {{elapsed_ns}}, "pagefaults": {{pagefaults}}, "cpucycles": {{cpucycles}}, "contextswitches": {{contextswitches}}, "instructions": {{instructions}}, "branchinstructions": {{branchinstructions}}, "branchmisses": {{branchmisses}}}{{^-last}}, {{/-last}}
-{{/results}}   ]
-  }{{^-last}},{{/-last}}
-{{/benchmarks}} ]
+    "results": [
+{{#result}}        {
+            "title": "{{title}}",
+            "name": "{{name}}",
+            "unit": "{{unit}}",
+            "batch": {{batch}},
+            "complexityN": {{complexityN}},
+            "epochs": {{epochs}},
+            "clockResolutionMultiple": {{clockResolutionMultiple}},
+            "maxEpochTime": {{maxEpochTime}},
+            "minEpochTime": {{minEpochTime}},
+            "minEpochIterations": {{minEpochIterations}},
+            "warmup": {{warmup}},
+            "relative": {{relative}},
+            "median(elapsed)": {{median(elapsed)}},
+            "medianAbsolutePercentError(elapsed)": {{medianAbsolutePercentError(elapsed)}},
+            "median(instructions)": {{median(instructions)}},
+            "medianAbsolutePercentError(instructions)": {{medianAbsolutePercentError(instructions)}},
+            "median(cpucycles)": {{median(cpucycles)}},
+            "median(contextswitches)": {{median(contextswitches)}},
+            "median(pagefaults)": {{median(pagefaults)}},
+            "median(branchinstructions)": {{median(branchinstructions)}},
+            "median(branchmisses)": {{median(branchmisses)}},
+            "totalTime": {{sumProduct(iterations, elapsed)}},
+            "measurements": [
+{{#measurement}}                {
+                    "iterations": {{iterations}},
+                    "elapsed": {{elapsed}},
+                    "pagefaults": {{pagefaults}},
+                    "cpucycles": {{cpucycles}},
+                    "contextswitches": {{contextswitches}},
+                    "instructions": {{instructions}},
+                    "branchinstructions": {{branchinstructions}},
+                    "branchmisses": {{branchmisses}}
+                }{{^-last}},{{/-last}}
+{{/measurement}}            ]
+        }{{^-last}},{{/-last}}
+{{/result}}    ]
+})DELIM";
 }
-)DELIM";
+
+ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
+struct Node {
+    enum class Type { tag, content, section, inverted_section };
+
+    char const* begin;
+    char const* end;
+    std::vector<Node> children;
+    Type type;
+
+    template <size_t N>
+    // NOLINTNEXTLINE(hicpp-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
+    bool operator==(char const (&str)[N]) const noexcept {
+        return static_cast<size_t>(std::distance(begin, end) + 1) == N && 0 == strncmp(str, begin, N - 1);
+    }
+};
+ANKERL_NANOBENCH(IGNORE_PADDED_POP)
+
+static std::vector<Node> parseMustacheTemplate(char const** tpl) {
+    std::vector<Node> nodes;
+
+    while (true) {
+        auto begin = std::strstr(*tpl, "{{");
+        auto end = begin;
+        if (begin != nullptr) {
+            begin += 2;
+            end = std::strstr(begin, "}}");
+        }
+
+        if (begin == nullptr || end == nullptr) {
+            // nothing found, finish node
+            nodes.emplace_back(Node{*tpl, *tpl + std::strlen(*tpl), std::vector<Node>{}, Node::Type::content});
+            return nodes;
+        }
+
+        nodes.emplace_back(Node{*tpl, begin - 2, std::vector<Node>{}, Node::Type::content});
+
+        // we found a tag
+        *tpl = end + 2;
+        switch (*begin) {
+        case '/':
+            // finished! bail out
+            return nodes;
+
+        case '#':
+            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::section});
+            break;
+
+        case '^':
+            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::inverted_section});
+            break;
+
+        default:
+            nodes.emplace_back(Node{begin, end, std::vector<Node>{}, Node::Type::tag});
+            break;
+        }
+    }
+}
+
+static bool generateFirstLast(Node const& n, size_t idx, size_t size, std::ostream& out) {
+    bool matchFirst = n == "-first";
+    bool matchLast = n == "-last";
+    if (!matchFirst && !matchLast) {
+        return false;
+    }
+
+    bool doWrite = false;
+    if (n.type == Node::Type::section) {
+        doWrite = (matchFirst && idx == 0) || (matchLast && idx == size - 1);
+    } else if (n.type == Node::Type::inverted_section) {
+        doWrite = (matchFirst && idx != 0) || (matchLast && idx != size - 1);
+    }
+
+    if (doWrite) {
+        for (auto const& child : n.children) {
+            if (child.type == Node::Type::content) {
+                out.write(child.begin, std::distance(child.begin, child.end));
+            }
+        }
+    }
+    return true;
+}
+
+static bool matchCmdArgs(std::string const& str, std::vector<std::string>& matchResult) {
+    matchResult.clear();
+    auto idxOpen = str.find('(');
+    auto idxClose = str.find(')', idxOpen);
+    if (idxClose == std::string::npos) {
+        return false;
+    }
+
+    matchResult.emplace_back(str.substr(0, idxOpen));
+
+    // split by comma
+    matchResult.emplace_back(std::string{});
+    for (size_t i = idxOpen + 1; i != idxClose; ++i) {
+        if (str[i] == ' ' || str[i] == '\t') {
+            // skip whitespace
+            continue;
+        }
+        if (str[i] == ',') {
+            // got a comma => new string
+            matchResult.emplace_back(std::string{});
+            continue;
+        }
+        // no whitespace no comma, append
+        matchResult.back() += str[i];
+    }
+    return true;
+}
+
+static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostream& out) {
+    using detail::d;
+
+    if (n == "title") {
+        return out << r.config().mBenchmarkTitle;
+    }
+    if (n == "name") {
+        return out << r.config().mBenchmarkName;
+    }
+    if (n == "unit") {
+        return out << r.config().mUnit;
+    }
+    if (n == "batch") {
+        return out << r.config().mBatch;
+    }
+    if (n == "complexityN") {
+        return out << r.config().mComplexityN;
+    }
+    if (n == "epochs") {
+        return out << r.config().mNumEpochs;
+    }
+    if (n == "clockResolutionMultiple") {
+        return out << r.config().mClockResolutionMultiple;
+    }
+    if (n == "maxEpochTime") {
+        return out << d(r.config().mMaxEpochTime);
+    }
+    if (n == "minEpochTime") {
+        return out << d(r.config().mMinEpochTime);
+    }
+    if (n == "minEpochIterations") {
+        return out << r.config().mMinEpochIterations;
+    }
+    if (n == "warmup") {
+        return out << r.config().mWarmup;
+    }
+    if (n == "relative") {
+        return out << r.config().mIsRelative;
+    }
+
+    // match e.g. "median(elapsed)"
+    // g++ 4.8 doesn't implement std::regex :(
+    // static std::regex const regOpArg1("^([a-zA-Z]+)\\(([a-zA-Z]*)\\)$");
+    // std::cmatch matchResult;
+    // if (std::regex_match(n.begin, n.end, matchResult, regOpArg1)) {
+    std::vector<std::string> matchResult;
+    if (matchCmdArgs(std::string(n.begin, n.end), matchResult)) {
+        if (matchResult.size() == 2) {
+            if (matchResult[0] == "median") {
+                return out << r.median(matchResult[1]);
+            }
+            if (matchResult[0] == "average") {
+                return out << r.average(matchResult[1]);
+            }
+            if (matchResult[0] == "medianAbsolutePercentError") {
+                return out << r.medianAbsolutePercentError(matchResult[1]);
+            }
+            if (matchResult[0] == "sum") {
+                return out << r.sum(matchResult[1]);
+            }
+            if (matchResult[0] == "minimum") {
+                return out << r.minimum(matchResult[1]);
+            }
+            if (matchResult[0] == "maximum") {
+                return out << r.maximum(matchResult[1]);
+            }
+        } else if (matchResult.size() == 3) {
+            if (matchResult[0] == "sumProduct") {
+                return out << r.sumProduct(matchResult[1], matchResult[2]);
+            }
+        }
+    }
+
+    // match e.g. "sumProduct(elapsed, iterations)"
+    // static std::regex const regOpArg2("^([a-zA-Z]+)\\(([a-zA-Z]*)\\s*,\\s+([a-zA-Z]*)\\)$");
+
+    // nothing matches :(
+    throw std::runtime_error("command '" + std::string(n.begin, n.end) + "' not understood");
+}
+
+static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx, Result const& r, std::ostream& out) {
+    for (auto const& n : nodes) {
+        if (!generateFirstLast(n, idx, r.size(), out)) {
+            switch (n.type) {
+            case Node::Type::content:
+                out.write(n.begin, std::distance(n.begin, n.end));
+                break;
+
+            case Node::Type::inverted_section:
+                throw std::runtime_error("got a inverted section inside measurement");
+
+            case Node::Type::section:
+                throw std::runtime_error("got a section inside measurement");
+
+            case Node::Type::tag: {
+                out << r.get(idx, std::string(n.begin, n.end));
+                break;
+            }
+            }
+        }
+    }
+}
+
+static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vector<Result> const& results, std::ostream& out) {
+    auto const& r = results[idx];
+    for (auto const& n : nodes) {
+        if (!generateFirstLast(n, idx, results.size(), out)) {
+            switch (n.type) {
+            case Node::Type::content:
+                out.write(n.begin, std::distance(n.begin, n.end));
+                break;
+
+            case Node::Type::inverted_section:
+                throw std::runtime_error("got a inverted section inside result");
+
+            case Node::Type::section:
+                if (n == "measurement") {
+                    for (size_t i = 0; i < r.size(); ++i) {
+                        generateResultMeasurement(n.children, i, r, out);
+                    }
+                } else {
+                    throw std::runtime_error("got a section inside result");
+                }
+                break;
+
+            case Node::Type::tag:
+                generateResultTag(n, r, out);
+                break;
+            }
+        }
+    }
+}
+
+void generate(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out) {
+    // TODO(martinus) save & restore stream status
+    out.precision(std::numeric_limits<double>::digits10);
+    auto nodes = parseMustacheTemplate(&mustacheTemplate);
+
+    for (auto const& n : nodes) {
+        switch (n.type) {
+        case Node::Type::content:
+            out.write(n.begin, std::distance(n.begin, n.end));
+            break;
+
+        case Node::Type::inverted_section:
+            throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
+
+        case Node::Type::section:
+            if (n == "result") {
+                for (size_t i = 0; i < results.size(); ++i) {
+                    generateResult(n.children, i, results, out);
+                }
+            } else {
+                throw std::runtime_error("unknown section '" + std::string(n.begin, n.end) + "'");
+            }
+            break;
+
+        case Node::Type::tag:
+            throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+            break;
+        }
+    }
 }
 
 } // namespace templates
@@ -832,6 +1131,9 @@ private:
     int mPrecision;
     double mValue;
 };
+
+// helper replacement for std::to_string of signed/unsigned numbers so we are locale independent
+std::string to_s(uint64_t s);
 
 std::ostream& operator<<(std::ostream& os, Number const& n);
 
@@ -946,13 +1248,14 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
 
         // check frequency scaling
         for (long id = 0; id < nprocs; ++id) {
-            auto sysCpu = "/sys/devices/system/cpu/cpu" + std::to_string(id);
+            auto idStr = detail::fmt::to_s(static_cast<uint64_t>(id));
+            auto sysCpu = "/sys/devices/system/cpu/cpu" + idStr;
             auto minFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_min_freq");
             auto maxFreq = parseFile<int64_t>(sysCpu + "/cpufreq/scaling_max_freq");
             if (minFreq != maxFreq) {
                 auto minMHz = static_cast<double>(minFreq) / 1000.0;
                 auto maxMHz = static_cast<double>(maxFreq) / 1000.0;
-                warnings.emplace_back("CPU frequency scaling enabled: CPU " + std::to_string(id) + " between " +
+                warnings.emplace_back("CPU frequency scaling enabled: CPU " + idStr + " between " +
                                       detail::fmt::Number(1, 1, minMHz).to_s() + " and " + detail::fmt::Number(1, 1, maxMHz).to_s() +
                                       " MHz");
                 recommendPyPerf = true;
@@ -1046,38 +1349,35 @@ Clock::duration clockResolution() noexcept {
     return sResolution;
 }
 
-IterationLogic::IterationLogic(Config const& config, std::string name) noexcept
-    : mConfig(config)
-    , mName(std::move(name)) {
-    printStabilityInformationOnce(mConfig.output());
+IterationLogic::IterationLogic(Bench const& bench) noexcept
+    : mBench(bench)
+    , mResult(bench.config()) {
+    printStabilityInformationOnce(mBench.output());
 
     // determine target runtime per epoch
-    mTargetRuntimePerEpoch = detail::clockResolution() * mConfig.clockResolutionMultiple();
-    if (mTargetRuntimePerEpoch > mConfig.maxEpochTime()) {
-        mTargetRuntimePerEpoch = mConfig.maxEpochTime();
+    mTargetRuntimePerEpoch = detail::clockResolution() * mBench.clockResolutionMultiple();
+    if (mTargetRuntimePerEpoch > mBench.maxEpochTime()) {
+        mTargetRuntimePerEpoch = mBench.maxEpochTime();
     }
-    if (mTargetRuntimePerEpoch < mConfig.minEpochTime()) {
-        mTargetRuntimePerEpoch = mConfig.minEpochTime();
+    if (mTargetRuntimePerEpoch < mBench.minEpochTime()) {
+        mTargetRuntimePerEpoch = mBench.minEpochTime();
     }
 
-    // prepare array for measurement results
-    mMeasurements.reserve(mConfig.epochs());
-
-    if (isEndlessRunning(mName)) {
-        std::cerr << "NANOBENCH_ENDLESS set: running '" << mName << "' endlessly" << std::endl;
+    if (isEndlessRunning(mBench.name())) {
+        std::cerr << "NANOBENCH_ENDLESS set: running '" << mBench.name() << "' endlessly" << std::endl;
         mNumIters = (std::numeric_limits<uint64_t>::max)();
         mState = State::endless;
-    } else if (0 != mConfig.warmup()) {
-        mNumIters = mConfig.warmup();
+    } else if (0 != mBench.warmup()) {
+        mNumIters = mBench.warmup();
         mState = State::warmup;
     } else {
-        mNumIters = mConfig.minEpochIterations();
+        mNumIters = mBench.minEpochIterations();
         mState = State::upscaling_runtime;
     }
 }
 
 uint64_t IterationLogic::numIters() const noexcept {
-    ANKERL_NANOBENCH_LOG(mName << ": mNumIters=" << mNumIters);
+    ANKERL_NANOBENCH_LOG(mBench.name() << ": mNumIters=" << mNumIters);
     return mNumIters;
 }
 
@@ -1087,11 +1387,11 @@ bool IterationLogic::isCloseEnoughForMeasurements(std::chrono::nanoseconds elaps
 
 // directly calculates new iters based on elapsed&iters, and adds a 10% noise. Makes sure we don't underflow.
 uint64_t IterationLogic::calcBestNumIters(std::chrono::nanoseconds elapsed, uint64_t iters) noexcept {
-    auto doubleElapsed = std::chrono::duration_cast<std::chrono::duration<double>>(elapsed);
-    auto doubleTargetRuntimePerEpoch = std::chrono::duration_cast<std::chrono::duration<double>>(mTargetRuntimePerEpoch);
-    auto doubleNewIters = doubleTargetRuntimePerEpoch / doubleElapsed * static_cast<double>(iters);
+    auto doubleElapsed = d(elapsed);
+    auto doubleTargetRuntimePerEpoch = d(mTargetRuntimePerEpoch);
+    auto doubleNewIters = doubleTargetRuntimePerEpoch / doubleElapsed * d(iters);
 
-    auto doubleMinEpochIters = static_cast<double>(mConfig.minEpochIterations());
+    auto doubleMinEpochIters = d(mBench.minEpochIterations());
     if (doubleNewIters < doubleMinEpochIters) {
         doubleNewIters = doubleMinEpochIters;
     }
@@ -1107,7 +1407,7 @@ ANKERL_NANOBENCH_NO_SANITIZE("integer") void IterationLogic::upscale(std::chrono
         // we are far below the target runtime. Multiply iterations by 10 (with overflow check)
         if (mNumIters * 10 < mNumIters) {
             // overflow :-(
-            mResult = showResult("iterations overflow. Maybe your code got optimized away?");
+            showResult("iterations overflow. Maybe your code got optimized away?");
             mNumIters = 0;
             return;
         }
@@ -1142,7 +1442,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
             mState = State::measuring;
             mTotalElapsed += elapsed;
             mTotalNumIters += mNumIters;
-            mMeasurements.emplace_back(elapsed, mNumIters, mConfig.batch(), pc);
+            mResult.add(elapsed, mNumIters, pc);
             mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
         } else {
             upscale(elapsed);
@@ -1154,7 +1454,7 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
         // that fluctuation, or else we would bias the result
         mTotalElapsed += elapsed;
         mTotalNumIters += mNumIters;
-        mMeasurements.emplace_back(elapsed, mNumIters, mConfig.batch(), pc);
+        mResult.add(elapsed, mNumIters, pc);
         mNumIters = calcBestNumIters(mTotalElapsed, mTotalNumIters);
         break;
 
@@ -1163,9 +1463,9 @@ void IterationLogic::add(std::chrono::nanoseconds elapsed, PerformanceCounters c
         break;
     }
 
-    if (static_cast<uint64_t>(mMeasurements.size()) == mConfig.epochs()) {
+    if (static_cast<uint64_t>(mResult.size()) == mBench.epochs()) {
         // we got all the results that we need, finish it
-        mResult = showResult("");
+        showResult("");
         mNumIters = 0;
     }
 
@@ -1179,59 +1479,65 @@ Result& IterationLogic::result() {
     return mResult;
 }
 
-Result IterationLogic::showResult(std::string const& errorMessage) const {
+void IterationLogic::showResult(std::string const& errorMessage) const {
     ANKERL_NANOBENCH_LOG("mMeasurements.size()=" << mMeasurements.size());
-    Result r;
-    if (errorMessage.empty()) {
-        r = Result(mName, mMeasurements, mConfig.batch(), mConfig.complexityN());
-    }
 
-    if (mConfig.output() != nullptr) {
+    if (mBench.output() != nullptr) {
         // prepare column data ///////
         std::vector<fmt::MarkDownColumn> columns;
 
-        if (mConfig.relative()) {
+        auto rMedian = mResult.median("elapsed");
+
+        if (mBench.relative()) {
             double d = 100.0;
-            if (!mConfig.results().empty()) {
-                d = r.median() <= decltype(r.median())::zero() ? 0.0 : mConfig.results().front().median() / r.median() * 100;
+            if (!mBench.results().empty()) {
+                d = rMedian <= 0.0 ? 0.0 : mBench.results().front().median("elapsed") / rMedian * 100.0;
             }
             columns.emplace_back(11, 1, "relative", "%", d);
         }
 
-        columns.emplace_back(22, 2, "ns/" + mConfig.unit(), "", 1e9 * r.median().count());
-        columns.emplace_back(22, 2, mConfig.unit() + "/s", "", r.median().count() <= 0.0 ? 0.0 : 1.0 / r.median().count());
-        columns.emplace_back(10, 1, "err%", "%", r.medianAbsolutePercentError() * 100);
+        if (mBench.complexityN() > 0) {
+            columns.emplace_back(14, 0, "complexityN", "", mBench.complexityN());
+        }
 
-        if (mConfig.performanceCounters()) {
-            if (r.hasMedianInstructionsPerUnit()) {
-                columns.emplace_back(18, 2, "ins/" + mConfig.unit(), "", r.medianInstructionsPerUnit());
-            }
-            if (r.hasMedianCpuCyclesPerUnit()) {
-                columns.emplace_back(18, 2, "cyc/" + mConfig.unit(), "", r.medianCpuCyclesPerUnit());
-            }
-            if (r.hasMedianInstructionsPerUnit() && r.hasMedianCpuCyclesPerUnit()) {
-                columns.emplace_back(9, 3, "IPC", "",
-                                     r.medianCpuCyclesPerUnit() <= 0.0 ? 0.0
-                                                                       : r.medianInstructionsPerUnit() / r.medianCpuCyclesPerUnit());
-            }
-            if (r.hasMedianBranchesPerUnit()) {
-                columns.emplace_back(17, 2, "bra/" + mConfig.unit(), "", r.medianBranchesPerUnit());
-                if (r.hasMedianBranchMissesPerUnit()) {
-                    double p = 0.0;
-                    if (r.medianBranchesPerUnit() >= 1e-9) {
-                        p = 100.0 * r.medianBranchMissesPerUnit() / r.medianBranchesPerUnit();
-                    }
-                    columns.emplace_back(10, 1, "miss%", "%", p);
+        columns.emplace_back(22, 2, "ns/" + mBench.unit(), "", 1e9 * rMedian / mBench.batch());
+        columns.emplace_back(22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
+
+        double rErrorMedian = mResult.medianAbsolutePercentError("elapsed");
+        columns.emplace_back(10, 1, "err%", "%", rErrorMedian * 100.0);
+
+        double rInsMedian = -1.0;
+        if (mResult.has("instructions")) {
+            rInsMedian = mResult.median("instructions");
+            columns.emplace_back(18, 2, "ins/" + mBench.unit(), "", rInsMedian / mBench.batch());
+        }
+
+        double rCycMedian = -1.0;
+        if (mResult.has("cpucycles")) {
+            rCycMedian = mResult.median("cpucycles");
+            columns.emplace_back(18, 2, "cyc/" + mBench.unit(), "", rCycMedian / mBench.batch());
+        }
+        if (rInsMedian > 0.0 && rCycMedian > 0.0) {
+            columns.emplace_back(9, 3, "IPC", "", rCycMedian <= 0.0 ? 0.0 : rInsMedian / rCycMedian);
+        }
+        if (mResult.has("branches")) {
+            double rBraMedian = mResult.median("branches");
+            columns.emplace_back(17, 2, "bra/" + mBench.unit(), "", rBraMedian / mBench.batch());
+            if (mResult.has("branchmisses")) {
+                double p = 0.0;
+                if (rBraMedian >= 1e-9) {
+                    p = 100.0 * mResult.median("branchmisses") / rBraMedian;
                 }
+                columns.emplace_back(10, 1, "miss%", "%", p);
             }
         }
 
-        columns.emplace_back(12, 2, "total", "", std::chrono::duration_cast<std::chrono::duration<double>>(r.total()).count());
+        columns.emplace_back(12, 2, "total", "", mResult.sum("elapsed"));
 
         // write everything
-        auto& os = *mConfig.output();
+        auto& os = *mBench.output();
 
-        auto hash = hash_combine(fnv1a(mConfig.unit()), fnv1a(mConfig.title()));
+        auto hash = hash_combine(fnv1a(mBench.unit()), fnv1a(mBench.title()));
         if (hash != singletonHeaderHash()) {
             singletonHeaderHash() = hash;
 
@@ -1240,31 +1546,31 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             for (auto const& col : columns) {
                 os << col.title();
             }
-            os << "| " << mConfig.title() << std::endl;
+            os << "| " << mBench.title() << std::endl;
 
             for (auto const& col : columns) {
                 os << col.separator();
             }
-            os << "|:" << std::string(mConfig.title().size() + 1U, '-') << std::endl;
+            os << "|:" << std::string(mBench.title().size() + 1U, '-') << std::endl;
         }
 
         if (!errorMessage.empty()) {
             for (auto const& col : columns) {
                 os << col.invalid();
             }
-            os << "| :boom: " << fmt::MarkDownCode(mName) << " (" << errorMessage << ')' << std::endl;
+            os << "| :boom: " << fmt::MarkDownCode(mBench.name()) << " (" << errorMessage << ')' << std::endl;
         } else {
             for (auto const& col : columns) {
                 os << col.value();
             }
             os << "| ";
-            auto showUnstable = r.medianAbsolutePercentError() >= 0.05;
+            auto showUnstable = rErrorMedian >= 0.05;
             if (showUnstable) {
                 os << ":wavy_dash: ";
             }
-            os << fmt::MarkDownCode(mName);
+            os << fmt::MarkDownCode(mBench.name());
             if (showUnstable) {
-                auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mConfig.epochs());
+                auto avgIters = static_cast<double>(mTotalNumIters) / static_cast<double>(mBench.epochs());
                 // NOLINTNEXTLINE(bugprone-incorrect-roundings)
                 auto suggestedIters = static_cast<uint64_t>(avgIters * 10 + 0.5);
 
@@ -1274,8 +1580,6 @@ Result IterationLogic::showResult(std::string const& errorMessage) const {
             os << std::endl;
         }
     }
-
-    return r;
 }
 
 #    if ANKERL_NANOBENCH(PERF_COUNTERS)
@@ -1675,6 +1979,16 @@ std::string Number::to_s() const {
     return ss.str();
 }
 
+std::string to_s(uint64_t n) {
+    std::string str;
+    do {
+        str += static_cast<char>('0' + static_cast<char>(n % 10));
+        n /= 10;
+    } while (n != 0);
+    std::reverse(str.begin(), str.end());
+    return str;
+}
+
 std::ostream& operator<<(std::ostream& os, Number const& n) {
     return n.write(os);
 }
@@ -1733,572 +2047,333 @@ std::ostream& MarkDownCode::write(std::ostream& os) const {
 std::ostream& operator<<(std::ostream& os, MarkDownCode const& mdCode) {
     return mdCode.write(os);
 }
-
-namespace mustache {
-
-ANKERL_NANOBENCH(IGNORE_PADDED_PUSH)
-struct Node {
-    enum class Type { tag, content, section, inverted_section };
-
-    char const* begin;
-    char const* end;
-    std::vector<Node> children;
-    Type type;
-
-    template <size_t N>
-    // NOLINTNEXTLINE(hicpp-avoid-c-arrays,modernize-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays)
-    bool operator==(char const (&str)[N]) const noexcept {
-        return static_cast<size_t>(std::distance(begin, end) + 1) == N && 0 == strncmp(str, begin, N - 1);
-    }
-};
-ANKERL_NANOBENCH(IGNORE_PADDED_POP)
-
-static std::vector<Node> parseMustacheTemplate(char const** tpl) {
-    std::vector<Node> nodes;
-
-    while (true) {
-        auto begin = std::strstr(*tpl, "{{");
-        auto end = begin;
-        if (begin != nullptr) {
-            begin += 2;
-            end = std::strstr(begin, "}}");
-        }
-
-        if (begin == nullptr || end == nullptr) {
-            // nothing found, finish node
-            nodes.emplace_back(Node{*tpl, *tpl + std::strlen(*tpl), std::vector<Node>{}, Node::Type::content});
-            return nodes;
-        }
-
-        nodes.emplace_back(Node{*tpl, begin - 2, std::vector<Node>{}, Node::Type::content});
-
-        // we found a tag
-        *tpl = end + 2;
-        switch (*begin) {
-        case '/':
-            // finished! bail out
-            return nodes;
-
-        case '#':
-            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::section});
-            break;
-
-        case '^':
-            nodes.emplace_back(Node{begin + 1, end, parseMustacheTemplate(tpl), Node::Type::inverted_section});
-            break;
-
-        default:
-            nodes.emplace_back(Node{begin, end, std::vector<Node>{}, Node::Type::tag});
-            break;
-        }
-    }
-}
-
-static bool generateFirstLast(Node const& n, size_t idx, size_t size, std::ostream& out) {
-    bool matchFirst = n == "-first";
-    bool matchLast = n == "-last";
-    if (!matchFirst && !matchLast) {
-        return false;
-    }
-
-    bool doWrite = false;
-    if (n.type == Node::Type::section) {
-        doWrite = (matchFirst && idx == 0) || (matchLast && idx == size - 1);
-    } else if (n.type == Node::Type::inverted_section) {
-        doWrite = (matchFirst && idx != 0) || (matchLast && idx != size - 1);
-    }
-
-    if (doWrite) {
-        for (auto const& child : n.children) {
-            if (child.type == Node::Type::content) {
-                out.write(child.begin, std::distance(child.begin, child.end));
-            }
-        }
-    }
-    return true;
-}
-
-static void generateMeasurement(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Measurement> const& measurements,
-                                size_t measurementIdx, std::ostream& out) {
-    auto const& measurement = measurements[measurementIdx];
-    for (auto const& n : nodes) {
-        if (!generateFirstLast(n, measurementIdx, measurements.size(), out)) {
-            switch (n.type) {
-            case Node::Type::content:
-                out.write(n.begin, std::distance(n.begin, n.end));
-                break;
-
-            case Node::Type::inverted_section:
-                throw std::runtime_error("got a inverted section inside measurement");
-
-            case Node::Type::section:
-                throw std::runtime_error("got a section inside measurement");
-
-            case Node::Type::tag:
-                if (n == "sec_per_unit") {
-                    out << measurement.secPerUnit().count();
-                } else if (n == "iters") {
-                    out << measurement.numIters();
-                } else if (n == "elapsed_ns") {
-                    out << measurement.elapsed().count();
-                } else if (n == "pagefaults") {
-                    out << measurement.pageFaults();
-                } else if (n == "cpucycles") {
-                    out << measurement.cpuCycles();
-                } else if (n == "contextswitches") {
-                    out << measurement.contextSwitches();
-                } else if (n == "instructions") {
-                    out << measurement.instructions();
-                } else if (n == "branchinstructions") {
-                    out << measurement.branchInstructions();
-                } else if (n == "branchmisses") {
-                    out << measurement.branchMisses();
-                } else {
-                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-                }
-                break;
-            }
-        }
-    }
-}
-
-static void generateBenchmark(std::vector<Node> const& nodes, std::vector<ankerl::nanobench::Result> const& results, size_t resultIdx,
-                              std::ostream& out) {
-    auto const& result = results[resultIdx];
-    for (auto const& n : nodes) {
-        if (!generateFirstLast(n, resultIdx, results.size(), out)) {
-            switch (n.type) {
-            case Node::Type::content:
-                out.write(n.begin, std::distance(n.begin, n.end));
-                break;
-
-            case Node::Type::section:
-                if (n == "results") {
-                    for (size_t m = 0; m < result.sortedMeasurements().size(); ++m) {
-                        generateMeasurement(n.children, result.sortedMeasurements(), m, out);
-                    }
-                } else {
-                    throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
-                }
-                break;
-
-            case Node::Type::inverted_section:
-                throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
-
-            case Node::Type::tag:
-                if (n == "name") {
-                    out << result.name();
-                } else if (n == "median_sec_per_unit") {
-                    out << result.median().count();
-                } else if (n == "md_ape") {
-                    out << result.medianAbsolutePercentError();
-                } else if (n == "min") {
-                    out << result.minimum().count();
-                } else if (n == "max") {
-                    out << result.maximum().count();
-                } else if (n == "relative") {
-                    out << results.front().median() / result.median();
-                } else if (n == "num_measurements") {
-                    out << result.sortedMeasurements().size();
-                } else if (n == "median_ins_per_unit") {
-                    out << result.medianInstructionsPerUnit();
-                } else if (n == "median_branches_per_unit") {
-                    out << result.medianBranchesPerUnit();
-                } else if (n == "median_branchmisses_per_unit") {
-                    out << result.medianBranchMissesPerUnit();
-                } else {
-                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-                }
-                break;
-            }
-        }
-    }
-}
-
-static void generate(char const* mustacheTemplate, ankerl::nanobench::Config const& cfg, std::ostream& out) {
-    // TODO(martinus) safe stream status
-    out.precision(std::numeric_limits<double>::digits10);
-    auto nodes = parseMustacheTemplate(&mustacheTemplate);
-    for (auto const& n : nodes) {
-        switch (n.type) {
-        case Node::Type::content:
-            out.write(n.begin, std::distance(n.begin, n.end));
-            break;
-
-        case Node::Type::inverted_section:
-            throw std::runtime_error("unknown list '" + std::string(n.begin, n.end) + "'");
-
-        case Node::Type::section:
-            if (n == "benchmarks") {
-                for (size_t i = 0; i < cfg.results().size(); ++i) {
-                    generateBenchmark(n.children, cfg.results(), i, out);
-                }
-            } else {
-                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-            }
-            break;
-
-        case Node::Type::tag:
-            if (n == "unit") {
-                out << cfg.unit();
-            } else if (n == "title") {
-                out << cfg.title();
-            } else if (n == "batch") {
-                out << cfg.batch();
-            } else {
-                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
-            }
-            break;
-        }
-    }
-}
-
-} // namespace mustache
 } // namespace fmt
 } // namespace detail
 
-Measurement::Measurement(Clock::duration totalElapsed, uint64_t iters, double batch, detail::PerformanceCounters const& pc) noexcept
-    : mTotalElapsed(totalElapsed)
-    , mNumIters(iters)
-    , mSecPerUnit(std::chrono::duration_cast<std::chrono::duration<double>>(totalElapsed) / (batch * static_cast<double>(iters)))
-    , mVal(pc.val()) {
-
-    // correcting branches: remove branch introduced by the while (...) loop for each iteration.
-    if (mVal.branchInstructions > iters + 1U) {
-        mVal.branchInstructions -= iters + 1U;
-    } else {
-        mVal.branchInstructions = 0;
-    }
-
-    // correcting branch misses: typically just one miss per branch
-    if (mVal.branchMisses > mVal.branchInstructions) {
-        // can't have branch misses when there were branches...
-        mVal.branchMisses = mVal.branchInstructions;
-    }
-    if (mVal.branchMisses > 1) {
-        // assuming at least one missed branch for the loop
-        mVal.branchMisses -= 1;
-    }
-}
-
-bool Measurement::operator<(Measurement const& other) const noexcept {
-    return mSecPerUnit < other.mSecPerUnit;
-}
-
-Clock::duration const& Measurement::elapsed() const noexcept {
-    return mTotalElapsed;
-}
-
-uint64_t Measurement::numIters() const noexcept {
-    return mNumIters;
-}
-
-std::chrono::duration<double> Measurement::secPerUnit() const noexcept {
-    return mSecPerUnit;
-}
-
-uint64_t Measurement::pageFaults() const noexcept {
-    return mVal.pageFaults;
-}
-uint64_t Measurement::cpuCycles() const noexcept {
-    return mVal.cpuCycles;
-}
-uint64_t Measurement::contextSwitches() const noexcept {
-    return mVal.contextSwitches;
-}
-uint64_t Measurement::instructions() const noexcept {
-    return mVal.instructions;
-}
-uint64_t Measurement::branchInstructions() const noexcept {
-    return mVal.branchInstructions;
-}
-uint64_t Measurement::branchMisses() const noexcept {
-    return mVal.branchMisses;
-}
-
-template <typename T>
-inline double d(T t) noexcept {
-    return static_cast<double>(t);
-}
-
-template <typename T>
-class CalcMedian {
-public:
-    CalcMedian(T const& input)
-        : mInput(input)
-        , mData(mInput.size()) {}
-
-    template <typename Op>
-    double operator()(Op&& op) {
-        for (size_t i = 0; i < mInput.size(); ++i) {
-            mData[i] = op(mInput[i]);
-        }
-        std::sort(mData.begin(), mData.end());
-        auto midpoint = mData.size() / 2;
-        if (1U == (mData.size() & 1U)) {
-            return mData[midpoint];
-        } else {
-            return (mData[midpoint - 1U] + mData[midpoint]) / 2U;
-        }
-    }
-
-private:
-    T const& mInput;
-    std::vector<double> mData{};
-};
-
 // Result returned after a benchmark has finished. Can be used as a baseline for relative().
-Result::Result(std::string benchmarkName, std::vector<Measurement> measurements, double batch, double complN) noexcept
-    : mName(std::move(benchmarkName))
-    , mSortedMeasurements(std::move(measurements))
-    , mComplexityN(complN)
-    , mHas(detail::performanceCounters().has()) {
+Result::Result(Config const& benchmarkConfig)
+    : mConfig(benchmarkConfig) {}
 
-    std::sort(mSortedMeasurements.begin(), mSortedMeasurements.end());
+void Result::add(Clock::duration totalElapsed, uint64_t iters, detail::PerformanceCounters const& pc) {
+    using detail::d;
+
+    double dIters = d(iters);
+    mNameToMeasurements["iterations"].push_back(dIters);
+
+    mNameToMeasurements["elapsed"].push_back(d(totalElapsed) / dIters);
+    if (pc.has().pageFaults) {
+        mNameToMeasurements["pagefaults"].push_back(d(pc.val().pageFaults) / dIters);
+    }
+    if (pc.has().cpuCycles) {
+        mNameToMeasurements["cpucycles"].push_back(d(pc.val().cpuCycles) / dIters);
+    }
+    if (pc.has().contextSwitches) {
+        mNameToMeasurements["contextswitches"].push_back(d(pc.val().contextSwitches) / dIters);
+    }
+    if (pc.has().instructions) {
+        mNameToMeasurements["instructions"].push_back(d(pc.val().instructions) / dIters);
+    }
+    if (pc.has().branchInstructions) {
+        double branchInstructions = 0.0;
+        // correcting branches: remove branch introduced by the while (...) loop for each iteration.
+        if (pc.val().branchInstructions > iters + 1U) {
+            branchInstructions = d(pc.val().branchInstructions - (iters + 1U));
+        }
+        mNameToMeasurements["branchinstructions"].push_back(branchInstructions / dIters);
+
+        if (pc.has().branchMisses) {
+            // correcting branch misses
+            double branchMisses = d(pc.val().branchMisses);
+            if (branchMisses > branchInstructions) {
+                // can't have branch misses when there were branches...
+                branchMisses = branchInstructions;
+            }
+
+            // assuming at least one missed branch for the loop
+            branchMisses -= 1.0;
+            if (branchMisses < 1.0) {
+                branchMisses = 1.0;
+            }
+            mNameToMeasurements["branchmisses"].push_back(branchMisses / dIters);
+        }
+    }
+}
+
+Config const& Result::config() const noexcept {
+    return mConfig;
+}
+
+inline double calcMedian(std::vector<double>& data) {
+    std::sort(data.begin(), data.end());
+
+    auto midIdx = data.size() / 2U;
+    if (1U == (data.size() & 1U)) {
+        return data[midIdx];
+    }
+    return (data[midIdx - 1U] + data[midIdx]) / 2U;
+}
+
+double Result::median(std::string const& query) const {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
+    }
+
+    // create a copy so we can sort
+    auto data = it->second;
+    return calcMedian(data);
+}
+
+double Result::average(std::string const& query) const {
+    using detail::d;
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end() || it->second.empty()) {
+        return 0.0;
+    }
+
+    // create a copy so we can sort
+    return sum(query) / d(it->second.size());
+}
+
+double Result::medianAbsolutePercentError(std::string const& query) const {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
+    }
+
+    auto data = it->second;
 
     // calculates MdAPE which is the median of percentage error
     // see https://www.spiderfinancial.com/support/documentation/numxl/reference-manual/forecasting-performance/mdape
-    auto const med = median();
+    auto med = calcMedian(data);
 
-    CalcMedian<std::vector<Measurement>> calcMedian(mSortedMeasurements);
-    mMedianAbsolutePercentError = calcMedian([&](Measurement const& m) {
-        auto percent = (m.secPerUnit() - med) / m.secPerUnit();
-        if (percent < 0) {
-            percent = -percent;
+    // transform the data to absolute error
+    for (auto& x : data) {
+        x = (x - med) / x;
+        if (x < 0) {
+            x = -x;
         }
-        return percent;
-    });
-
-    if (mHas.cpuCycles) {
-        mMedianCpuCyclesPerUnit = calcMedian([&](Measurement const& m) { return d(m.cpuCycles()) / (batch * d(m.numIters())); });
     }
-
-    if (mHas.instructions) {
-        mMedianInstructionsPerUnit = calcMedian([&](Measurement const& m) { return d(m.instructions()) / (batch * d(m.numIters())); });
-    }
-
-    if (mHas.branchInstructions) {
-        mMedianBranchesPerUnit =
-            calcMedian([&](Measurement const& m) { return d(m.branchInstructions()) / (batch * d(m.numIters())); });
-    }
-
-    if (mHas.branchMisses) {
-        mMedianBranchMissesPerUnit = calcMedian([&](Measurement const& m) { return d(m.branchMisses()) / (batch * d(m.numIters())); });
-    }
+    return calcMedian(data);
 }
 
-Result::Result() noexcept
-    : mHas(detail::performanceCounters().has()) {}
-
-std::string const& Result::name() const noexcept {
-    return mName;
+double Result::sum(std::string const& query) const noexcept {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
+    }
+    return std::accumulate(it->second.begin(), it->second.end(), 0.0);
 }
 
-double Result::complexityN() const noexcept {
-    return mComplexityN;
-}
+double Result::sumProduct(std::string const& query1, std::string const& query2) const noexcept {
+    auto it1 = mNameToMeasurements.find(query1);
+    auto it2 = mNameToMeasurements.find(query2);
 
-std::chrono::duration<double> Result::median() const noexcept {
-    if (mSortedMeasurements.empty()) {
-        return {};
+    if (it1 == mNameToMeasurements.end() || it2 == mNameToMeasurements.end() || it1->second.size() != it2->second.size()) {
+        return 0.0;
     }
 
-    auto mid = mSortedMeasurements.size() / 2U;
-    if (1U == (mSortedMeasurements.size() & 1U)) {
-        return mSortedMeasurements[mid].secPerUnit();
+    double result = 0.0;
+    for (size_t i = 0, s = it1->second.size(); i != s; ++i) {
+        result += it1->second[i] * it2->second[i];
     }
-    return (mSortedMeasurements[mid - 1U].secPerUnit() + mSortedMeasurements[mid].secPerUnit()) / 2U;
+    return result;
 }
 
-Clock::duration Result::total() const noexcept {
-    Clock::duration tot{};
-    for (auto const& m : mSortedMeasurements) {
-        tot += m.elapsed();
+bool Result::has(std::string const& query) const noexcept {
+    return mNameToMeasurements.end() != mNameToMeasurements.find(query);
+}
+
+double Result::get(size_t idx, std::string const& query) const {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
     }
-    return tot;
-}
-
-std::vector<Measurement> const& Result::sortedMeasurements() const noexcept {
-    return mSortedMeasurements;
-}
-
-double Result::medianAbsolutePercentError() const noexcept {
-    return mMedianAbsolutePercentError;
+    return it->second.at(idx);
 }
 
 bool Result::empty() const noexcept {
-    return mSortedMeasurements.empty();
+    return 0U == size();
 }
 
-std::chrono::duration<double> Result::minimum() const noexcept {
-    return mSortedMeasurements.front().secPerUnit();
+size_t Result::size() const noexcept {
+    auto it = mNameToMeasurements.find("elapsed");
+    if (it == mNameToMeasurements.end()) {
+        return 0U;
+    }
+    return it->second.size();
 }
 
-std::chrono::duration<double> Result::maximum() const noexcept {
-    return mSortedMeasurements.back().secPerUnit();
+double Result::minimum(std::string const& query) const noexcept {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
+    }
+
+    // here its save to assume that at least one element is there
+    return *std::min_element(it->second.begin(), it->second.end());
 }
 
-double Result::medianCpuCyclesPerUnit() const noexcept {
-    return mMedianCpuCyclesPerUnit;
-}
-bool Result::hasMedianCpuCyclesPerUnit() const noexcept {
-    return mHas.cpuCycles;
-}
+double Result::maximum(std::string const& query) const noexcept {
+    auto it = mNameToMeasurements.find(query);
+    if (it == mNameToMeasurements.end()) {
+        return 0.0;
+    }
 
-double Result::medianInstructionsPerUnit() const noexcept {
-    return mMedianInstructionsPerUnit;
-}
-bool Result::hasMedianInstructionsPerUnit() const noexcept {
-    return mHas.instructions;
-}
-
-double Result::medianBranchesPerUnit() const noexcept {
-    return mMedianBranchesPerUnit;
-}
-bool Result::hasMedianBranchesPerUnit() const noexcept {
-    return mHas.branchInstructions;
-}
-
-double Result::medianBranchMissesPerUnit() const noexcept {
-    return mMedianBranchMissesPerUnit;
-}
-bool Result::hasMedianBranchMissesPerUnit() const noexcept {
-    return mHas.branchMisses;
+    // here its save to assume that at least one element is there
+    return *std::max_element(it->second.begin(), it->second.end());
 }
 
 // Configuration of a microbenchmark.
-Config::Config()
-    : mOut(&std::cout) {}
-
-Config::Config(Config&&) = default;
-Config& Config::operator=(Config&&) = default;
-Config::Config(Config const&) = default;
-Config& Config::operator=(Config const&) = default;
-Config::~Config() noexcept = default;
-
-double Config::batch() const noexcept {
-    return mBatch;
+Bench::Bench() {
+    mConfig.mOut = &std::cout;
 }
 
-double Config::complexityN() const noexcept {
-    return mComplexityN;
+Bench::Bench(Bench&&) = default;
+Bench& Bench::operator=(Bench&&) = default;
+Bench::Bench(Bench const&) = default;
+Bench& Bench::operator=(Bench const&) = default;
+Bench::~Bench() noexcept = default;
+
+double Bench::batch() const noexcept {
+    return mConfig.mBatch;
+}
+
+double Bench::complexityN() const noexcept {
+    return mConfig.mComplexityN;
 }
 
 // Set a baseline to compare it to. 100% it is exactly as fast as the baseline, >100% means it is faster than the baseline, <100%
 // means it is slower than the baseline.
-Config& Config::relative(bool isRelativeEnabled) noexcept {
-    mIsRelative = isRelativeEnabled;
+Bench& Bench::relative(bool isRelativeEnabled) noexcept {
+    mConfig.mIsRelative = isRelativeEnabled;
     return *this;
 }
-bool Config::relative() const noexcept {
-    return mIsRelative;
+bool Bench::relative() const noexcept {
+    return mConfig.mIsRelative;
 }
 
-Config& Config::performanceCounters(bool showPerformanceCounters) noexcept {
-    mShowPerformanceCounters = showPerformanceCounters;
+Bench& Bench::performanceCounters(bool showPerformanceCounters) noexcept {
+    mConfig.mShowPerformanceCounters = showPerformanceCounters;
     return *this;
 }
-bool Config::performanceCounters() const noexcept {
-    return mShowPerformanceCounters;
+bool Bench::performanceCounters() const noexcept {
+    return mConfig.mShowPerformanceCounters;
 }
 
 // Operation unit. Defaults to "op", could be e.g. "byte" for string processing.
 // If u differs from currently set unit, the stored results will be cleared.
 // Use singular (byte, not bytes).
-Config& Config::unit(std::string u) {
-    if (u != mUnit) {
+Bench& Bench::unit(std::string u) {
+    if (u != mConfig.mUnit) {
         mResults.clear();
     }
-    mUnit = std::move(u);
+    mConfig.mUnit = std::move(u);
     return *this;
 }
-std::string const& Config::unit() const noexcept {
-    return mUnit;
+std::string const& Bench::unit() const noexcept {
+    return mConfig.mUnit;
 }
 
 // If benchmarkTitle differs from currently set title, the stored results will be cleared.
-Config& Config::title(std::string benchmarkTitle) {
-    if (benchmarkTitle != mBenchmarkTitle) {
+Bench& Bench::title(std::string benchmarkTitle) {
+    if (benchmarkTitle != mConfig.mBenchmarkTitle) {
         mResults.clear();
     }
-    mBenchmarkTitle = std::move(benchmarkTitle);
+    mConfig.mBenchmarkTitle = std::move(benchmarkTitle);
     return *this;
 }
-std::string const& Config::title() const noexcept {
-    return mBenchmarkTitle;
+std::string const& Bench::title() const noexcept {
+    return mConfig.mBenchmarkTitle;
+}
+
+Bench& Bench::name(std::string benchmarkName) {
+    mConfig.mBenchmarkName = std::move(benchmarkName);
+    return *this;
+}
+std::string const& Bench::name() const noexcept {
+    return mConfig.mBenchmarkName;
 }
 
 // Number of epochs to evaluate. The reported result will be the median of evaluation of each epoch.
-Config& Config::epochs(size_t numEpochs) noexcept {
-    mNumEpochs = numEpochs;
+Bench& Bench::epochs(size_t numEpochs) noexcept {
+    mConfig.mNumEpochs = numEpochs;
     return *this;
 }
-size_t Config::epochs() const noexcept {
-    return mNumEpochs;
+size_t Bench::epochs() const noexcept {
+    return mConfig.mNumEpochs;
 }
 
 // Desired evaluation time is a multiple of clock resolution. Default is to be 1000 times above this measurement precision.
-Config& Config::clockResolutionMultiple(size_t multiple) noexcept {
-    mClockResolutionMultiple = multiple;
+Bench& Bench::clockResolutionMultiple(size_t multiple) noexcept {
+    mConfig.mClockResolutionMultiple = multiple;
     return *this;
 }
-size_t Config::clockResolutionMultiple() const noexcept {
-    return mClockResolutionMultiple;
+size_t Bench::clockResolutionMultiple() const noexcept {
+    return mConfig.mClockResolutionMultiple;
 }
 
 // Sets the maximum time each epoch should take. Default is 100ms.
-Config& Config::maxEpochTime(std::chrono::nanoseconds t) noexcept {
-    mMaxEpochTime = t;
+Bench& Bench::maxEpochTime(std::chrono::nanoseconds t) noexcept {
+    mConfig.mMaxEpochTime = t;
     return *this;
 }
-std::chrono::nanoseconds Config::maxEpochTime() const noexcept {
-    return mMaxEpochTime;
+std::chrono::nanoseconds Bench::maxEpochTime() const noexcept {
+    return mConfig.mMaxEpochTime;
 }
 
 // Sets the maximum time each epoch should take. Default is 100ms.
-Config& Config::minEpochTime(std::chrono::nanoseconds t) noexcept {
-    mMinEpochTime = t;
+Bench& Bench::minEpochTime(std::chrono::nanoseconds t) noexcept {
+    mConfig.mMinEpochTime = t;
     return *this;
 }
-std::chrono::nanoseconds Config::minEpochTime() const noexcept {
-    return mMinEpochTime;
+std::chrono::nanoseconds Bench::minEpochTime() const noexcept {
+    return mConfig.mMinEpochTime;
 }
 
-Config& Config::minEpochIterations(uint64_t numIters) noexcept {
-    mMinEpochIterations = (numIters == 0) ? 1 : numIters;
+Bench& Bench::minEpochIterations(uint64_t numIters) noexcept {
+    mConfig.mMinEpochIterations = (numIters == 0) ? 1 : numIters;
     return *this;
 }
-uint64_t Config::minEpochIterations() const noexcept {
-    return mMinEpochIterations;
+uint64_t Bench::minEpochIterations() const noexcept {
+    return mConfig.mMinEpochIterations;
 }
 
-Config& Config::warmup(uint64_t numWarmupIters) noexcept {
-    mWarmup = numWarmupIters;
+Bench& Bench::warmup(uint64_t numWarmupIters) noexcept {
+    mConfig.mWarmup = numWarmupIters;
     return *this;
 }
-uint64_t Config::warmup() const noexcept {
-    return mWarmup;
+uint64_t Bench::warmup() const noexcept {
+    return mConfig.mWarmup;
 }
 
-Config& Config::output(std::ostream* outstream) noexcept {
-    mOut = outstream;
+Bench& Bench::config(Config const& benchmarkConfig) {
+    mConfig = benchmarkConfig;
+    return *this;
+}
+Config const& Bench::config() const noexcept {
+    return mConfig;
+}
+
+Bench& Bench::output(std::ostream* outstream) noexcept {
+    mConfig.mOut = outstream;
     return *this;
 }
 
-ANKERL_NANOBENCH(NODISCARD) std::ostream* Config::output() const noexcept {
-    return mOut;
+ANKERL_NANOBENCH(NODISCARD) std::ostream* Bench::output() const noexcept {
+    return mConfig.mOut;
 }
 
-std::vector<Result> const& Config::results() const noexcept {
+std::vector<Result> const& Bench::results() const noexcept {
     return mResults;
 }
 
-Config& Config::render(char const* templateContent, std::ostream& os) {
-    detail::fmt::mustache::generate(templateContent, *this, os);
+Bench& Bench::render(char const* templateContent, std::ostream& os) {
+    templates::generate(templateContent, mResults, os);
     return *this;
 }
 
-std::vector<BigO> Config::complexityBigO() const {
+std::vector<BigO> Bench::complexityBigO() const {
     std::vector<BigO> bigOs;
     auto rangeMeasure = BigO::collectRangeMeasure(mResults);
     bigOs.emplace_back("O(1)", rangeMeasure, [](double) { return 1.0; });
@@ -2343,8 +2418,8 @@ void Rng::assign(Rng const& other) noexcept {
 BigO::RangeMeasure BigO::collectRangeMeasure(std::vector<Result> const& results) {
     BigO::RangeMeasure rangeMeasure;
     for (auto const& result : results) {
-        if (result.complexityN() > 0.0) {
-            rangeMeasure.emplace_back(result.complexityN(), result.median().count());
+        if (result.config().mComplexityN > 0.0) {
+            rangeMeasure.emplace_back(result.config().mComplexityN, result.median("elapsed"));
         }
     }
     return rangeMeasure;
