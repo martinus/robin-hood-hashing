@@ -11,6 +11,7 @@ target_sources_local(rh PRIVATE
     bench_quick_overall_map.cpp
     bench_quick_overall_set.cpp
     bench_random_insert_erase.cpp
+    bench_swap.cpp
 
     # count
     count_ctor_dtor.cpp
