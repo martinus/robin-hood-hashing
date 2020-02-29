@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
-// version 3.5.1
+// version 3.5.2
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 5 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 2 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -1584,15 +1584,14 @@ public:
         destroy();
     }
 
-    // Checks if both maps contain the same entries. Order is irrelevant.
+    // Checks if both tables contain the same entries. Order is irrelevant.
     bool operator==(const Table& other) const {
         ROBIN_HOOD_TRACE(this);
         if (other.size() != size()) {
             return false;
         }
         for (auto const& otherEntry : other) {
-            auto const myIt = find(otherEntry.first);
-            if (myIt == end() || !(myIt->second == otherEntry.second)) {
+            if (!has(otherEntry)) {
                 return false;
             }
         }
@@ -1887,6 +1886,19 @@ public:
     }
 
 private:
+    template <typename Q = mapped_type>
+    typename std::enable_if<!std::is_void<Q>::value, bool>::type has(const value_type& e) const {
+        ROBIN_HOOD_TRACE(this);
+        auto it = find(e.first);
+        return it != end() && it->second == e.second;
+    }
+
+    template <typename Q = mapped_type>
+    typename std::enable_if<std::is_void<Q>::value, bool>::type has(const value_type& e) const {
+        ROBIN_HOOD_TRACE(this);
+        return find(e) != end();
+    }
+
     // reserves space for at least the specified number of elements.
     // only works if numBuckets if power of two
     void rehashPowerOfTwo(size_t numBuckets) {

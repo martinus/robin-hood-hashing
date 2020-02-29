@@ -45,3 +45,60 @@ TEST_CASE_TEMPLATE("unordered_set_string", Set, robin_hood::unordered_flat_set<s
     auto it = set.begin();
     REQUIRE(++it == set.end());
 }
+
+TEST_CASE_TEMPLATE("unordered_set_eq", Set, robin_hood::unordered_flat_set<std::string>,
+                   robin_hood::unordered_node_set<std::string>) {
+    Set set1;
+    Set set2;
+    REQUIRE(set1.size() == set2.size());
+    REQUIRE(set1 == set2);
+    REQUIRE(set2 == set1);
+
+    set1.emplace("asdf");
+    // (asdf) == ()
+    REQUIRE(set1.size() != set2.size());
+    REQUIRE(set1 != set2);
+    REQUIRE(set2 != set1);
+
+    set2.emplace("huh");
+    // (asdf) == (huh)
+    REQUIRE(set1.size() == set2.size());
+    REQUIRE(set1 != set2);
+    REQUIRE(set2 != set1);
+
+    set1.emplace("huh");
+    // (asdf, huh) == (huh)
+    REQUIRE(set1.size() != set2.size());
+    REQUIRE(set1 != set2);
+    REQUIRE(set2 != set1);
+
+    set2.emplace("asdf");
+    // (asdf, huh) == (asdf, huh)
+    REQUIRE(set1.size() == set2.size());
+    REQUIRE(set1 == set2);
+    REQUIRE(set2 == set1);
+
+    set1.erase("asdf");
+    // (huh) == (asdf, huh)
+    REQUIRE(set1.size() != set2.size());
+    REQUIRE(set1 != set2);
+    REQUIRE(set2 != set1);
+
+    set2.erase("asdf");
+    // (huh) == (huh)
+    REQUIRE(set1.size() == set2.size());
+    REQUIRE(set1 == set2);
+    REQUIRE(set2 == set1);
+
+    set1.clear();
+    // () == (huh)
+    REQUIRE(set1.size() != set2.size());
+    REQUIRE(set1 != set2);
+    REQUIRE(set2 != set1);
+
+    set2.erase("huh");
+    // () == ()
+    REQUIRE(set1.size() == set2.size());
+    REQUIRE(set1 == set2);
+    REQUIRE(set2 == set1);
+}
