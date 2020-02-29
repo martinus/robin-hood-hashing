@@ -1887,6 +1887,7 @@ public:
 
 private:
     template <typename Q = mapped_type>
+    ROBIN_HOOD(NODISCARD)
     typename std::enable_if<!std::is_void<Q>::value, bool>::type has(const value_type& e) const {
         ROBIN_HOOD_TRACE(this);
         auto it = find(e.first);
@@ -1894,6 +1895,7 @@ private:
     }
 
     template <typename Q = mapped_type>
+    ROBIN_HOOD(NODISCARD)
     typename std::enable_if<std::is_void<Q>::value, bool>::type has(const value_type& e) const {
         ROBIN_HOOD_TRACE(this);
         return find(e) != end();
