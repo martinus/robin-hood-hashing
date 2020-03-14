@@ -644,9 +644,34 @@ struct pair {
 };
 
 template <typename A, typename B>
-void swap(pair<A, B>& a, pair<A, B>& b) noexcept(
+inline void swap(pair<A, B>& a, pair<A, B>& b) noexcept(
     noexcept(std::declval<pair<A, B>&>().swap(std::declval<pair<A, B>&>()))) {
     a.swap(b);
+}
+
+template <typename A, typename B>
+inline constexpr bool operator==(pair<A, B> const& x, pair<A, B> const& y) {
+    return (x.first == y.first) && (x.second == y.second);
+}
+template <typename A, typename B>
+inline constexpr bool operator!=(pair<A, B> const& x, pair<A, B> const& y) {
+    return !(x == y);
+}
+template <typename A, typename B>
+inline constexpr bool operator<(pair<A, B> const& x, pair<A, B> const& y) {
+    return x.first < y.first || (!(y.first < x.first) && x.second < y.second);
+}
+template <typename A, typename B>
+inline constexpr bool operator>(pair<A, B> const& x, pair<A, B> const& y) {
+    return y < x;
+}
+template <typename A, typename B>
+inline constexpr bool operator<=(pair<A, B> const& x, pair<A, B> const& y) {
+    return !(x > y);
+}
+template <typename A, typename B>
+inline constexpr bool operator>=(pair<A, B> const& x, pair<A, B> const& y) {
+    return !(x < y);
 }
 
 // Hash an arbitrary amount of bytes. This is basically Murmur2 hash without caring about big
@@ -1493,6 +1518,8 @@ public:
     }
 
     // Creates a copy of the given map. Copy constructor of each entry is used.
+    // Not sure why clang-tidy thinks this doesn't handle self assignment, it does
+    // NOLINTNEXTLINE(bugprone-unhandled-self-assignment,cert-oop54-cpp)
     Table& operator=(Table const& o) {
         ROBIN_HOOD_TRACE(this);
         if (&o == this) {
