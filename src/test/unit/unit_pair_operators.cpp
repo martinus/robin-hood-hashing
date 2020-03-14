@@ -23,18 +23,23 @@ void check(A const& a1, B const& b1, A const& a2, B const& b2) {
     REQUIRE((p1 >= p2) == (r1 >= r2));
 }
 
-} // namespace
-
-TEST_CASE("pair_ops") {
-    // to try all possible comination of pair comparisons, we use 2 bits per number*4 = 8 bits total
-    // to cover all possible combinations try all combinations
+// to try all possible comination of pair comparisons, we use 2 bits per number*4 = 8 bits total
+// to cover all possible combinations try all combinations
+template <typename Op>
+void allCombinations(Op op) {
     for (uint64_t x = 0; x < 256; ++x) {
         auto d = x & 3U;
         auto c = (x >> 2U) & 3U;
         auto b = (x >> 4U) & 3U;
         auto a = (x >> 6U) & 3U;
-        check(a, b, c, d);
+        op(a, b, c, d);
     }
+}
+
+} // namespace
+
+TEST_CASE("pair_ops") {
+    allCombinations([](uint64_t a, uint64_t b, uint64_t c, uint64_t d) { check(a, b, c, d); });
 }
 
 // make sure only operator< and operator== is required, nothing else
@@ -73,12 +78,7 @@ private:
 };
 
 TEST_CASE("pair_minimal_ops") {
-
-    for (uint64_t x = 0; x < 256; ++x) {
-        auto d = x & 3U;
-        auto c = (x >> 2U) & 3U;
-        auto b = (x >> 4U) & 3U;
-        auto a = (x >> 6U) & 3U;
+    allCombinations([](uint64_t a, uint64_t b, uint64_t c, uint64_t d) {
         check<A, B>(A{a}, B{b}, A{c}, B{d});
-    }
+    });
 }
