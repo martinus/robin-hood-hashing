@@ -562,6 +562,8 @@ struct nothrow {
 
 } // namespace detail
 
+struct is_transparent_tag {};
+
 // A custom pair implementation is used in the map because std::pair is not is_trivially_copyable,
 // which means it would  not be allowed to be used in std::memcpy. This struct is copyable, which is
 // also tested.
@@ -1742,6 +1744,13 @@ public:
         return const_iterator{mKeyVals + idx, mInfo + idx};
     }
 
+    template <typename OtherKey>
+    const_iterator find(const OtherKey& key, is_transparent_tag /*unused*/) const {
+        ROBIN_HOOD_TRACE(this);
+        const size_t idx = findIdx(key);
+        return const_iterator{mKeyVals + idx, mInfo + idx};
+    }
+
     template <typename OtherKey, typename Self_ = Self>
     typename std::enable_if<Self_::is_transparent, const_iterator>::type
     find(const OtherKey& key) const {
@@ -1751,6 +1760,13 @@ public:
     }
 
     iterator find(const key_type& key) {
+        ROBIN_HOOD_TRACE(this);
+        const size_t idx = findIdx(key);
+        return iterator{mKeyVals + idx, mInfo + idx};
+    }
+
+    template <typename OtherKey>
+    iterator find(const OtherKey& key, is_transparent_tag /*unused*/) {
         ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return iterator{mKeyVals + idx, mInfo + idx};
