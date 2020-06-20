@@ -44,6 +44,7 @@ target_sources_local(rh PRIVATE
     unit_count.cpp
     unit_diamond.cpp
     unit_empty.cpp
+    unit_heterogeneous.cpp
     include_only.h
     include_only.cpp
     unit_include_only.cpp

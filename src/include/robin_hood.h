@@ -128,7 +128,23 @@ static Counts& counts() {
 #endif
 
 // count leading/trailing bits
-#ifdef _MSC_VER
+#if ( ( defined __i386 || defined __x86_64__ ) && defined __BMI__ ) || defined _M_IX86 || defined _M_X64
+#    ifdef _MSC_VER
+#        include <intrin.h>
+#    else
+#        include <x86intrin.h>
+#    endif
+#    if ROBIN_HOOD(BITNESS) == 32
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u32
+#    else
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u64
+#    endif
+#    if defined __AVX2__ || defined __BMI__
+#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) static_cast<int>(ROBIN_HOOD(CTZ)(x))
+#    else
+#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ((x) ? static_cast<int>(ROBIN_HOOD(CTZ)(x)) : ROBIN_HOOD(BITNESS))
+#    endif
+#elif defined _MSC_VER
 #    if ROBIN_HOOD(BITNESS) == 32
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward
 #    else
@@ -813,6 +829,12 @@ ROBIN_HOOD_HASH_INT(unsigned long long);
 #endif
 namespace detail {
 
+template <typename T, typename = void>
+struct has_is_transparent : public std::false_type {};
+
+template <typename T>
+struct has_is_transparent<T, typename T::is_transparent> : public std::true_type {};
+
 // using wrapper classes for hash and key_equal prevents the diamond problem when the same type is
 // used. see https://stackoverflow.com/a/28771920/48181
 template <typename T>
@@ -870,6 +892,8 @@ public:
     static constexpr bool is_flat = IsFlat;
     static constexpr bool is_map = !std::is_void<T>::value;
     static constexpr bool is_set = !is_map;
+    static constexpr bool is_transparent =
+        has_is_transparent<Hash>::value && has_is_transparent<KeyEqual>::value;
 
     using key_type = Key;
     using mapped_type = T;
@@ -1683,7 +1707,24 @@ public:
         return 0;
     }
 
+    template <typename OtherKey, typename Self_ = Self>
+    typename std::enable_if<Self_::is_transparent, size_t>::type
+    count(const OtherKey& key) const { // NOLINT(modernize-use-nodiscard)
+        ROBIN_HOOD_TRACE(this);
+        auto kv = mKeyVals + findIdx(key);
+        if (kv != reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
+            return 1;
+        }
+        return 0;
+    }
+
     bool contains(const key_type& key) const { // NOLINT(modernize-use-nodiscard)
+        return 1U == count(key);
+    }
+
+    template <typename OtherKey, typename Self_ = Self>
+    typename std::enable_if<Self_::is_transparent, bool>::type
+    contains(const OtherKey& key) const { // NOLINT(modernize-use-nodiscard)
         return 1U == count(key);
     }
 
@@ -1726,6 +1767,14 @@ public:
         return const_iterator{mKeyVals + idx, mInfo + idx};
     }
 
+    template <typename OtherKey, typename Self_ = Self>
+    typename std::enable_if<Self_::is_transparent, const_iterator>::type
+    find(const OtherKey& key) const {
+        ROBIN_HOOD_TRACE(this);
+        const size_t idx = findIdx(key);
+        return const_iterator{mKeyVals + idx, mInfo + idx};
+    }
+
     iterator find(const key_type& key) {
         ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
@@ -1734,6 +1783,13 @@ public:
 
     template <typename OtherKey>
     iterator find(const OtherKey& key, is_transparent_tag /*unused*/) {
+        ROBIN_HOOD_TRACE(this);
+        const size_t idx = findIdx(key);
+        return iterator{mKeyVals + idx, mInfo + idx};
+    }
+
+    template <typename OtherKey, typename Self_ = Self>
+    typename std::enable_if<Self_::is_transparent, iterator>::type find(const OtherKey& key) {
         ROBIN_HOOD_TRACE(this);
         const size_t idx = findIdx(key);
         return iterator{mKeyVals + idx, mInfo + idx};
