@@ -8,7 +8,7 @@ namespace {
 
 int clz(void const* data) {
     auto const n = robin_hood::detail::unaligned_load<size_t>(data);
-    return ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
+    return static_cast<int>(ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8);
 }
 
 } // namespace

@@ -49,6 +49,8 @@ TEST_CASE_TEMPLATE(
     REQUIRE(CtorDtorVerifier::mapSize() == 0);
 }
 
+#if ROBIN_HOOD(BITNESS) == 64
+
 namespace {
 
 bool isColliding(uint64_t x) {
@@ -66,7 +68,7 @@ TEST_CASE("overflow_finder" * doctest::skip()) {
         auto s = i;
         auto h1 = robin_hood::hash<uint64_t>{}(s);
         auto h2 = h1;
-        h1 >>= 32;
+        h1 >>= 32U;
         // robin_hood::hash<uint64_t>{}(s * mix);
 
         if (isColliding(h1)) {
@@ -82,7 +84,7 @@ TEST_CASE("overflow_finder_simple" * doctest::skip()) {
     size_t count = 0;
     uint64_t i = 0;
     try {
-        while (count < 255) {
+        while (count < 255U) {
             auto h = robin_hood::hash<uint64_t>{}(i);
             if (UINT64_C(0) == (h & UINT64_C(0x1fffff))) {
                 ++count;
@@ -94,3 +96,5 @@ TEST_CASE("overflow_finder_simple" * doctest::skip()) {
         FAIL("i=" << i << ", count=" << count);
     }
 }
+
+#endif

@@ -140,10 +140,9 @@ static Counts& counts() {
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u64
 #    endif
 #    if defined __AVX2__ || defined __BMI__
-#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) static_cast<int>(ROBIN_HOOD(CTZ)(x))
+#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
 #    else
-#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) \
-            ((x) ? static_cast<int>(ROBIN_HOOD(CTZ)(x)) : ROBIN_HOOD(BITNESS))
+#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
 #    endif
 #elif defined _MSC_VER
 #    if ROBIN_HOOD(BITNESS) == 32
@@ -324,12 +323,14 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_UMUL128() 0
 #endif
 
+#if ROBIN_HOOD(HAS_UMUL128)
 // multiply and mix with xor
 inline uint64_t mumx(uint64_t a, uint64_t b) {
     uint64_t h;
     uint64_t l = umul128(a, b, &h);
     return h ^ l;
 }
+#endif
 
 template <typename T>
 T rotr(T x, unsigned k) {
@@ -1283,17 +1284,18 @@ private:
     private:
         // fast forward to the next non-free info byte
         void fastForward() noexcept {
-            int inc;
-            do {
-                auto const n = detail::unaligned_load<size_t>(mInfo);
+            size_t n = 0;
+            while (!(n = detail::unaligned_load<size_t>(mInfo))) {
+                mInfo += sizeof(size_t);
+                mKeyVals += sizeof(size_t);
+            }
 #if ROBIN_HOOD(LITTLE_ENDIAN)
-                inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
+            auto inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
 #else
-                inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / 8;
+            auto inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / 8;
 #endif
-                mInfo += inc;
-                mKeyVals += inc;
-            } while (inc == static_cast<int>(sizeof(size_t)));
+            mInfo += inc;
+            mKeyVals += inc;
         }
 
         friend class Table<IsFlat, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
