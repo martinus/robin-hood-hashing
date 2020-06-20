@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 6 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -128,7 +128,7 @@ static Counts& counts() {
 #endif
 
 // count leading/trailing bits
-#if ( ( defined __i386 || defined __x86_64__ ) && defined __BMI__ ) || defined _M_IX86 || defined _M_X64
+#if ((defined __i386 || defined __x86_64__) && defined __BMI__) || defined _M_IX86 || defined _M_X64
 #    ifdef _MSC_VER
 #        include <intrin.h>
 #    else
@@ -142,7 +142,8 @@ static Counts& counts() {
 #    if defined __AVX2__ || defined __BMI__
 #        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) static_cast<int>(ROBIN_HOOD(CTZ)(x))
 #    else
-#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ((x) ? static_cast<int>(ROBIN_HOOD(CTZ)(x)) : ROBIN_HOOD(BITNESS))
+#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) \
+            ((x) ? static_cast<int>(ROBIN_HOOD(CTZ)(x)) : ROBIN_HOOD(BITNESS))
 #    endif
 #elif defined _MSC_VER
 #    if ROBIN_HOOD(BITNESS) == 32
@@ -322,6 +323,18 @@ inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
 #else
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_UMUL128() 0
 #endif
+
+// multiply and mix with xor
+inline uint64_t mumx(uint64_t a, uint64_t b) {
+    uint64_t h;
+    uint64_t l = umul128(a, b, &h);
+    return h ^ l;
+}
+
+template <typename T>
+T rotr(T x, unsigned k) {
+    return (x >> k) | (x << (8U * sizeof(T) - k));
+}
 
 // This cast gets rid of warnings like "cast from 'uint8_t*' {aka 'unsigned char*'} to
 // 'uint64_t*' {aka 'long unsigned int*'} increases required alignment of target type". Use with
@@ -568,12 +581,18 @@ struct identity_hash {
 // c++14 doesn't have is_nothrow_swappable, and clang++ 6.0.1 doesn't like it either, so I'm making
 // my own here.
 namespace swappable {
+#if ROBIN_HOOD(CXX) < ROBIN_HOOD(CXX17)
 using std::swap;
 template <typename T>
 struct nothrow {
     static const bool value = noexcept(swap(std::declval<T&>(), std::declval<T&>()));
 };
-
+#else
+template <typename T>
+struct nothrow {
+    static const bool value = std::is_nothrow_swappable<T>::value;
+};
+#endif
 } // namespace swappable
 
 } // namespace detail
@@ -602,20 +621,19 @@ struct pair {
         , second(o.second) {}
 
     // pair constructors are explicit so we don't accidentally call this ctor when we don't have to.
-    explicit constexpr pair(std::pair<T1, T2>&& o) noexcept(
-        noexcept(T1(std::move(std::declval<T1&&>()))) &&
-        noexcept(T2(std::move(std::declval<T2&&>()))))
+    explicit constexpr pair(std::pair<T1, T2>&& o) noexcept(noexcept(
+        T1(std::move(std::declval<T1&&>()))) && noexcept(T2(std::move(std::declval<T2&&>()))))
         : first(std::move(o.first))
         , second(std::move(o.second)) {}
 
-    constexpr pair(T1&& a, T2&& b) noexcept(noexcept(T1(std::move(std::declval<T1&&>()))) &&
-                                            noexcept(T2(std::move(std::declval<T2&&>()))))
+    constexpr pair(T1&& a, T2&& b) noexcept(noexcept(
+        T1(std::move(std::declval<T1&&>()))) && noexcept(T2(std::move(std::declval<T2&&>()))))
         : first(std::move(a))
         , second(std::move(b)) {}
 
     template <typename U1, typename U2>
-    constexpr pair(U1&& a, U2&& b) noexcept(noexcept(T1(std::forward<U1>(std::declval<U1&&>()))) &&
-                                            noexcept(T2(std::forward<U2>(std::declval<U2&&>()))))
+    constexpr pair(U1&& a, U2&& b) noexcept(noexcept(T1(std::forward<U1>(
+        std::declval<U1&&>()))) && noexcept(T2(std::forward<U2>(std::declval<U2&&>()))))
         : first(std::forward<U1>(a))
         , second(std::forward<U2>(b)) {}
 
@@ -631,15 +649,12 @@ struct pair {
 
     // constructor called from the std::piecewise_construct_t ctor
     template <typename... U1, size_t... I1, typename... U2, size_t... I2>
-    pair(std::tuple<U1...>& a, std::tuple<U2...>& b,
-         ROBIN_HOOD_STD::index_sequence<I1...> /*unused*/,
-         ROBIN_HOOD_STD::index_sequence<
-             I2...> /*unused*/) noexcept(noexcept(T1(std::
-                                                         forward<U1>(std::get<I1>(
-                                                             std::declval<
-                                                                 std::tuple<U1...>&>()))...)) &&
-                                         noexcept(T2(std::forward<U2>(
-                                             std::get<I2>(std::declval<std::tuple<U2...>&>()))...)))
+    pair(std::tuple<U1...>& a, std::tuple<U2...>& b, ROBIN_HOOD_STD::index_sequence<I1...> /*unused*/, ROBIN_HOOD_STD::index_sequence<I2...> /*unused*/) noexcept(
+        noexcept(T1(std::forward<U1>(std::get<I1>(
+            std::declval<std::tuple<
+                U1...>&>()))...)) && noexcept(T2(std::
+                                                     forward<U2>(std::get<I2>(
+                                                         std::declval<std::tuple<U2...>&>()))...)))
         : first(std::forward<U1>(std::get<I1>(a))...)
         , second(std::forward<U2>(std::get<I2>(b))...) {
         // make visual studio compiler happy about warning about unused a & b.
@@ -748,11 +763,10 @@ static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
 
 inline size_t hash_int(uint64_t obj) noexcept {
 #if ROBIN_HOOD(HAS_UMUL128)
-    // 167079903232 masksum, 120428523 ops best: 0xde5fb9d2630458e9
-    static constexpr uint64_t k = UINT64_C(0xde5fb9d2630458e9);
-    uint64_t h;
-    uint64_t l = detail::umul128(obj, k, &h);
-    return h + l;
+    // mumx_mumx_rrxx_1, see https://github.com/martinus/better-faster-stronger-mixer
+    static constexpr auto a = UINT64_C(0xd14fff8ace476a59);
+    return detail::mumx(detail::mumx(obj, a),
+                        obj ^ detail::rotr(obj, 25U) ^ detail::rotr(obj ^ a, 47U));
 #elif ROBIN_HOOD(BITNESS) == 32
     uint64_t const r = obj * UINT64_C(0xca4bcaa75ec3f625);
     auto h = static_cast<uint32_t>(r >> 32U);
@@ -977,8 +991,8 @@ private:
 
         template <typename VT = value_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<is_map, typename VT::first_type const&>::type getFirst() const
-            noexcept {
+        typename std::enable_if<is_map, typename VT::first_type const&>::type
+            getFirst() const noexcept {
             return mData.first;
         }
         template <typename VT = value_type>
@@ -1060,8 +1074,8 @@ private:
 
         template <typename VT = value_type>
         ROBIN_HOOD(NODISCARD)
-        typename std::enable_if<is_map, typename VT::first_type const&>::type getFirst() const
-            noexcept {
+        typename std::enable_if<is_map, typename VT::first_type const&>::type
+            getFirst() const noexcept {
             return mData->first;
         }
         template <typename VT = value_type>
@@ -1447,9 +1461,9 @@ public:
     // payed at the first insert, and not before. Lookup of this empty map works because everybody
     // points to DummyInfoByte::b. parameter bucket_count is dictated by the standard, but we can
     // ignore it.
-    explicit Table(size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
-                   const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) &&
-                                                                noexcept(KeyEqual(equal)))
+    explicit Table(
+        size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
+        const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) && noexcept(KeyEqual(equal)))
         : WHash(h)
         , WKeyEqual(equal) {
         ROBIN_HOOD_TRACE(this);
