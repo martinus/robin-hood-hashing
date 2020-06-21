@@ -212,8 +212,10 @@ static Counts& counts() {
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NODISCARD()
 #endif
 
-// detect hardware CRC availability
-#if __SSE4_2__ || __ARM_FEATURE_CRC32
+// detect hardware CRC availability. Microsoft's _M_IX86_FP only detects if SSE is present, but not
+// if 4.2 is there unfortunately.
+#if defined(__SSE4_2__) || defined(__ARM_FEATURE_CRC32) || \
+    ((defined(_M_IX86_FP) && (_M_IX86_FP >= 2)))
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 1
 #    if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #        include <arm_acle.h>
