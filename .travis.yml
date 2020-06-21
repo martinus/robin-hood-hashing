@@ -27,6 +27,37 @@ matrix:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-4.9']        
 
+  # clang++-10
+  - os: linux
+    compiler: clang
+    env:
+    - COMPILER=clang++-10
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=11"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-10']
+        packages: ['g++-6', 'clang-10',]
+
+  - os: linux
+    compiler: clang
+    env:
+    - COMPILER=clang++-10
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=14"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-10']
+        packages: ['g++-6', 'clang-10',]
+
+  - os: linux
+    compiler: clang
+    env:
+    - COMPILER=clang++-10
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-10']
+        packages: ['g++-6', 'clang-10',]
+        
   # g++-8
   - os: linux
     compiler: gcc
@@ -95,36 +126,6 @@ matrix:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-8-multilib', 'linux-libc-dev:i386']
 
-  # clang++-10
-  - os: linux
-    compiler: clang
-    env:
-    - COMPILER=clang++-10
-    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=11"
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-10']
-        packages: ['g++-6', 'clang-10',]
-
-  - os: linux
-    compiler: clang
-    env:
-    - COMPILER=clang++-10
-    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=14"
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-10']
-        packages: ['g++-6', 'clang-10',]
-
-  - os: linux
-    compiler: clang
-    env:
-    - COMPILER=clang++-10
-    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-10']
-        packages: ['g++-6', 'clang-10',]
 
 install:
   - if [[ "${CODE_COVERAGE}" == "true" ]]; then gem install coveralls-lcov ; fi
