@@ -688,6 +688,56 @@ inline constexpr bool operator>=(pair<A, B> const& x, pair<A, B> const& y) {
     return !(x < y);
 }
 
+#if ROBIN_HOOD(HAS_CRC32) && ROBIN_HOOD(BITNESS) == 64
+
+static size_t hash_bytes(void const* ptr, size_t len) noexcept {
+    static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
+    static constexpr uint64_t seed = UINT64_C(0xe17a1465);
+
+    auto const* const data64 = static_cast<uint64_t const*>(ptr);
+    size_t const n_blocks = len / 8;
+
+    uint64_t crc = seed ^ (len * m);
+    for (size_t i = 0; i < n_blocks; ++i) {
+        crc = ROBIN_HOOD_CRC32_64(crc, detail::unaligned_load<uint64_t>(data64 + i));
+    }
+
+    uint64_t h = 0;
+    auto const* const data8 = reinterpret_cast<uint8_t const*>(data64 + n_blocks);
+    switch (len & 7U) {
+    case 7:
+        h ^= static_cast<uint64_t>(data8[6]) << 48U;
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+    case 6:
+        h ^= static_cast<uint64_t>(data8[5]) << 40U;
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+    case 5:
+        h ^= static_cast<uint64_t>(data8[4]) << 32U;
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+    case 4:
+        h ^= static_cast<uint64_t>(data8[3]) << 24U;
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+    case 3:
+        h ^= static_cast<uint64_t>(data8[2]) << 16U;
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+    case 2:
+        h ^= static_cast<uint64_t>(data8[1]) << 8U;
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+    case 1:
+        h ^= static_cast<uint64_t>(data8[0]);
+        crc = _mm_crc32_u64(crc, h);
+        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+    default:
+        break;
+    }
+#    if ROBIN_HOOD(BITNESS) == 64
+    return static_cast<uint64_t>(crc) * UINT64_C(0xc6a4a7935bd1e995);
+#    else
+    return crc;
+#    endif
+}
+
+#else
 // Hash an arbitrary amount of bytes. This is basically Murmur2 hash without caring about big
 // endianness. TODO(martinus) add a fallback for very large strings?
 static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
@@ -743,6 +793,7 @@ static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     h ^= h >> r;
     return static_cast<size_t>(h);
 }
+#endif
 
 inline size_t hash_int(uint64_t obj) noexcept {
 #if ROBIN_HOOD(HAS_CRC32)
@@ -870,11 +921,10 @@ struct WrapKeyEqual : public T {
 //   taken.
 //
 // * infoSentinel: Sentinel byte set to 1, so that iterator's ++ can stop at end() without the need
-// for a idx
-//   variable.
+//   for a idx variable.
 //
-// According to STL, order of templates has effect on throughput. That's why I've moved the boolean
-// to the front.
+// According to STL, order of templates has effect on throughput. That's why I've moved the
+// boolean to the front.
 // https://www.reddit.com/r/cpp/comments/ahp6iu/compile_time_binary_size_reductions_and_cs_future/eeguck4/
 template <bool IsFlat, size_t MaxLoadFactor100, typename Key, typename T, typename Hash,
           typename KeyEqual>
