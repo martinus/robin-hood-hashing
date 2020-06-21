@@ -1457,7 +1457,7 @@ public:
         const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) && noexcept(KeyEqual(equal)))
         : WHash(h)
         , WKeyEqual(equal) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
     }
 
     template <typename Iter>
@@ -1465,7 +1465,7 @@ public:
           const Hash& h = Hash{}, const KeyEqual& equal = KeyEqual{})
         : WHash(h)
         , WKeyEqual(equal) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         insert(first, last);
     }
 
@@ -1474,7 +1474,7 @@ public:
           const KeyEqual& equal = KeyEqual{})
         : WHash(h)
         , WKeyEqual(equal) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         insert(initlist.begin(), initlist.end());
     }
 
@@ -1482,7 +1482,7 @@ public:
         : WHash(std::move(static_cast<WHash&>(o)))
         , WKeyEqual(std::move(static_cast<WKeyEqual&>(o)))
         , DataPool(std::move(static_cast<DataPool&>(o))) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         if (o.mMask) {
             mKeyVals = std::move(o.mKeyVals);
             mInfo = std::move(o.mInfo);
@@ -1497,7 +1497,7 @@ public:
     }
 
     Table& operator=(Table&& o) noexcept {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         if (&o != this) {
             if (o.mMask) {
                 // only move stuff if the other map actually has some data
@@ -1527,7 +1527,7 @@ public:
         : WHash(static_cast<const WHash&>(o))
         , WKeyEqual(static_cast<const WKeyEqual&>(o))
         , DataPool(static_cast<const DataPool&>(o)) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         if (!o.empty()) {
             // not empty: create an exact copy. it is also possible to just iterate through all
             // elements and insert them, but copying is probably faster.
@@ -1550,7 +1550,7 @@ public:
     // Not sure why clang-tidy thinks this doesn't handle self assignment, it does
     // NOLINTNEXTLINE(bugprone-unhandled-self-assignment,cert-oop54-cpp)
     Table& operator=(Table const& o) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         if (&o == this) {
             // prevent assigning of itself
             return *this;
@@ -1608,14 +1608,14 @@ public:
 
     // Swaps everything between the two maps.
     void swap(Table& o) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         using std::swap;
         swap(o, *this);
     }
 
     // Clears all data, without resizing.
     void clear() {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         if (empty()) {
             // don't do anything! also important because we don't want to write to DummyInfoByte::b,
             // even though we would just write 0 to it.
@@ -1636,13 +1636,13 @@ public:
 
     // Destroys the map and all it's contents.
     ~Table() {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         destroy();
     }
 
     // Checks if both tables contain the same entries. Order is irrelevant.
     bool operator==(const Table& other) const {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         if (other.size() != size()) {
             return false;
         }
@@ -1656,19 +1656,19 @@ public:
     }
 
     bool operator!=(const Table& other) const {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return !operator==(other);
     }
 
     template <typename Q = mapped_type>
     typename std::enable_if<!std::is_void<Q>::value, Q&>::type operator[](const key_type& key) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return doCreateByKey(key);
     }
 
     template <typename Q = mapped_type>
     typename std::enable_if<!std::is_void<Q>::value, Q&>::type operator[](key_type&& key) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return doCreateByKey(std::move(key));
     }
 
@@ -1682,7 +1682,7 @@ public:
 
     template <typename... Args>
     std::pair<iterator, bool> emplace(Args&&... args) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         Node n{*this, std::forward<Args>(args)...};
         auto r = doInsert(std::move(n));
         if (!r.second) {
@@ -1694,7 +1694,7 @@ public:
     }
 
     std::pair<iterator, bool> insert(const value_type& keyval) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return doInsert(keyval);
     }
 
@@ -1704,7 +1704,7 @@ public:
 
     // Returns 1 if key is found, 0 otherwise.
     size_t count(const key_type& key) const { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         auto kv = mKeyVals + findIdx(key);
         if (kv != reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
             return 1;
@@ -1715,7 +1715,7 @@ public:
     template <typename OtherKey, typename Self_ = Self>
     // NOLINTNEXTLINE(modernize-use-nodiscard)
     typename std::enable_if<Self_::is_transparent, size_t>::type count(const OtherKey& key) const {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         auto kv = mKeyVals + findIdx(key);
         if (kv != reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
             return 1;
@@ -1738,7 +1738,7 @@ public:
     template <typename Q = mapped_type>
     // NOLINTNEXTLINE(modernize-use-nodiscard)
     typename std::enable_if<!std::is_void<Q>::value, Q&>::type at(key_type const& key) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         auto kv = mKeyVals + findIdx(key);
         if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
             doThrow<std::out_of_range>("key not found");
@@ -1751,7 +1751,7 @@ public:
     template <typename Q = mapped_type>
     // NOLINTNEXTLINE(modernize-use-nodiscard)
     typename std::enable_if<!std::is_void<Q>::value, Q const&>::type at(key_type const& key) const {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         auto kv = mKeyVals + findIdx(key);
         if (kv == reinterpret_cast_no_cast_align_warning<Node*>(mInfo)) {
             doThrow<std::out_of_range>("key not found");
@@ -1760,14 +1760,14 @@ public:
     }
 
     const_iterator find(const key_type& key) const { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         const size_t idx = findIdx(key);
         return const_iterator{mKeyVals + idx, mInfo + idx};
     }
 
     template <typename OtherKey>
     const_iterator find(const OtherKey& key, is_transparent_tag /*unused*/) const {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         const size_t idx = findIdx(key);
         return const_iterator{mKeyVals + idx, mInfo + idx};
     }
@@ -1776,44 +1776,44 @@ public:
     typename std::enable_if<Self_::is_transparent, // NOLINT(modernize-use-nodiscard)
                             const_iterator>::type  // NOLINT(modernize-use-nodiscard)
     find(const OtherKey& key) const {              // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         const size_t idx = findIdx(key);
         return const_iterator{mKeyVals + idx, mInfo + idx};
     }
 
     iterator find(const key_type& key) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         const size_t idx = findIdx(key);
         return iterator{mKeyVals + idx, mInfo + idx};
     }
 
     template <typename OtherKey>
     iterator find(const OtherKey& key, is_transparent_tag /*unused*/) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         const size_t idx = findIdx(key);
         return iterator{mKeyVals + idx, mInfo + idx};
     }
 
     template <typename OtherKey, typename Self_ = Self>
     typename std::enable_if<Self_::is_transparent, iterator>::type find(const OtherKey& key) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         const size_t idx = findIdx(key);
         return iterator{mKeyVals + idx, mInfo + idx};
     }
 
     iterator begin() {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         if (empty()) {
             return end();
         }
         return iterator(mKeyVals, mInfo, fast_forward_tag{});
     }
     const_iterator begin() const { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return cbegin();
     }
     const_iterator cbegin() const { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         if (empty()) {
             return cend();
         }
@@ -1821,22 +1821,22 @@ public:
     }
 
     iterator end() {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         // no need to supply valid info pointer: end() must not be dereferenced, and only node
         // pointer is compared.
         return iterator{reinterpret_cast_no_cast_align_warning<Node*>(mInfo), nullptr};
     }
     const_iterator end() const { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return cend();
     }
     const_iterator cend() const { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return const_iterator{reinterpret_cast_no_cast_align_warning<Node*>(mInfo), nullptr};
     }
 
     iterator erase(const_iterator pos) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         // its safe to perform const cast here
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
         return erase(iterator{const_cast<Node*>(pos.mKeyVals), const_cast<uint8_t*>(pos.mInfo)});
@@ -1844,7 +1844,7 @@ public:
 
     // Erases element at pos, returns iterator to the next element.
     iterator erase(iterator pos) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         // we assume that pos always points to a valid entry, and not end().
         auto const idx = static_cast<size_t>(pos.mKeyVals - mKeyVals);
 
@@ -1861,7 +1861,7 @@ public:
     }
 
     size_t erase(const key_type& key) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         size_t idx{};
         InfoType info{};
         keyToIdx(key, &idx, &info);
@@ -1889,7 +1889,7 @@ public:
     // reserves space for the specified number of elements. Makes sure the old data fits.
     // Exactly the same as resize(c). Use resize(0) to shrink to fit.
     void reserve(size_t c) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         auto const minElementsAllowed = (std::max)(c, mNumElements);
         auto newSize = InitialNumElements;
         while (calcMaxNumElementsAllowed(newSize) < minElementsAllowed && newSize != 0) {
@@ -1903,33 +1903,33 @@ public:
     }
 
     size_type size() const noexcept { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return mNumElements;
     }
 
     size_type max_size() const noexcept { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return static_cast<size_type>(-1);
     }
 
     ROBIN_HOOD(NODISCARD) bool empty() const noexcept {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return 0 == mNumElements;
     }
 
     float max_load_factor() const noexcept { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return MaxLoadFactor100 / 100.0F;
     }
 
     // Average number of elements per bucket. Since we allow only 1 per bucket
     float load_factor() const noexcept { // NOLINT(modernize-use-nodiscard)
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return static_cast<float>(size()) / static_cast<float>(mMask + 1);
     }
 
     ROBIN_HOOD(NODISCARD) size_t mask() const noexcept {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return mMask;
     }
 
@@ -1978,7 +1978,7 @@ private:
     template <typename Q = mapped_type>
     ROBIN_HOOD(NODISCARD)
     typename std::enable_if<!std::is_void<Q>::value, bool>::type has(const value_type& e) const {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         auto it = find(e.first);
         return it != end() && it->second == e.second;
     }
@@ -1986,14 +1986,14 @@ private:
     template <typename Q = mapped_type>
     ROBIN_HOOD(NODISCARD)
     typename std::enable_if<std::is_void<Q>::value, bool>::type has(const value_type& e) const {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
         return find(e) != end();
     }
 
     // reserves space for at least the specified number of elements.
     // only works if numBuckets if power of two
     void rehashPowerOfTwo(size_t numBuckets) {
-        ROBIN_HOOD_TRACE(this);
+        ROBIN_HOOD_TRACE(this)
 
         Node* const oldKeyVals = mKeyVals;
         uint8_t const* const oldInfo = mInfo;
