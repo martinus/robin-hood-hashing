@@ -2217,13 +2217,13 @@ private:
         // protected with the 0==mMask check, but I have this anyways because g++ 7 otherwise
         // reports a compile error: attempt to free a non-heap object ‘fm’
         // [-Werror=free-nonheap-object]
-        if (mKeyVals != reinterpret_cast<Node*>(&mMask)) {
+        if (mKeyVals != reinterpret_cast_no_cast_align_warning<Node*>(&mMask)) {
             free(mKeyVals);
         }
     }
 
     void init() noexcept {
-        mKeyVals = reinterpret_cast<Node*>(&mMask);
+        mKeyVals = reinterpret_cast_no_cast_align_warning<Node*>(&mMask);
         mInfo = reinterpret_cast<uint8_t*>(&mMask);
         mNumElements = 0;
         mMask = 0;
@@ -2233,14 +2233,14 @@ private:
     }
 
     // members are sorted so no padding occurs
-    Node* mKeyVals = reinterpret_cast<Node*>(&mMask);    // 8 byte  8
-    uint8_t* mInfo = reinterpret_cast<uint8_t*>(&mMask); // 8 byte 16
-    size_t mNumElements = 0;                             // 8 byte 24
-    size_t mMask = 0;                                    // 8 byte 32
-    size_t mMaxNumElementsAllowed = 0;                   // 8 byte 40
-    InfoType mInfoInc = InitialInfoInc;                  // 4 byte 44
-    InfoType mInfoHashShift = InitialInfoHashShift;      // 4 byte 48
-                                                         // 16 byte 56 if NodeAllocator
+    Node* mKeyVals = reinterpret_cast_no_cast_align_warning<Node*>(&mMask); // 8 byte  8
+    uint8_t* mInfo = reinterpret_cast<uint8_t*>(&mMask);                    // 8 byte 16
+    size_t mNumElements = 0;                                                // 8 byte 24
+    size_t mMask = 0;                                                       // 8 byte 32
+    size_t mMaxNumElementsAllowed = 0;                                      // 8 byte 40
+    InfoType mInfoInc = InitialInfoInc;                                     // 4 byte 44
+    InfoType mInfoHashShift = InitialInfoHashShift;                         // 4 byte 48
+                                                    // 16 byte 56 if NodeAllocator
 };
 
 } // namespace detail

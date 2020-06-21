@@ -45,6 +45,7 @@ function(add_compile_flags_target target)
         target_compile_options(${target} PRIVATE -pedantic-errors)
         target_compile_options(${target} PRIVATE -fvisibility=hidden)
         target_compile_options(${target} PRIVATE -fstrict-aliasing)
+        target_compile_options(${target} PRIVATE -Wstrict-aliasing=2)
     endif()
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
