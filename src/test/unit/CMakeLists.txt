@@ -70,6 +70,7 @@ target_sources_local(rh PRIVATE
     unit_reserve.cpp
     unit_sfc64_is_deterministic.cpp
     unit_sizeof.cpp
+    unit_string.cpp
     unit_undefined_behavior_nekrolm.cpp
     unit_unique_ptr.cpp
     unit_unordered_set.cpp
