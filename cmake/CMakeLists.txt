@@ -120,6 +120,8 @@ function(add_compile_flags_target target)
         target_compile_options(${target} PRIVATE -Wno-c++98-compat-bind-to-temporary-copy)
         target_compile_options(${target} PRIVATE -Wno-c++98-compat-local-type-template-args)
         target_compile_options(${target} PRIVATE -Qunused-arguments -fcolor-diagnostics) # needed for ccache integration on travis
+        
+        # target_compile_options(${target} PRIVATE -ftime-trace) # for ClangBuildAnalyzer
     endif()
 
     if(MSVC)

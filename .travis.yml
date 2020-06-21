@@ -1,7 +1,7 @@
 language: cpp
 dist: xenial
 
-# see https://github.com/nlohmann/json/blob/develop/.travis.yml
+# see https://github.com/taocpp/sequences/blob/master/.travis.yml
 matrix:
   include:
 
@@ -35,8 +35,12 @@ matrix:
     - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=11"
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-10']
-        packages: ['g++-6', 'clang-10',]
+        sources:
+        - ubuntu-toolchain-r-test
+        - sourceline: 'deb https://apt.llvm.org/xenial/ llvm-toolchain-xenial-10 main'
+          key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+        packages:
+        - clang-10
 
   - os: linux
     compiler: clang
@@ -45,8 +49,12 @@ matrix:
     - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=14"
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-10']
-        packages: ['g++-6', 'clang-10',]
+        sources:
+        - ubuntu-toolchain-r-test
+        - sourceline: 'deb https://apt.llvm.org/xenial/ llvm-toolchain-xenial-10 main'
+          key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+        packages:
+        - clang-10
 
   - os: linux
     compiler: clang
@@ -55,8 +63,12 @@ matrix:
     - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-10']
-        packages: ['g++-6', 'clang-10',]
+        sources:
+        - ubuntu-toolchain-r-test
+        - sourceline: 'deb https://apt.llvm.org/xenial/ llvm-toolchain-xenial-10 main'
+          key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+        packages:
+        - clang-10
         
   # g++-8
   - os: linux
