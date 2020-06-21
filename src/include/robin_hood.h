@@ -668,7 +668,9 @@ inline constexpr bool operator!=(pair<A, B> const& x, pair<A, B> const& y) {
     return !(x == y);
 }
 template <typename A, typename B>
-inline constexpr bool operator<(pair<A, B> const& x, pair<A, B> const& y) {
+inline constexpr bool operator<(pair<A, B> const& x, pair<A, B> const& y) noexcept(noexcept(
+    std::declval<A const&>() < std::declval<A const&>()) && noexcept(std::declval<B const&>() <
+                                                                     std::declval<B const&>())) {
     return x.first < y.first || (!(y.first < x.first) && x.second < y.second);
 }
 template <typename A, typename B>
@@ -1240,6 +1242,12 @@ private:
             mKeyVals++;
             fastForward();
             return *this;
+        }
+
+        Iter operator++(int) noexcept {
+            Iter tmp = *this;
+            ++(*this);
+            return std::move(tmp);
         }
 
         reference operator*() const {

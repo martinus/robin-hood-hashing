@@ -23,7 +23,8 @@ Checks: "*,\
   -fuchsia-default-arguments-calls,\
   -fuchsia-default-arguments-declarations,\
   -modernize-use-trailing-return-type,\
-  -cert-err58-cpp"
+  -cert-err58-cpp,
+  -cert-dcl21-cpp"
 WarningsAsErrors: "*"
 HeaderFilterRegex: 'robin_hood\.h'
 ...

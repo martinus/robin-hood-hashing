@@ -48,11 +48,11 @@ public:
     explicit A(uint64_t val)
         : mVal(val) {}
 
-    bool operator==(A const& other) const {
+    bool operator==(A const& other) const noexcept {
         return mVal == other.mVal;
     }
 
-    bool operator<(A const& other) const {
+    bool operator<(A const& other) const noexcept {
         return mVal < other.mVal;
     }
 
@@ -65,11 +65,11 @@ public:
     explicit B(uint64_t val)
         : mVal(val) {}
 
-    bool operator==(B const& other) const {
+    bool operator==(B const& other) const noexcept {
         return mVal == other.mVal;
     }
 
-    bool operator<(B const& other) const {
+    bool operator<(B const& other) const noexcept {
         return mVal < other.mVal;
     }
 
