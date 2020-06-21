@@ -212,6 +212,26 @@ static Counts& counts() {
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NODISCARD()
 #endif
 
+// detect hardware CRC availability
+#if __SSE4_2__ || __ARM_FEATURE_CRC32
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 1
+#    if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#        include <arm_acle.h>
+#        define ROBIN_HOOD_CRC32_64(crc, v) \
+            __crc32cd(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
+#        define ROBIN_HOOD_CRC32_32(crc, v) \
+            __crc32cw(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+#    else
+#        include <nmmintrin.h>
+#        define ROBIN_HOOD_CRC32_64(crc, v) \
+            _mm_crc32_u64(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
+#        define ROBIN_HOOD_CRC32_32(crc, v) \
+            _mm_crc32_u32(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+#    endif
+#else
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 0
+#endif
+
 namespace robin_hood {
 
 #if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
@@ -289,48 +309,6 @@ using index_sequence_for = make_index_sequence<sizeof...(T)>;
 #endif
 
 namespace detail {
-
-// umul
-#if defined(__SIZEOF_INT128__)
-#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_UMUL128() 1
-#    if defined(__GNUC__) || defined(__clang__)
-#        pragma GCC diagnostic push
-#        pragma GCC diagnostic ignored "-Wpedantic"
-using uint128_t = unsigned __int128;
-#        pragma GCC diagnostic pop
-#    endif
-inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
-    auto result = static_cast<uint128_t>(a) * static_cast<uint128_t>(b);
-    *high = static_cast<uint64_t>(result >> 64U);
-    return static_cast<uint64_t>(result);
-}
-#elif (defined(_MSC_VER) && ROBIN_HOOD(BITNESS) == 64)
-#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_UMUL128() 1
-#    include <intrin.h> // for __umulh
-#    pragma intrinsic(__umulh)
-#    ifndef _M_ARM64
-#        pragma intrinsic(_umul128)
-#    endif
-inline uint64_t umul128(uint64_t a, uint64_t b, uint64_t* high) noexcept {
-#    ifdef _M_ARM64
-    *high = __umulh(a, b);
-    return ((uint64_t)(a)) * (b);
-#    else
-    return _umul128(a, b, high);
-#    endif
-}
-#else
-#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_UMUL128() 0
-#endif
-
-#if ROBIN_HOOD(HAS_UMUL128)
-// multiply and mix with xor
-inline uint64_t mumx(uint64_t a, uint64_t b) {
-    uint64_t h;
-    uint64_t l = umul128(a, b, &h);
-    return h ^ l;
-}
-#endif
 
 template <typename T>
 T rotr(T x, unsigned k) {
@@ -763,11 +741,12 @@ static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
 }
 
 inline size_t hash_int(uint64_t obj) noexcept {
-#if ROBIN_HOOD(HAS_UMUL128)
-    // mumx_mumx_rrxx_1, see https://github.com/martinus/better-faster-stronger-mixer
-    static constexpr auto a = UINT64_C(0xd14fff8ace476a59);
-    return detail::mumx(detail::mumx(obj, a),
-                        obj ^ detail::rotr(obj, 25U) ^ detail::rotr(obj ^ a, 47U));
+#if ROBIN_HOOD(HAS_CRC32)
+#    if ROBIN_HOOD(BITNESS) == 64
+    return ROBIN_HOOD_CRC32_64(0, obj) ^ (ROBIN_HOOD_CRC32_64(0, detail::rotr(obj, 44U)) << 32U);
+#    else
+    return ROBIN_HOOD_CRC32_32(ROBIN_HOOD_CRC32_32(0, obj), obj >> 32U);
+#    endif
 #elif ROBIN_HOOD(BITNESS) == 32
     uint64_t const r = obj * UINT64_C(0xca4bcaa75ec3f625);
     auto h = static_cast<uint32_t>(r >> 32U);
