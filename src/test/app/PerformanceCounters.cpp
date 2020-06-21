@@ -207,8 +207,8 @@ uint64_t const* PerformanceCounters::monitor(uint32_t /*unused*/, uint64_t /*unu
     return &no_data;
 }
 
-void PerformanceCounters::enable() {}
-void PerformanceCounters::disable() {}
+void PerformanceCounters::enable() const {}
+void PerformanceCounters::disable() const {}
 void PerformanceCounters::reset() const {}
 void PerformanceCounters::fetch() {}
 PerformanceCounters::~PerformanceCounters() = default;
