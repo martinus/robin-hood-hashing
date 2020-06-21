@@ -35,7 +35,7 @@ inline size_t getSizeT(uint64_t val) {
     return static_cast<size_t>(val);
 }
 inline size_t getSizeT(std::string const& str) {
-    uint64_t x;
+    uint64_t x{};
     std::memcpy(&x, str.data(), sizeof(uint64_t));
     return static_cast<size_t>(x);
 }
@@ -47,7 +47,7 @@ inline std::string initKey<std::string>() {
     return str;
 }
 inline void randomizeKey(sfc64* rng, int n, std::string* key) {
-    uint64_t k;
+    uint64_t k{};
     randomizeKey(rng, n, &k);
     std::memcpy(&(*key)[0], &k, sizeof(k));
 }

@@ -124,7 +124,7 @@ void Counter::printHeaderOnce() {
     }
 }
 
-void Counter::printCounts(std::string const& title) {
+void Counter::printCounts(std::string const& title) const {
     size_t total = ctor + staticDefaultCtor + copyCtor + (dtor + staticDtor) + equals + less +
                    assign + swaps + get + constGet + hash + moveCtor + moveAssign;
 

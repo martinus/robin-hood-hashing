@@ -97,13 +97,13 @@ public:
     uint64_t const* monitor(Event e);
 
     // resets the counters
-    void reset();
+    void reset() const;
 
     // start counting
-    void enable();
+    void enable() const;
 
     // stop counting
-    void disable();
+    void disable() const;
 
     // fetch counting data into the monitors
     void fetch();

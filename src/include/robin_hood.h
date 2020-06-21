@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
-// version 3.6.0
+// version 3.7.0
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -36,8 +36,8 @@
 
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 6 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_MINOR 7 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -481,10 +481,10 @@ private:
         mListForFree = data;
 
         // create linked list for newly allocated data
-        auto const headT =
+        auto* const headT =
             reinterpret_cast_no_cast_align_warning<T*>(reinterpret_cast<char*>(ptr) + ALIGNMENT);
 
-        auto const head = reinterpret_cast<char*>(headT);
+        auto* const head = reinterpret_cast<char*>(headT);
 
         // Visual Studio compiler automatically unrolls this loop, which is pretty cool
         for (size_t i = 0; i < numElements; ++i) {
@@ -691,7 +691,7 @@ static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     static constexpr uint64_t seed = UINT64_C(0xe17a1465);
     static constexpr unsigned int r = 47;
 
-    auto const data64 = static_cast<uint64_t const*>(ptr);
+    auto const* const data64 = static_cast<uint64_t const*>(ptr);
     uint64_t h = seed ^ (len * m);
 
     size_t const n_blocks = len / 8;
@@ -706,7 +706,7 @@ static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
         h *= m;
     }
 
-    auto const data8 = reinterpret_cast<uint8_t const*>(data64 + n_blocks);
+    auto const* const data8 = reinterpret_cast<uint8_t const*>(data64 + n_blocks);
     switch (len & 7U) {
     case 7:
         h ^= static_cast<uint64_t>(data8[6]) << 48U;
@@ -1115,8 +1115,8 @@ private:
     template <typename M>
     struct Cloner<M, true> {
         void operator()(M const& source, M& target) const {
-            auto src = reinterpret_cast<char const*>(source.mKeyVals);
-            auto tgt = reinterpret_cast<char*>(target.mKeyVals);
+            auto const* const src = reinterpret_cast<char const*>(source.mKeyVals);
+            auto* tgt = reinterpret_cast<char*>(target.mKeyVals);
             auto const numElementsWithBuffer = target.calcNumElementsWithBuffer(target.mMask + 1);
             std::copy(src, src + target.calcNumBytesTotal(numElementsWithBuffer), tgt);
         }
@@ -1264,7 +1264,7 @@ private:
         // fast forward to the next non-free info byte
         void fastForward() noexcept {
             size_t n = 0;
-            while (!(n = detail::unaligned_load<size_t>(mInfo))) {
+            while (0U == (n = detail::unaligned_load<size_t>(mInfo))) {
                 mInfo += sizeof(size_t);
                 mKeyVals += sizeof(size_t);
             }
@@ -1359,8 +1359,8 @@ private:
     template <typename Other>
     ROBIN_HOOD(NODISCARD)
     size_t findIdx(Other const& key) const {
-        size_t idx;
-        InfoType info;
+        size_t idx{};
+        InfoType info{};
         keyToIdx(key, &idx, &info);
 
         do {
@@ -1396,8 +1396,8 @@ private:
             throwOverflowError(); // impossible to reach LCOV_EXCL_LINE
         }
 
-        size_t idx;
-        InfoType info;
+        size_t idx{};
+        InfoType info{};
         keyToIdx(keyval.getFirst(), &idx, &info);
 
         // skip forward. Use <= because we are certain that the element is not there.
@@ -1851,8 +1851,8 @@ public:
 
     size_t erase(const key_type& key) {
         ROBIN_HOOD_TRACE(this);
-        size_t idx;
-        InfoType info;
+        size_t idx{};
+        InfoType info{};
         keyToIdx(key, &idx, &info);
 
         // check while info matches with the source idx
@@ -2035,8 +2035,8 @@ private:
     template <typename Arg, typename Q = mapped_type>
     typename std::enable_if<!std::is_void<Q>::value, Q&>::type doCreateByKey(Arg&& key) {
         while (true) {
-            size_t idx;
-            InfoType info;
+            size_t idx{};
+            InfoType info{};
             keyToIdx(key, &idx, &info);
             nextWhileLess(&info, &idx);
 
@@ -2093,8 +2093,8 @@ private:
     template <typename Arg>
     std::pair<iterator, bool> doInsert(Arg&& keyval) {
         while (true) {
-            size_t idx;
-            InfoType info;
+            size_t idx{};
+            InfoType info{};
             keyToIdx(getFirstConst(keyval), &idx, &info);
             nextWhileLess(&info, &idx);
 

@@ -7,7 +7,7 @@ TEST_CASE("bulkpoolallocator addOrFree") {
 
     // add data, some too small some large enough
     for (size_t i = 1; i < 10; ++i) {
-        auto x = malloc(i);
+        auto* x = malloc(i);
         pool.addOrFree(x, i);
     }
 

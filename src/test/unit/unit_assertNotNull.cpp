@@ -16,7 +16,7 @@ TEST_CASE("assertNotNull") {
         std::runtime_error);
 
     uint64_t x = 123;
-    auto a = robin_hood::detail::assertNotNull<std::bad_alloc, uint64_t>(&x);
+    auto* a = robin_hood::detail::assertNotNull<std::bad_alloc, uint64_t>(&x);
     REQUIRE(a == &x);
 
     REQUIRE_THROWS_AS(

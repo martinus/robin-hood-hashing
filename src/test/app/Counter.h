@@ -64,7 +64,7 @@ struct Counter {
     }
 
     static void printHeaderOnce();
-    void printCounts(std::string const& title);
+    void printCounts(std::string const& title) const;
 
     static size_t staticDefaultCtor;
     static size_t staticDtor;

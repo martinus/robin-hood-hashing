@@ -52,7 +52,7 @@ build "g++-4.9" "14" "OFF" "-m32"
 build "g++" "11" "ON" "-m32"
 build "g++" "14" "ON" "-m32"
 build "g++" "17" "ON" "-m32"
-build "g++" "20" "ON" "-m32"
+#build "g++" "20" "ON" "-m32"
 
 build "clang++-6" "11" "OFF" "-m32"
 build "clang++-6" "14" "OFF" "-m32"

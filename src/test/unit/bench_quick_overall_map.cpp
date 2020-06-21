@@ -40,7 +40,7 @@ inline std::string initKey<std::string>() {
     return str;
 }
 inline void randomizeKey(sfc64* rng, int n, std::string* key) {
-    uint64_t k;
+    uint64_t k{};
     randomizeKey(rng, n, &k);
     std::memcpy(&(*key)[0], &k, sizeof(k));
 }

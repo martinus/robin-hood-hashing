@@ -4,8 +4,7 @@
 
 class NoCopyMove {
 public:
-    NoCopyMove() noexcept
-        : mData{} {}
+    NoCopyMove() noexcept = default;
     explicit NoCopyMove(size_t d) noexcept
         : mData(d) {}
     ~NoCopyMove() = default;
@@ -21,7 +20,7 @@ public:
     }
 
 private:
-    size_t mData;
+    size_t mData{};
 };
 
 TYPE_TO_STRING(robin_hood::unordered_node_map<size_t, NoCopyMove>);

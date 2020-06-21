@@ -5,10 +5,9 @@
 // not copyable, but movable.
 class NoCopy {
 public:
-    NoCopy() noexcept
-        : mData{} {}
-    explicit NoCopy(size_t /*unused*/) noexcept
-        : mData() {}
+    NoCopy() noexcept = default;
+    explicit NoCopy(size_t d) noexcept
+        : mData(d) {}
 
     ~NoCopy() = default;
     NoCopy(NoCopy const&) = delete;
@@ -22,7 +21,7 @@ public:
     }
 
 private:
-    size_t mData;
+    size_t mData{};
 };
 
 TYPE_TO_STRING(robin_hood::unordered_flat_map<size_t, NoCopy>);

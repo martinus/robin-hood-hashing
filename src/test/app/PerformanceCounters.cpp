@@ -108,16 +108,16 @@ uint64_t const* PerformanceCounters::monitor(Event e) {
 }
 
 // start counting
-void PerformanceCounters::enable() {
+void PerformanceCounters::enable() const {
     ioctl(mFd, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP); // NOLINT(hicpp-signed-bitwise)
 }
 
 // stop counting
-void PerformanceCounters::disable() {
+void PerformanceCounters::disable() const {
     ioctl(mFd, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP); // NOLINT(hicpp-signed-bitwise)
 }
 
-void PerformanceCounters::reset() {
+void PerformanceCounters::reset() const {
     ioctl(mFd, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP); // NOLINT(hicpp-signed-bitwise)
 }
 
@@ -155,7 +155,7 @@ uint64_t const* PerformanceCounters::monitor(uint32_t type, uint64_t eventid) {
     }
 
     // insert into map, rely on the fact that map's references are constant.
-    auto ret = &mIdToValue[id];
+    auto* ret = &mIdToValue[id];
 
     // prepare readformat with the correct size (after the insert)
     mReadFormat.resize(3 + 2 * mIdToValue.size());
@@ -209,7 +209,7 @@ uint64_t const* PerformanceCounters::monitor(uint32_t /*unused*/, uint64_t /*unu
 
 void PerformanceCounters::enable() {}
 void PerformanceCounters::disable() {}
-void PerformanceCounters::reset() {}
+void PerformanceCounters::reset() const {}
 void PerformanceCounters::fetch() {}
 PerformanceCounters::~PerformanceCounters() = default;
 

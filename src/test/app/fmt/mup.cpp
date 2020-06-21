@@ -100,7 +100,7 @@ std::string mup(char const* format, long double value) {
     char const* prefix = "yzafpnum kMGTPEZY";
 
     auto u = std::fabs(value);
-    auto pos = std::upper_bound(factors.begin(), factors.end(), u);
+    auto* pos = std::upper_bound(factors.begin(), factors.end(), u);
     if (u < std::numeric_limits<long double>::lowest() || pos == factors.begin() ||
         pos == factors.end()) {
         pos = factors.begin() + 9;
