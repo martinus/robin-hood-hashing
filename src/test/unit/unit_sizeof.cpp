@@ -16,7 +16,7 @@ namespace robin_hood {
 
 template <>
 struct hash<Foo> {
-    size_t operator()(const Foo& o) const noexcept {
+    inline size_t operator()(const Foo& o) const noexcept {
         size_t h = 0;
         auto hf = hash<int>{};
         for (auto a : o.ary) {
