@@ -41,6 +41,7 @@ matrix:
           key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
         packages:
         - clang-10
+        - g++-8
 
   - os: linux
     compiler: clang
@@ -55,6 +56,7 @@ matrix:
           key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
         packages:
         - clang-10
+        - g++-8
 
   - os: linux
     compiler: clang
@@ -69,6 +71,7 @@ matrix:
           key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
         packages:
         - clang-10
+        - g++-8
         
   # g++-8
   - os: linux
