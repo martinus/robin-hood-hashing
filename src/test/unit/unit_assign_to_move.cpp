@@ -11,6 +11,7 @@ TEST_CASE_TEMPLATE("assign to moved", Map, robin_hood::unordered_node_map<int, i
     Map a;
     a[1] = 2;
     Map moved = std::move(a);
+    REQUIRE(moved.size() == 1U);
 
     Map c;
     c[3] = 4;
@@ -34,6 +35,7 @@ TEST_CASE_TEMPLATE("move to moved", Map, robin_hood::unordered_node_map<int, int
 
     a[5] = 6;
     moved[6] = 7;
+    REQUIRE(moved[6] == 7);
 }
 
 TEST_CASE_TEMPLATE("swapempty", Map, robin_hood::unordered_node_map<int, int>,

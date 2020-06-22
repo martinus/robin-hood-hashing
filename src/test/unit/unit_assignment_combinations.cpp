@@ -11,6 +11,7 @@ TEST_CASE_TEMPLATE("assignment_combinations_1", Map,
     Map a;
     Map b;
     b = a;
+    REQUIRE(b == a);
 }
 
 TEST_CASE_TEMPLATE("assignment_combinations_2", Map,
