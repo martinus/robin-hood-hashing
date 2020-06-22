@@ -12,8 +12,8 @@ struct Foo {
 };
 } // namespace
 
-#if defined(__GNUC__) && (__GNUG__ < 8) && !defined(__clang__)
-namespace std {
+namespace robin_hood {
+
 template <>
 struct hash<Foo> {
     size_t operator()(const Foo& o) const noexcept {
@@ -25,12 +25,12 @@ struct hash<Foo> {
         return h;
     }
 };
-} // namespace std
-#endif
+
+} // namespace robin_hood
 
 #define SHOW(...) std::cout << sizeof(__VA_ARGS__) << " bytes for " << #__VA_ARGS__ << std::endl
 
-TEST_CASE("show datastructure sizes" * doctest::test_suite("show") * doctest::skip()) {
+TEST_CASE("show_datastructure_sizes" * doctest::test_suite("show") * doctest::skip()) {
     SHOW(robin_hood::unordered_flat_map<uint32_t, uint32_t>);
     SHOW(robin_hood::unordered_flat_map<uint64_t, uint64_t>);
     SHOW(robin_hood::unordered_flat_map<uint32_t, Foo>);
