@@ -43,6 +43,7 @@ TEST_CASE_TEMPLATE("copy and assign maps", Map, robin_hood::unordered_flat_map<i
         auto a = createMap<Map>(100);
         // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
         auto b = a;
+        REQUIRE(b == a);
     }
     {
         Map a;
@@ -55,11 +56,15 @@ TEST_CASE_TEMPLATE("copy and assign maps", Map, robin_hood::unordered_flat_map<i
         }
     }
 
-    { std::vector<Map> maps(10); }
+    {
+        std::vector<Map> maps(10);
+        REQUIRE(maps.size() == 10U);
+    }
 
     {
         Map a;
-        std::vector<Map> maps(10, a);
+        std::vector<Map> maps(12, a);
+        REQUIRE(maps.size() == 12U);
     }
 
     {

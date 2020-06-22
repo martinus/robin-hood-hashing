@@ -15,7 +15,7 @@ int include_only() {
 
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     robin_hood::unordered_flat_map<int, int> map3 = map2;
-    s += map2.size();
+    s += map3.size();
 
     robin_hood::unordered_node_map<int, float> muf;
     muf[321] = 432.43F;
