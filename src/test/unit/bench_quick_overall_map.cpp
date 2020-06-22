@@ -151,7 +151,7 @@ void benchAll(ankerl::nanobench::Bench* bench) {
 
 double geomean1(ankerl::nanobench::Bench const& bench) {
     return geomean(bench.results(), [](ankerl::nanobench::Result const& result) {
-        return result.median("elapsed");
+        return result.median(ankerl::nanobench::Result::Measure::elapsed);
     });
 }
 
