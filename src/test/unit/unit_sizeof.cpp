@@ -8,7 +8,16 @@
 
 namespace {
 struct Foo {
-    std::array<int, 20> ary{};
+    int a0{};
+    int a1{};
+    int a2{};
+    int a3{};
+    int a4{};
+    int a5{};
+    int a6{};
+    int a7{};
+    int a8{};
+    int a9{};
 };
 } // namespace
 
@@ -17,13 +26,8 @@ namespace robin_hood {
 template <>
 struct hash<Foo> {
     size_t operator()(Foo const& o) const noexcept {
-        size_t h = 0;
         auto hf = hash<int>{};
-        for (auto a : o.ary) {
-            h *= 7U;
-            h ^= hf(a);
-        }
-        return h;
+        return hf(o.a0) ^ hf(o.a1);
     }
 };
 
@@ -46,6 +50,5 @@ TEST_CASE("show_datastructure_sizes" * doctest::test_suite("show") * doctest::sk
 
     // use hash
     Foo f;
-    f.ary.fill(123);
     std::cout << robin_hood::hash<Foo>{}(f) << std::endl;
 }
