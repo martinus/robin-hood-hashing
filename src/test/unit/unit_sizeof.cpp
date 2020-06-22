@@ -8,7 +8,7 @@
 
 namespace {
 struct Foo {
-    std::array<int, 20> ary;
+    std::array<int, 20> ary{};
 };
 } // namespace
 

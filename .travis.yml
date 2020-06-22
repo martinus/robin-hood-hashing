@@ -1,5 +1,6 @@
 language: cpp
 dist: xenial
+cache: ccache
 
 # see https://github.com/taocpp/sequences/blob/master/.travis.yml
 matrix:
