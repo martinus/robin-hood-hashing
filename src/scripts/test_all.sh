@@ -56,7 +56,7 @@ build "g++" "20" "ON" "-m32"
 build "clang++-6" "11" "OFF" "-m32"
 build "clang++-6" "14" "OFF" "-m32"
 build "clang++-6" "17" "OFF" "-m32"
-build "clang++-6" "20" "OFF" "-m32"
+#build "clang++-6" "20" "OFF" "-m32"
 
 build "clang++" "11" "OFF" "-m32"
 #build "clang++" "11" "ON" "-m32"
