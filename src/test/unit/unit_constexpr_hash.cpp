@@ -1,20 +1,21 @@
-#include <robin_hood.h>
+#if 0
+#    include <robin_hood.h>
 
-#include <app/doctest.h>
-#include <app/fmt/hex.h>
+#    include <app/doctest.h>
+#    include <app/fmt/hex.h>
 
-#include <iostream>
-#include <limits>
+#    include <iostream>
+#    include <limits>
 
-#if defined(_MSC_VER)
+#    if defined(_MSC_VER)
 // warning C4307: '*': integral constant overflow
-#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN() \
-        __pragma(warning(push)) __pragma(warning(disable : 4307))
-#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END() __pragma(warning(pop))
-#else
-#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN()
-#    define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END()
-#endif
+#        define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN() \
+            __pragma(warning(push)) __pragma(warning(disable : 4307))
+#        define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END() __pragma(warning(pop))
+#    else
+#        define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN()
+#        define ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END()
+#    endif
 
 ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_BEGIN()
 
@@ -62,14 +63,14 @@ constexpr uint64_t block(const char* data, size_t n, uint64_t h) {
 }
 
 constexpr uint64_t calc(const char* data, size_t n, uint64_t seed) {
-#if defined(_MSC_VER)
-#    pragma warning(push)
-#    pragma warning(disable : 4307)
-#endif
+#    if defined(_MSC_VER)
+#        pragma warning(push)
+#        pragma warning(disable : 4307)
+#    endif
     return block(data, n, seed ^ mul_m(n));
-#if defined(_MSC_VER)
-#    pragma warning(pop)
-#endif
+#    if defined(_MSC_VER)
+#        pragma warning(pop)
+#    endif
 }
 
 } // namespace hash
@@ -173,8 +174,8 @@ TEST_CASE("constexpr_hash_usage") {
     }
 }
 
-#define ROBIN_HOOD_HASH_CHECK(str) \
-    REQUIRE(robin_hood::hash<std::string>{}(str) == robin_hood::compiletime::hash_bytes(str))
+#    define ROBIN_HOOD_HASH_CHECK(str) \
+        REQUIRE(robin_hood::hash<std::string>{}(str) == robin_hood::compiletime::hash_bytes(str))
 
 TEST_CASE("constexpr_hash") {
     ROBIN_HOOD_HASH_CHECK("This is my test string. It's rather long, but that's ok.!");
@@ -238,3 +239,5 @@ TEST_CASE("constexpr_hash") {
 }
 
 ROBIN_HOOD_NO_WARN_INTEGRAL_CONSTANT_END()
+
+#endif
