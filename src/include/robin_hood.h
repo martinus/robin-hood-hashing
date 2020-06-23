@@ -732,7 +732,7 @@ inline size_t hash_int(uint64_t x) noexcept {
     static constexpr uint64_t a = UINT64_C(0xc4ceb9fe1a85ec53);
     static constexpr uint64_t c = UINT64_C(0xbf58476d1ce4e5b9);
 
-    return detail::rotr(a * detail::rotr(x, 32U) + b * x, 32U) * c;
+    return static_cast<size_t>(detail::rotr(a * detail::rotr(x, 32U) + b * x, 32U) * c);
 }
 
 // A thin wrapper around std::hash, performing an additional simple mixing step of the result.
