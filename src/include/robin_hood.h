@@ -215,10 +215,15 @@ static Counts& counts() {
 // detect hardware CRC availability. Microsoft's _M_IX86_FP only detects if SSE is present, but not
 // if 4.2 is there unfortunately.
 #if defined(__SSE4_2__) || defined(__ARM_FEATURE_CRC32) || \
-    ((defined(_M_IX86_FP) && (_M_IX86_FP >= 2)))
+    ((defined(_M_IX86_FP) && (_M_IX86_FP >= 2))) || defined(_M_ARM64)
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 1
-#    if defined(__ARM_NEON) || defined(__ARM_NEON__)
-#        include <arm_acle.h>
+#    if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)
+#        ifdef _M_ARM64
+#            include <arm64_neon.h>
+#        else
+#            include <arm_acle.h>
+#        endif
+
 #        define ROBIN_HOOD_CRC32_64(crc, v) \
             __crc32cd(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
 #        define ROBIN_HOOD_CRC32_32(crc, v) \
@@ -725,7 +730,7 @@ static size_t hash_bytes(void const* ptr, size_t len) noexcept {
         ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
     case 1:
         h ^= static_cast<uint64_t>(data8[0]);
-        crc = _mm_crc32_u64(crc, h);
+        crc = ROBIN_HOOD_CRC32_64(crc, h);
         ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
     default:
         break;
