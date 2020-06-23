@@ -212,33 +212,6 @@ static Counts& counts() {
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NODISCARD()
 #endif
 
-// detect hardware CRC availability. Microsoft's _M_IX86_FP only detects if SSE is present, but not
-// if 4.2 is there unfortunately.
-#if defined(__SSE4_2__) || defined(__ARM_FEATURE_CRC32) || \
-    ((defined(_M_IX86_FP) && (_M_IX86_FP >= 2))) || defined(_M_ARM64)
-#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 1
-#    if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)
-#        ifdef _M_ARM64
-#            include <arm64_neon.h>
-#        else
-#            include <arm_acle.h>
-#        endif
-
-#        define ROBIN_HOOD_CRC32_64(crc, v) \
-            __crc32cd(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
-#        define ROBIN_HOOD_CRC32_32(crc, v) \
-            __crc32cw(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
-#    else
-#        include <nmmintrin.h>
-#        define ROBIN_HOOD_CRC32_64(crc, v) \
-            _mm_crc32_u64(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
-#        define ROBIN_HOOD_CRC32_32(crc, v) \
-            _mm_crc32_u32(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
-#    endif
-#else
-#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 0
-#endif
-
 namespace robin_hood {
 
 #if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
@@ -693,58 +666,6 @@ inline constexpr bool operator>=(pair<A, B> const& x, pair<A, B> const& y) {
     return !(x < y);
 }
 
-#if ROBIN_HOOD(HAS_CRC32) && ROBIN_HOOD(BITNESS) == 64
-
-static size_t hash_bytes(void const* ptr, size_t len) noexcept {
-    static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
-    static constexpr uint64_t seed = UINT64_C(0xe17a1465);
-
-    auto const* const data64 = static_cast<uint64_t const*>(ptr);
-    size_t const n_blocks = len / 8;
-
-    uint64_t crc = seed ^ (len * m);
-    for (size_t i = 0; i < n_blocks; ++i) {
-        crc = ROBIN_HOOD_CRC32_64(crc, detail::unaligned_load<uint64_t>(data64 + i));
-    }
-
-    uint64_t h = 0;
-    auto const* const data8 = reinterpret_cast<uint8_t const*>(data64 + n_blocks);
-    switch (len & 7U) {
-    case 7:
-        h ^= static_cast<uint64_t>(data8[6]) << 48U;
-        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
-    case 6:
-        h ^= static_cast<uint64_t>(data8[5]) << 40U;
-        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
-    case 5:
-        h ^= static_cast<uint64_t>(data8[4]) << 32U;
-        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
-    case 4:
-        h ^= static_cast<uint64_t>(data8[3]) << 24U;
-        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
-    case 3:
-        h ^= static_cast<uint64_t>(data8[2]) << 16U;
-        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
-    case 2:
-        h ^= static_cast<uint64_t>(data8[1]) << 8U;
-        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
-    case 1:
-        h ^= static_cast<uint64_t>(data8[0]);
-        crc = ROBIN_HOOD_CRC32_64(crc, h);
-        ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
-    default:
-        break;
-    }
-#    if ROBIN_HOOD(BITNESS) == 64
-    return static_cast<uint64_t>(crc) * UINT64_C(0xc6a4a7935bd1e995);
-#    else
-    return crc;
-#    endif
-}
-
-#else
-// Hash an arbitrary amount of bytes. This is basically Murmur2 hash without caring about big
-// endianness. TODO(martinus) add a fallback for very large strings?
 static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
     static constexpr uint64_t seed = UINT64_C(0xe17a1465);
@@ -798,30 +719,20 @@ static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     h ^= h >> r;
     return static_cast<size_t>(h);
 }
-#endif
 
-inline size_t hash_int(uint64_t obj) noexcept {
-#if ROBIN_HOOD(HAS_CRC32)
-#    if ROBIN_HOOD(BITNESS) == 64
-    return ROBIN_HOOD_CRC32_64(0, obj) ^ (ROBIN_HOOD_CRC32_64(0, detail::rotr(obj, 44U)) << 32U);
-#    else
-    return ROBIN_HOOD_CRC32_32(ROBIN_HOOD_CRC32_32(0, obj), obj >> 32U);
-#    endif
-#elif ROBIN_HOOD(BITNESS) == 32
-    uint64_t const r = obj * UINT64_C(0xca4bcaa75ec3f625);
-    auto h = static_cast<uint32_t>(r >> 32U);
-    auto l = static_cast<uint32_t>(r);
-    return h + l;
-#else
-    // murmurhash 3 finalizer
-    uint64_t h = obj;
-    h ^= h >> 33;
-    h *= 0xff51afd7ed558ccd;
-    h ^= h >> 33;
-    h *= 0xc4ceb9fe1a85ec53;
-    h ^= h >> 33;
-    return static_cast<size_t>(h);
-#endif
+inline size_t hash_int(uint64_t x) noexcept {
+    // inspired by lemire's strongly universal hashing
+    // https://lemire.me/blog/2018/08/15/fast-strongly-universal-64-bit-hashing-everywhere/
+    //
+    // Instead of shifts, we use rotations so we don't lose any bits.
+    //
+    // Added a final multiplcation with a constant for more mixing. It is most important that the
+    // lower bits are well mixed.
+    static constexpr uint64_t b = UINT64_C(0xff51afd7ed558ccd);
+    static constexpr uint64_t a = UINT64_C(0xc4ceb9fe1a85ec53);
+    static constexpr uint64_t c = UINT64_C(0xbf58476d1ce4e5b9);
+
+    return detail::rotr(a * detail::rotr(x, 32U) + b * x, 32U) * c;
 }
 
 // A thin wrapper around std::hash, performing an additional simple mixing step of the result.
@@ -889,8 +800,8 @@ struct has_is_transparent : public std::false_type {};
 template <typename T>
 struct has_is_transparent<T, typename T::is_transparent> : public std::true_type {};
 
-// using wrapper classes for hash and key_equal prevents the diamond problem when the same type is
-// used. see https://stackoverflow.com/a/28771920/48181
+// using wrapper classes for hash and key_equal prevents the diamond problem when the same type
+// is used. see https://stackoverflow.com/a/28771920/48181
 template <typename T>
 struct WrapHash : public T {
     WrapHash() = default;
@@ -907,8 +818,8 @@ struct WrapKeyEqual : public T {
 
 // A highly optimized hashmap implementation, using the Robin Hood algorithm.
 //
-// In most cases, this map should be usable as a drop-in replacement for std::unordered_map, but be
-// about 2x faster in most cases and require much less allocations.
+// In most cases, this map should be usable as a drop-in replacement for std::unordered_map, but
+// be about 2x faster in most cases and require much less allocations.
 //
 // This implementation uses the following memory layout:
 //
@@ -916,8 +827,8 @@ struct WrapKeyEqual : public T {
 //
 // * Node: either a DataNode that directly has the std::pair<key, val> as member,
 //   or a DataNode with a pointer to std::pair<key,val>. Which DataNode representation to use
-//   depends on how fast the swap() operation is. Heuristically, this is automatically choosen based
-//   on sizeof(). there are always 2^n Nodes.
+//   depends on how fast the swap() operation is. Heuristically, this is automatically choosen
+//   based on sizeof(). there are always 2^n Nodes.
 //
 // * info: Each Node in the map has a corresponding info byte, so there are 2^n info bytes.
 //   Each byte is initialized to 0, meaning the corresponding Node is empty. Set to 1 means the
@@ -925,8 +836,8 @@ struct WrapKeyEqual : public T {
 //   actually belongs to the previous position and was pushed out because that place is already
 //   taken.
 //
-// * infoSentinel: Sentinel byte set to 1, so that iterator's ++ can stop at end() without the need
-//   for a idx variable.
+// * infoSentinel: Sentinel byte set to 1, so that iterator's ++ can stop at end() without the
+//   need for a idx variable.
 //
 // According to STL, order of templates has effect on throughput. That's why I've moved the
 // boolean to the front.
@@ -980,8 +891,8 @@ private:
     // DataNode ////////////////////////////////////////////////////////
 
     // Primary template for the data node. We have special implementations for small and big
-    // objects. For large objects it is assumed that swap() is fairly slow, so we allocate these on
-    // the heap so swap merely swaps a pointer.
+    // objects. For large objects it is assumed that swap() is fairly slow, so we allocate these
+    // on the heap so swap merely swaps a pointer.
     template <typename M, bool>
     class DataNode {};
 
@@ -1263,8 +1174,8 @@ private:
         // compared to end().
         Iter() = default;
 
-        // Rule of zero: nothing specified. The conversion constructor is only enabled for iterator
-        // to const_iterator, so it doesn't accidentally work as a copy ctor.
+        // Rule of zero: nothing specified. The conversion constructor is only enabled for
+        // iterator to const_iterator, so it doesn't accidentally work as a copy ctor.
 
         // Conversion constructor from iterator to const_iterator.
         template <bool OtherIsConst,
@@ -1354,9 +1265,9 @@ private:
     // The upper 1-5 bits need to be a reasonable good hash, to save comparisons.
     template <typename HashKey>
     void keyToIdx(HashKey&& key, size_t* idx, InfoType* info) const {
-        // for a user-specified hash that is *not* robin_hood::hash, apply robin_hood::hash as an
-        // additional mixing step. This serves as a bad hash prevention, if the given data is badly
-        // mixed.
+        // for a user-specified hash that is *not* robin_hood::hash, apply robin_hood::hash as
+        // an additional mixing step. This serves as a bad hash prevention, if the given data is
+        // badly mixed.
         using Mix =
             typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
                                       ::robin_hood::detail::identity_hash<size_t>,
@@ -1403,7 +1314,8 @@ private:
 
     void shiftDown(size_t idx) noexcept(std::is_nothrow_move_assignable<Node>::value) {
         // until we find one that is either empty or has zero offset.
-        // TODO(martinus) we don't need to move everything, just the last one for the same bucket.
+        // TODO(martinus) we don't need to move everything, just the last one for the same
+        // bucket.
         mKeyVals[idx].destroy(*this);
 
         // until we find one that is either empty or has zero offset.
@@ -1502,11 +1414,11 @@ public:
     using iterator = Iter<false>;
     using const_iterator = Iter<true>;
 
-    // Creates an empty hash map. Nothing is allocated yet, this happens at the first insert. This
-    // tremendously speeds up ctor & dtor of a map that never receives an element. The penalty is
-    // payed at the first insert, and not before. Lookup of this empty map works because everybody
-    // points to DummyInfoByte::b. parameter bucket_count is dictated by the standard, but we can
-    // ignore it.
+    // Creates an empty hash map. Nothing is allocated yet, this happens at the first insert.
+    // This tremendously speeds up ctor & dtor of a map that never receives an element. The
+    // penalty is payed at the first insert, and not before. Lookup of this empty map works
+    // because everybody points to DummyInfoByte::b. parameter bucket_count is dictated by the
+    // standard, but we can ignore it.
     explicit Table(
         size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
         const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) && noexcept(KeyEqual(equal)))
@@ -1611,8 +1523,8 @@ public:
             return *this;
         }
 
-        // we keep using the old allocator and not assign the new one, because we want to keep the
-        // memory available. when it is the same size.
+        // we keep using the old allocator and not assign the new one, because we want to keep
+        // the memory available. when it is the same size.
         if (o.empty()) {
             if (0 == mMask) {
                 // nothing to do, we are empty too
@@ -1672,8 +1584,8 @@ public:
     void clear() {
         ROBIN_HOOD_TRACE(this)
         if (empty()) {
-            // don't do anything! also important because we don't want to write to DummyInfoByte::b,
-            // even though we would just write 0 to it.
+            // don't do anything! also important because we don't want to write to
+            // DummyInfoByte::b, even though we would just write 0 to it.
             return;
         }
 
@@ -2106,8 +2018,8 @@ private:
             keyToIdx(key, &idx, &info);
             nextWhileLess(&info, &idx);
 
-            // while we potentially have a match. Can't do a do-while here because when mInfo is 0
-            // we don't want to skip forward
+            // while we potentially have a match. Can't do a do-while here because when mInfo is
+            // 0 we don't want to skip forward
             while (info == mInfo[idx]) {
                 if (WKeyEqual::operator()(key, mKeyVals[idx].getFirst())) {
                     // key already exists, do not insert.
@@ -2136,8 +2048,8 @@ private:
 
             auto& l = mKeyVals[insertion_idx];
             if (idx == insertion_idx) {
-                // put at empty spot. This forwards all arguments into the node where the object is
-                // constructed exactly where it is needed.
+                // put at empty spot. This forwards all arguments into the node where the object
+                // is constructed exactly where it is needed.
                 ::new (static_cast<void*>(&l))
                     Node(*this, std::piecewise_construct,
                          std::forward_as_tuple(std::forward<Arg>(key)), std::forward_as_tuple());
