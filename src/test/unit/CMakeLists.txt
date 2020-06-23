@@ -75,4 +75,5 @@ target_sources_local(rh PRIVATE
     unit_unique_ptr.cpp
     unit_unordered_set.cpp
     unit_vectorofmaps.cpp
+    unit_xy.cpp
 )

@@ -728,9 +728,9 @@ inline size_t hash_int(uint64_t x) noexcept {
     //
     // Added a final multiplcation with a constant for more mixing. It is most important that the
     // lower bits are well mixed.
-    auto h1 = x * UINT64_C(0xff51afd7ed558ccd);
-    auto h2 = detail::rotr(x, 32U) * UINT64_C(0xc4ceb9fe1a85ec53);
-    auto h = detail::rotr(h1 + h2, 32U) * UINT64_C(0xbf58476d1ce4e5b9);
+    auto h1 = x * UINT64_C(0xA24BAED4963EE407);
+    auto h2 = detail::rotr(x, 32U) * UINT64_C(0x9FB21C651E98DF25);
+    auto h = detail::rotr(h1 + h2, 32U);
     return static_cast<size_t>(h);
 }
 
