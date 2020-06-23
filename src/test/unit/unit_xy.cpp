@@ -23,7 +23,7 @@ TEST_CASE("xy" * doctest::skip()) {
 
     auto begin = std::chrono::steady_clock::now();
     size_t oldMask = 0;
-    while (data.size() < 500'000'000) {
+    while (data.size() < 500000000) {
         data.insert(modify(x | (y << 16U)));
         data.insert(modify(y | (x << 16U)));
 
@@ -59,7 +59,7 @@ TEST_CASE("xyz" * doctest::skip()) {
 
     auto begin = std::chrono::steady_clock::now();
     size_t oldMask = 0;
-    while (data.size() < 500'000'000) {
+    while (data.size() < 500000000) {
         data.insert(modify(x | (y << 10U) | (z << 20U)));
         data.insert(modify(x | (z << 10U) | (y << 20U)));
         data.insert(modify(y | (x << 10U) | (z << 20U)));
