@@ -35,7 +35,7 @@ function build() {
 
 build "g++-4.9" "11" "OFF" "-m32"
 build "g++-4.9" "14" "OFF" "-m32"
-build "clang++-6" "20" "OFF"
+#build "clang++-6" "20" "OFF"
 build "clang++" "20" "ON"
 
 

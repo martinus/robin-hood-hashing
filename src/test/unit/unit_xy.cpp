@@ -9,12 +9,41 @@
 namespace {
 
 inline uint32_t modify(uint32_t x) {
-    return x;
+    return robin_hood::detail::rotr(x, 16U);
 }
 
 } // namespace
 
-TEST_CASE("xy" * doctest::skip()) {
+TEST_CASE("fill_x" * doctest::skip()) {
+    std::cout << "fill_x" << std::endl;
+    robin_hood::unordered_flat_set<uint32_t> data;
+
+    // fill up with ever increasing xy data
+    uint32_t x = 0;
+    uint32_t y = 0;
+
+    auto begin = std::chrono::steady_clock::now();
+    size_t oldMask = 0;
+    while (data.size() < 500000000) {
+        data.insert(modify(x++));
+
+        if (data.mask() != oldMask) {
+            auto end = std::chrono::steady_clock::now();
+            std::cout << std::setw(15) << std::chrono::nanoseconds(end - begin).count()
+                      << " ns: " << data.size() << " " << (data.mask() + 1) << " " << x << " " << y
+                      << std::endl;
+
+            oldMask = data.mask();
+        }
+    }
+    auto end = std::chrono::steady_clock::now();
+    std::cout << std::setw(15) << std::chrono::nanoseconds(end - begin).count()
+              << " ns: " << data.size() << " " << (data.mask() + 1) << " " << x << " " << y
+              << std::endl;
+}
+
+TEST_CASE("fill_xy" * doctest::skip()) {
+    std::cout << "fill_xy" << std::endl;
     robin_hood::unordered_flat_set<uint32_t> data;
 
     // fill up with ever increasing xy data
@@ -49,7 +78,8 @@ TEST_CASE("xy" * doctest::skip()) {
               << std::endl;
 }
 
-TEST_CASE("xyz" * doctest::skip()) {
+TEST_CASE("fill_xyz" * doctest::skip()) {
+    std::cout << "fill_xyz" << std::endl;
     robin_hood::unordered_flat_set<uint32_t> data;
 
     // fill up with ever increasing xy data
