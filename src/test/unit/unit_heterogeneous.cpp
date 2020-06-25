@@ -22,7 +22,7 @@ struct MyHash {
 };
 
 struct MyEqual {
-    using is_transparent = void;
+    using is_transparent = int;
 
     bool operator()(const char* lhs, const std::string& rhs) const noexcept {
         return std::strcmp(lhs, rhs.c_str()) == 0;
@@ -42,6 +42,7 @@ TYPE_TO_STRING(robin_hood::unordered_node_map<std::string, uint64_t, MyHash, MyE
 TEST_CASE_TEMPLATE("heterogeneous", Map,
                    robin_hood::unordered_flat_map<std::string, uint64_t, MyHash, MyEqual>,
                    robin_hood::unordered_node_map<std::string, uint64_t, MyHash, MyEqual>) {
+    static_assert(Map::is_transparent, "not transparent");
     Map map;
     const Map& cmap = map;
     REQUIRE(map.count("123") == 0);
