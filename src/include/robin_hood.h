@@ -1665,6 +1665,28 @@ public:
         return r;
     }
 
+    template <typename... Args>
+    std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args) {
+        return try_emplace_impl(key, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    std::pair<iterator, bool> try_emplace(key_type&& key, Args&&... args) {
+        return try_emplace_impl(std::move(key), std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    std::pair<iterator, bool> try_emplace(const_iterator hint, const key_type& key, Args&&... args) {
+        (void)hint;
+        return try_emplace_impl(key, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    std::pair<iterator, bool> try_emplace(const_iterator hint, key_type&& key, Args&&... args) {
+        (void)hint;
+        return try_emplace_impl(std::move(key), std::forward<Args>(args)...);
+    }
+
     std::pair<iterator, bool> insert(const value_type& keyval) {
         ROBIN_HOOD_TRACE(this)
         return doInsert(keyval);
@@ -1994,6 +2016,17 @@ private:
 #else
         abort();
 #endif
+    }
+
+    template <typename OtherKey, typename... Args>
+    std::pair<iterator, bool> try_emplace_impl(OtherKey&& key, Args&&... args) {
+        ROBIN_HOOD_TRACE(this)
+        auto it = find(key);
+        if (it == end()) {
+            return emplace(std::piecewise_construct, std::forward_as_tuple(std::forward<OtherKey>(key)),
+                           std::forward_as_tuple(std::forward<Args>(args)...));
+        }
+        return {it, false};
     }
 
     void init_data(size_t max_elements) {
