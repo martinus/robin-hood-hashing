@@ -49,6 +49,7 @@ target_sources_local(rh PRIVATE
     unit_include_only.cpp
     unit_initializerlist.cpp
     unit_insert.cpp
+    unit_insert_or_assign.cpp
     unit_iterator_twice_bug.cpp
     unit_iterators_ctor.cpp
     unit_iterators_empty.cpp
@@ -71,6 +72,7 @@ target_sources_local(rh PRIVATE
     unit_sfc64_is_deterministic.cpp
     unit_sizeof.cpp
     unit_string.cpp
+    unit_try_emplace.cpp
     unit_undefined_behavior_nekrolm.cpp
     unit_unique_ptr.cpp
     unit_unordered_set.cpp

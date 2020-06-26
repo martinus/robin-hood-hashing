@@ -36,7 +36,7 @@
 
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 7 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_MINOR 8 // for adding functionality in a backwards-compatible manner
 #define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
 
 #include <algorithm>
@@ -1665,6 +1665,50 @@ public:
         return r;
     }
 
+    template <typename... Args>
+    std::pair<iterator, bool> try_emplace(const key_type& key, Args&&... args) {
+        return try_emplace_impl(key, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    std::pair<iterator, bool> try_emplace(key_type&& key, Args&&... args) {
+        return try_emplace_impl(std::move(key), std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    std::pair<iterator, bool> try_emplace(const_iterator hint, const key_type& key, Args&&... args) {
+        (void)hint;
+        return try_emplace_impl(key, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    std::pair<iterator, bool> try_emplace(const_iterator hint, key_type&& key, Args&&... args) {
+        (void)hint;
+        return try_emplace_impl(std::move(key), std::forward<Args>(args)...);
+    }
+
+    template <typename Mapped>
+    std::pair<iterator, bool> insert_or_assign(const key_type& key, Mapped&& obj) {
+        return insert_or_assign_impl(key, std::forward<Mapped>(obj));
+    }
+
+    template <typename Mapped>
+    std::pair<iterator, bool> insert_or_assign(key_type&& key, Mapped&& obj) {
+        return insert_or_assign_impl(std::move(key), std::forward<Mapped>(obj));
+    }
+
+    template <typename Mapped>
+    std::pair<iterator, bool> insert_or_assign(const_iterator hint, const key_type& key, Mapped&& obj) {
+        (void)hint;
+        return insert_or_assign_impl(key, std::forward<Mapped>(obj));
+    }
+
+    template <typename Mapped>
+    std::pair<iterator, bool> insert_or_assign(const_iterator hint, key_type&& key, Mapped&& obj) {
+        (void)hint;
+        return insert_or_assign_impl(std::move(key), std::forward<Mapped>(obj));
+    }
+
     std::pair<iterator, bool> insert(const value_type& keyval) {
         ROBIN_HOOD_TRACE(this)
         return doInsert(keyval);
@@ -1994,6 +2038,28 @@ private:
 #else
         abort();
 #endif
+    }
+
+    template <typename OtherKey, typename... Args>
+    std::pair<iterator, bool> try_emplace_impl(OtherKey&& key, Args&&... args) {
+        ROBIN_HOOD_TRACE(this)
+        auto it = find(key);
+        if (it == end()) {
+            return emplace(std::piecewise_construct, std::forward_as_tuple(std::forward<OtherKey>(key)),
+                           std::forward_as_tuple(std::forward<Args>(args)...));
+        }
+        return {it, false};
+    }
+
+    template <typename OtherKey, typename Mapped>
+    std::pair<iterator, bool> insert_or_assign_impl(OtherKey&& key, Mapped&& obj) {
+        ROBIN_HOOD_TRACE(this)
+        auto it = find(key);
+        if (it == end()) {
+            return emplace(std::forward<OtherKey>(key), std::forward<Mapped>(obj));
+        }
+        it->second = std::forward<Mapped>(obj);
+        return {it, false};
     }
 
     void init_data(size_t max_elements) {
