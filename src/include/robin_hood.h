@@ -793,11 +793,17 @@ ROBIN_HOOD_HASH_INT(unsigned long long);
 #endif
 namespace detail {
 
+template <typename T>
+struct void_type {
+    using type = void;
+};
+
 template <typename T, typename = void>
 struct has_is_transparent : public std::false_type {};
 
 template <typename T>
-struct has_is_transparent<T, typename T::is_transparent> : public std::true_type {};
+struct has_is_transparent<T, typename void_type<typename T::is_transparent>::type>
+    : public std::true_type {};
 
 // using wrapper classes for hash and key_equal prevents the diamond problem when the same type
 // is used. see https://stackoverflow.com/a/28771920/48181
