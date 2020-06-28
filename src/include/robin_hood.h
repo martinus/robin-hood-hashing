@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
-// version 3.7.0
+// version 3.8.0
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -1243,6 +1243,8 @@ private:
 
     private:
         // fast forward to the next non-free info byte
+        // I've tried a few variants that don't depend on intrinsics, but unfortunately they are
+        // quite a bit slower than this one. So I've reverted that change again. See map_benchmark.
         void fastForward() noexcept {
             size_t n = 0;
             while (0U == (n = detail::unaligned_load<size_t>(mInfo))) {
@@ -1676,7 +1678,8 @@ public:
     }
 
     template <typename... Args>
-    std::pair<iterator, bool> try_emplace(const_iterator hint, const key_type& key, Args&&... args) {
+    std::pair<iterator, bool> try_emplace(const_iterator hint, const key_type& key,
+                                          Args&&... args) {
         (void)hint;
         return try_emplace_impl(key, std::forward<Args>(args)...);
     }
@@ -1698,7 +1701,8 @@ public:
     }
 
     template <typename Mapped>
-    std::pair<iterator, bool> insert_or_assign(const_iterator hint, const key_type& key, Mapped&& obj) {
+    std::pair<iterator, bool> insert_or_assign(const_iterator hint, const key_type& key,
+                                               Mapped&& obj) {
         (void)hint;
         return insert_or_assign_impl(key, std::forward<Mapped>(obj));
     }
@@ -2045,7 +2049,8 @@ private:
         ROBIN_HOOD_TRACE(this)
         auto it = find(key);
         if (it == end()) {
-            return emplace(std::piecewise_construct, std::forward_as_tuple(std::forward<OtherKey>(key)),
+            return emplace(std::piecewise_construct,
+                           std::forward_as_tuple(std::forward<OtherKey>(key)),
                            std::forward_as_tuple(std::forward<Args>(args)...));
         }
         return {it, false};
