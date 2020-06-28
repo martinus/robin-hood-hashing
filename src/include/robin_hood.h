@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
-// version 3.8.0
+// version 3.7.0
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -125,6 +125,49 @@ static Counts& counts() {
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_EXCEPTIONS() 0
 #else
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_EXCEPTIONS() 1
+#endif
+
+// count leading/trailing bits
+#if ((defined __i386 || defined __x86_64__) && defined __BMI__) || defined _M_IX86 || defined _M_X64
+#    ifdef _MSC_VER
+#        include <intrin.h>
+#    else
+#        include <x86intrin.h>
+#    endif
+#    if ROBIN_HOOD(BITNESS) == 32
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u32
+#    else
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u64
+#    endif
+#    if defined __AVX2__ || defined __BMI__
+#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
+#    else
+#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
+#    endif
+#elif defined _MSC_VER
+#    if ROBIN_HOOD(BITNESS) == 32
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward
+#    else
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward64
+#    endif
+#    include <intrin.h>
+#    pragma intrinsic(ROBIN_HOOD(BITSCANFORWARD))
+#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                       \
+        [](size_t mask) noexcept -> int {                                             \
+            unsigned long index;                                                      \
+            return ROBIN_HOOD(BITSCANFORWARD)(&index, mask) ? static_cast<int>(index) \
+                                                            : ROBIN_HOOD(BITNESS);    \
+        }(x)
+#else
+#    if ROBIN_HOOD(BITNESS) == 32
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzl
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CLZ() __builtin_clzl
+#    else
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzll
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_CLZ() __builtin_clzll
+#    endif
+#    define ROBIN_HOOD_COUNT_LEADING_ZEROES(x) ((x) ? ROBIN_HOOD(CLZ)(x) : ROBIN_HOOD(BITNESS))
+#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ((x) ? ROBIN_HOOD(CTZ)(x) : ROBIN_HOOD(BITNESS))
 #endif
 
 // fallthrough
@@ -1199,31 +1242,20 @@ private:
         }
 
     private:
-        // fast forward to the next non-zero info byte. Most of the time the first entry is already
-        // != 0, so it's faster to use ROBIN_HOOD_UNLIKELY in all cases.
-        inline void fastForward() noexcept {
-            if (0U != *mInfo) {
-                // bail out quickly if possible
-                return;
+        // fast forward to the next non-free info byte
+        void fastForward() noexcept {
+            size_t n = 0;
+            while (0U == (n = detail::unaligned_load<size_t>(mInfo))) {
+                mInfo += sizeof(size_t);
+                mKeyVals += sizeof(size_t);
             }
-            size_t idx = 1;
-            while (ROBIN_HOOD_UNLIKELY(0U == detail::unaligned_load<uint64_t>(mInfo + idx))) {
-                idx += 8;
-            }
-
-            // we know for certain that within the next 8 bytes we'll find a non-zero one.
-            if (ROBIN_HOOD_UNLIKELY(0U == detail::unaligned_load<uint32_t>(mInfo + idx))) {
-                idx += 4;
-            }
-            if (ROBIN_HOOD_UNLIKELY(0U == detail::unaligned_load<uint16_t>(mInfo + idx))) {
-                idx += 2;
-            }
-            if (ROBIN_HOOD_UNLIKELY(0U == mInfo[idx])) {
-                idx += 1;
-            }
-
-            mInfo += idx;
-            mKeyVals += idx;
+#if ROBIN_HOOD(LITTLE_ENDIAN)
+            auto inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
+#else
+            auto inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / 8;
+#endif
+            mInfo += inc;
+            mKeyVals += inc;
         }
 
         friend class Table<IsFlat, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;
@@ -1644,8 +1676,7 @@ public:
     }
 
     template <typename... Args>
-    std::pair<iterator, bool> try_emplace(const_iterator hint, const key_type& key,
-                                          Args&&... args) {
+    std::pair<iterator, bool> try_emplace(const_iterator hint, const key_type& key, Args&&... args) {
         (void)hint;
         return try_emplace_impl(key, std::forward<Args>(args)...);
     }
@@ -1667,8 +1698,7 @@ public:
     }
 
     template <typename Mapped>
-    std::pair<iterator, bool> insert_or_assign(const_iterator hint, const key_type& key,
-                                               Mapped&& obj) {
+    std::pair<iterator, bool> insert_or_assign(const_iterator hint, const key_type& key, Mapped&& obj) {
         (void)hint;
         return insert_or_assign_impl(key, std::forward<Mapped>(obj));
     }
@@ -2015,8 +2045,7 @@ private:
         ROBIN_HOOD_TRACE(this)
         auto it = find(key);
         if (it == end()) {
-            return emplace(std::piecewise_construct,
-                           std::forward_as_tuple(std::forward<OtherKey>(key)),
+            return emplace(std::piecewise_construct, std::forward_as_tuple(std::forward<OtherKey>(key)),
                            std::forward_as_tuple(std::forward<Args>(args)...));
         }
         return {it, false};
