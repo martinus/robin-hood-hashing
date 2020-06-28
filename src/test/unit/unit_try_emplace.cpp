@@ -14,6 +14,7 @@ struct RegularType {
         return r1.i == r2.i && r1.s == r2.s;
     }
 
+private:
     std::string s;
     std::size_t i;
 };
