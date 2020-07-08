@@ -17,6 +17,40 @@
 1. Use `robin_hood::unordered_map` instead of `std::unordered_map`
 1. Use `robin_hood::unordered_set` instead of `std::unordered_set`
 
+### Usage with Conan package manager
+
+You can download and install `robin-hood-hashing` package using the [Conan](https://conan.io/) package manager. Setup your CMakeLists.txt (see [Conan documentation](https://docs.conan.io/en/latest/integrations/build_system.html) on how to use MSBuild, Meson and others) like this:
+
+```CMake
+project(myproject CXX)
+
+add_executable(${PROJECT_NAME} main.cpp)
+
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake) # Include Conan-generated file
+conan_basic_setup(TARGETS) # Introduce Conan-generated targets
+
+target_link_libraries(${PROJECT_NAME} CONAN_PKG::robin-hood-hashing)
+```
+Create `conanfile.txt` in your source dir:
+```
+[requires]
+robin-hood-hashing/3.7.0
+
+[generators]
+cmake
+```
+Install and run Conan, then build your project as always:
+
+```Bash
+pip install conan
+mkdir build
+cd build
+conan install ../ --build=missing
+cmake ../
+cmake --build .
+```
+The `robin-hood-hashing` package in Conan is kept up to date by Conan contributors. If the version is out of date, please [create an issue or pull request](https://github.com/conan-io/conan-center-index) on the `conan-center-index` repository.
+
 ## Benchmarks
 
 Please see extensive benchmarks at [Hashmaps Benchmarks](https://martin.ankerl.com/2019/04/01/hashmap-benchmarks-01-overview/). In short: `robin_hood` is always among the fastest maps and uses far less memory than `std::unordered_map`.
