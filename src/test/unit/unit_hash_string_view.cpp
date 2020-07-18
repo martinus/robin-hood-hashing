@@ -22,7 +22,7 @@ TEST_CASE("unit_hash_u32string") {
     str.push_back(5);
 
     REQUIRE(robin_hood::hash<std::u32string>{}(str) ==
-            robin_hood::hash<std::u32string_view>{}(std::u32string_view{str}));
+            robin_hood::hash<std::u32string_view>{}(str));
 }
 
 #endif
