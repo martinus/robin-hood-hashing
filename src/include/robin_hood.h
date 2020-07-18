@@ -43,10 +43,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <functional>
+#include <memory> // only to support hash of smart pointers
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
+#if __cplusplus >= 201703L
+#    include <string_view>
+#endif
 
 // #define ROBIN_HOOD_LOG_ENABLED
 #ifdef ROBIN_HOOD_LOG_ENABLED
@@ -753,6 +757,15 @@ struct hash<std::string> {
     }
 };
 
+#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX17)
+template <typename CharT>
+struct hash<std::basic_string_view<CharT>> {
+    size_t operator()(std::basic_string_view<CharT> const& sv) const noexcept {
+        return hash_bytes(sv.data(), sv.size());
+    }
+};
+#endif
+
 template <class T>
 struct hash<T*> {
     size_t operator()(T* ptr) const noexcept {
@@ -760,10 +773,24 @@ struct hash<T*> {
     }
 };
 
+template <class T>
+struct hash<std::unique_ptr<T>> {
+    size_t operator()(std::unique_ptr<T> const& ptr) const noexcept {
+        return hash_int(reinterpret_cast<size_t>(ptr.get()));
+    }
+};
+
+template <class T>
+struct hash<std::shared_ptr<T>> {
+    size_t operator()(std::shared_ptr<T> const& ptr) const noexcept {
+        return hash_int(reinterpret_cast<size_t>(ptr.get()));
+    }
+};
+
 #define ROBIN_HOOD_HASH_INT(T)                           \
     template <>                                          \
     struct hash<T> {                                     \
-        size_t operator()(T obj) const noexcept {        \
+        size_t operator()(T const& obj) const noexcept { \
             return hash_int(static_cast<uint64_t>(obj)); \
         }                                                \
     }

@@ -65,3 +65,16 @@ TEST_CASE_TEMPLATE("heterogeneous", Map,
     REQUIRE(cmap.find("123") == map.cbegin());
     REQUIRE(cmap.find("0") == map.cend());
 }
+
+#if 0
+TEST_CASE_TEMPLATE("heterogeneous_emplace", Map,
+                   robin_hood::unordered_flat_map<std::string, uint64_t, MyHash, MyEqual>,
+                   robin_hood::unordered_node_map<std::string, uint64_t, MyHash, MyEqual>) {
+    disable_string_operator = false;
+    Map map;
+    map.emplace("asdf", 100U);
+
+    REQUIRE(map.size() == 1);
+    REQUIRE(map.count("asdf") == 1U);
+}
+#endif

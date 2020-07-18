@@ -41,6 +41,8 @@ target_sources_local(rh PRIVATE
     unit_copyassignment.cpp
     unit_count.cpp
     unit_diamond.cpp
+    unit_hash_smart_ptr.cpp
+    unit_hash_string_view.cpp
     unit_empty.cpp
     unit_heterogeneous.cpp
     include_only.h

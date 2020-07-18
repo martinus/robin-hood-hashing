@@ -5,10 +5,10 @@
 #include <app/benchmark.h>
 #include <app/doctest.h>
 #include <app/geomean.h>
-#include <app/sfc64.h>
 #include <thirdparty/nanobench/nanobench.h>
 
 #include <unordered_map>
+#include <unordered_set>
 
 TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, size_t>);
 TYPE_TO_STRING(robin_hood::unordered_flat_map<std::string, size_t>);
@@ -27,7 +27,7 @@ inline uint64_t initKey<uint64_t>() {
     return {};
 }
 
-inline void randomizeKey(sfc64* rng, int n, uint64_t* key) {
+inline void randomizeKey(ankerl::nanobench::Rng* rng, int n, uint64_t* key) {
     // we limit ourselfes to 32bit n
     auto limited = (((*rng)() >> 32U) * static_cast<uint64_t>(n)) >> 32U;
     *key = limited;
@@ -39,7 +39,7 @@ inline std::string initKey<std::string>() {
     str.resize(200);
     return str;
 }
-inline void randomizeKey(sfc64* rng, int n, std::string* key) {
+inline void randomizeKey(ankerl::nanobench::Rng* rng, int n, std::string* key) {
     uint64_t k{};
     randomizeKey(rng, n, &k);
     std::memcpy(&(*key)[0], &k, sizeof(k));
@@ -49,7 +49,7 @@ inline void randomizeKey(sfc64* rng, int n, std::string* key) {
 template <typename Map>
 void benchRandomInsertErase(ankerl::nanobench::Bench* bench) {
     bench->run(type_string(Map{}) + " random insert erase", [&] {
-        sfc64 rng(123);
+        ankerl::nanobench::Rng rng(123);
         size_t verifier{};
         Map map;
         auto key = initKey<typename Map::key_type>();
@@ -61,8 +61,8 @@ void benchRandomInsertErase(ankerl::nanobench::Bench* bench) {
                 verifier += map.erase(key);
             }
         }
-        CHECK(verifier == 1996311U);
-        CHECK(map.size() == 9966U);
+        CHECK(verifier == 1994641U);
+        CHECK(map.size() == 9987U);
     });
 }
 
@@ -75,7 +75,7 @@ void benchIterate(ankerl::nanobench::Bench* bench) {
 
     // insert
     bench->run(type_string(Map{}) + " iterate while adding then removing", [&] {
-        sfc64 rng(555);
+        ankerl::nanobench::Rng rng(555);
         Map map;
         size_t result = 0;
         for (size_t n = 0; n < numElements; ++n) {
@@ -86,7 +86,7 @@ void benchIterate(ankerl::nanobench::Bench* bench) {
             }
         }
 
-        rng.seed(555);
+        rng = ankerl::nanobench::Rng(555);
         do {
             randomizeKey(&rng, 1000000, &key);
             map.erase(key);
@@ -95,17 +95,24 @@ void benchIterate(ankerl::nanobench::Bench* bench) {
             }
         } while (!map.empty());
 
-        CHECK(result == 62343599601U);
+        CHECK(result == 62282755409U);
     });
 }
 
+// 111.903 222
+// 112.023 123123
 template <typename Map>
 void benchRandomFind(ankerl::nanobench::Bench* bench) {
-    bench->run(type_string(Map{}) + " 50% probability to find", [&] {
-        sfc64 numberesInsertRng(222);
-        sfc64 numbersSearchRng(222);
 
-        sfc64 insertionRng(123);
+    bench->run(type_string(Map{}) + " 50% probability to find", [&] {
+        uint64_t const seed = 123123;
+        ankerl::nanobench::Rng numbersInsertRng(seed);
+        size_t numbersInsertRngCalls = 0;
+
+        ankerl::nanobench::Rng numbersSearchRng(seed);
+        size_t numbersSearchRngCalls = 0;
+
+        ankerl::nanobench::Rng insertionRng(123);
 
         size_t checksum = 0;
         size_t found = 0;
@@ -113,15 +120,19 @@ void benchRandomFind(ankerl::nanobench::Bench* bench) {
 
         Map map;
         auto key = initKey<typename Map::key_type>();
-        for (size_t i = 0; i < 10000; ++i) {
-            randomizeKey(&numberesInsertRng, 1000000, &key);
-            if (insertionRng.uniform(100) < 50) {
+        for (size_t i = 0; i < 100000; ++i) {
+            randomizeKey(&numbersInsertRng, 1000000, &key);
+            ++numbersInsertRngCalls;
+
+            if (insertionRng() & 1U) {
                 map[key] = i;
             }
 
-            // search 1000 entries in the map
-            for (size_t search = 0; search < 1000; ++search) {
+            // search 100 entries in the map
+            for (size_t search = 0; search < 100; ++search) {
                 randomizeKey(&numbersSearchRng, 1000000, &key);
+                ++numbersSearchRngCalls;
+
                 auto it = map.find(key);
                 if (it != map.end()) {
                     checksum += it->second;
@@ -129,15 +140,15 @@ void benchRandomFind(ankerl::nanobench::Bench* bench) {
                 } else {
                     ++notFound;
                 }
-                if (numbersSearchRng.counter() == numberesInsertRng.counter()) {
-                    numbersSearchRng.seed(222);
+                if (numbersInsertRngCalls == numbersSearchRngCalls) {
+                    numbersSearchRng = ankerl::nanobench::Rng(seed);
+                    numbersSearchRngCalls = 0;
                 }
             }
         }
-
-        CHECK(checksum == 12570603553U);
-        CHECK(found == 4972187U);
-        CHECK(notFound == 5027813U);
+        ankerl::nanobench::doNotOptimizeAway(checksum);
+        ankerl::nanobench::doNotOptimizeAway(found);
+        ankerl::nanobench::doNotOptimizeAway(notFound);
     });
 }
 
@@ -200,4 +211,64 @@ TEST_CASE_TEMPLATE("memory_map_huge" * doctest::test_suite("bench") * doctest::s
         map[n];
     }
     std::cout << map.size() << std::endl;
+}
+
+template <typename Set>
+void benchConsecutiveInsert(char const* name) {
+    auto before = std::chrono::high_resolution_clock::now();
+    Set s{};
+    for (uint64_t x = 0; x < 100000000; ++x) {
+        s.insert(x);
+    }
+    auto after = std::chrono::high_resolution_clock::now();
+    std::cout << '\t' << std::chrono::duration<double>(after - before).count()
+              << "s, size=" << s.size() << " for " << name << std::endl;
+}
+
+template <typename Set>
+void benchRandomInsert(char const* name) {
+    ankerl::nanobench::Rng rng(23);
+    auto before = std::chrono::high_resolution_clock::now();
+    Set s{};
+    for (uint64_t x = 0; x < 100000000; ++x) {
+        s.insert(rng());
+    }
+    auto after = std::chrono::high_resolution_clock::now();
+    std::cout << '\t' << std::chrono::duration<double>(after - before).count()
+              << "s, size=" << s.size() << " for " << name << std::endl;
+}
+
+template <typename Set>
+void benchShiftedInsert(char const* name) {
+    auto before = std::chrono::high_resolution_clock::now();
+    Set s{};
+    for (uint64_t x = 0; x < 100000000; ++x) {
+        s.insert(x << 4U);
+    }
+    auto after = std::chrono::high_resolution_clock::now();
+    std::cout << '\t' << std::chrono::duration<double>(after - before).count()
+              << "s, size=" << s.size() << " for " << name << std::endl;
+}
+
+TEST_CASE("bench_insert_huge" * doctest::test_suite("bench") * doctest::skip()) {
+    std::cout << "insert consecutive numbers" << std::endl;
+    benchConsecutiveInsert<robin_hood::unordered_flat_set<uint64_t>>(
+        "robin_hood::unordered_flat_set<uint64_t>");
+    benchConsecutiveInsert<robin_hood::unordered_node_set<uint64_t>>(
+        "robin_hood::unordered_node_set<uint64_t>");
+    benchConsecutiveInsert<std::unordered_set<uint64_t>>("std::unordered_set<uint64_t>");
+
+    std::cout << "insert random numbers" << std::endl;
+    benchRandomInsert<robin_hood::unordered_flat_set<uint64_t>>(
+        "robin_hood::unordered_flat_set<uint64_t>");
+    benchRandomInsert<robin_hood::unordered_node_set<uint64_t>>(
+        "robin_hood::unordered_node_set<uint64_t>");
+    benchRandomInsert<std::unordered_set<uint64_t>>("std::unordered_set<uint64_t>");
+
+    std::cout << "insert consecutive, shifted left 4 bits" << std::endl;
+    benchShiftedInsert<robin_hood::unordered_flat_set<uint64_t>>(
+        "robin_hood::unordered_flat_set<uint64_t>");
+    benchShiftedInsert<robin_hood::unordered_node_set<uint64_t>>(
+        "robin_hood::unordered_node_set<uint64_t>");
+    benchShiftedInsert<std::unordered_set<uint64_t>>("std::unordered_set<uint64_t>");
 }
