@@ -17,8 +17,8 @@ function build() {
 
     DIRNAME=${COMPILER}_cxx${CXX_STANDARD}_sanitizer${SANITIZER}_${CXXFLAGS}
     
-    rm -Rf ${DIRNAME}
     mkdir -p ${DIRNAME}
+    rm -f ${DIRNAME}/CMakeCache.txt
     cd ${DIRNAME}
 
     CXX=$(which ${COMPILER}) cmake -G Ninja -DCMAKE_CXX_FLAGS=${CXXFLAGS} -DCMAKE_BUILD_TYPE=Debug -DRH_cxx_standard=${CXX_STANDARD} -DRH_sanitizer=${SANITIZER} ${ROOTDIR}

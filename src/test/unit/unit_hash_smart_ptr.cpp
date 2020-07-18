@@ -11,17 +11,13 @@ void check(Ptr const& ptr) {
 }
 
 TEST_CASE("unit_hash_smart_ptr") {
-#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
     check(std::unique_ptr<uint64_t>{});
-    check(std::make_unique<uint64_t>(123));
-
     check(std::shared_ptr<uint64_t>{});
     check(std::make_shared<uint64_t>(123));
-#else
-    check(std::unique_ptr<uint64_t>{});
-    check(std::unique_ptr<uint64_t>{new uint64_t{123}});
 
-    check(std::shared_ptr<uint64_t>{});
-    check(std::shared_ptr<uint64_t>{new uint64_t{123}});
+#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
+    check(std::make_unique<uint64_t>(123));
+#else
+    check(std::unique_ptr<uint64_t>{new uint64_t{123}});
 #endif
 }
