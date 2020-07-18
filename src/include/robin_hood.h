@@ -670,7 +670,7 @@ inline constexpr bool operator>=(pair<A, B> const& x, pair<A, B> const& y) {
     return !(x < y);
 }
 
-static size_t hash_bytes(void const* ptr, size_t const len) noexcept {
+inline size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
     static constexpr uint64_t seed = UINT64_C(0xe17a1465);
     static constexpr unsigned int r = 47;
@@ -750,10 +750,10 @@ struct hash : public std::hash<T> {
     }
 };
 
-template <>
-struct hash<std::string> {
-    size_t operator()(std::string const& str) const noexcept {
-        return hash_bytes(str.data(), str.size());
+template <typename CharT>
+struct hash<std::basic_string<CharT>> {
+    size_t operator()(std::basic_string<CharT> const& str) const noexcept {
+        return hash_bytes(str.data(), sizeof(CharT) * str.size());
     }
 };
 
@@ -761,7 +761,7 @@ struct hash<std::string> {
 template <typename CharT>
 struct hash<std::basic_string_view<CharT>> {
     size_t operator()(std::basic_string_view<CharT> const& sv) const noexcept {
-        return hash_bytes(sv.data(), sv.size());
+        return hash_bytes(sv.data(), sizeof(CharT) * sv.size());
     }
 };
 #endif
