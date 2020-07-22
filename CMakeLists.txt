@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.5)
 project(robin-hood-hashing LANGUAGES CXX)
 
+# generate compile_commands.json
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # determine whether this is a standalone project or included by other projects
 set(RH_STANDALONE_PROJECT OFF)
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)

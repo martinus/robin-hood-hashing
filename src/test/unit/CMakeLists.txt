@@ -44,6 +44,7 @@ target_sources_local(rh PRIVATE
     unit_hash_smart_ptr.cpp
     unit_hash_string_view.cpp
     unit_empty.cpp
+    unit_hash_char_types.cpp
     unit_heterogeneous.cpp
     include_only.h
     include_only.cpp
