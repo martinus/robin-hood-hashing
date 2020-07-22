@@ -195,6 +195,17 @@ static Counts& counts() {
 #    define ROBIN_HOOD_UNLIKELY(condition) __builtin_expect(condition, 0)
 #endif
 
+// detect if native wchar_t type is availiable in MSVC
+#ifdef _MSC_VER
+#   ifdef _NATIVE_WCHAR_T_DEFINED
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 1
+#   else
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 0
+#   endif
+#else
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 1
+#endif
+
 // workaround missing "is_trivially_copyable" in g++ < 5.0
 // See https://stackoverflow.com/a/31798726/48181
 #if defined(__GNUC__) && __GNUC__ < 5
@@ -806,7 +817,9 @@ ROBIN_HOOD_HASH_INT(signed char);
 ROBIN_HOOD_HASH_INT(unsigned char);
 ROBIN_HOOD_HASH_INT(char16_t);
 ROBIN_HOOD_HASH_INT(char32_t);
+#if ROBIN_HOOD(HAS_NATIVE_WCHART)
 ROBIN_HOOD_HASH_INT(wchar_t);
+#endif
 ROBIN_HOOD_HASH_INT(short);
 ROBIN_HOOD_HASH_INT(unsigned short);
 ROBIN_HOOD_HASH_INT(int);
