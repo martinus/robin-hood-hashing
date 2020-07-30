@@ -143,11 +143,7 @@ static Counts& counts() {
 #    else
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u64
 #    endif
-#    if defined __AVX2__ || defined __BMI__
-#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
-#    else
-#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
-#    endif
+#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
 #elif defined _MSC_VER
 #    if ROBIN_HOOD(BITNESS) == 32
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward
@@ -197,11 +193,11 @@ static Counts& counts() {
 
 // detect if native wchar_t type is availiable in MSVC
 #ifdef _MSC_VER
-#   ifdef _NATIVE_WCHAR_T_DEFINED
-#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 1
-#   else
-#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 0
-#   endif
+#    ifdef _NATIVE_WCHAR_T_DEFINED
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 1
+#    else
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 0
+#    endif
 #else
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 1
 #endif
