@@ -768,7 +768,7 @@ static size_t fallback_hash_bytes(void const* ptr, size_t const len) noexcept {
 static inline void cpuid(uint32_t* eax, uint32_t* ebx, uint32_t* ecx, uint32_t* edx) {
 #    if defined(_MSC_VER)
     int cpuInfo[4];
-    int functionId = __cpuid(cpuInfo, static_cast<int>(*eax));
+    __cpuid(cpuInfo, static_cast<int>(*eax));
     *eax = static_cast<uint32_t>(cpuInfo[0]);
     *ebx = static_cast<uint32_t>(cpuInfo[1]);
     *ecx = static_cast<uint32_t>(cpuInfo[2]);
