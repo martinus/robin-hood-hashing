@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
-// version 3.8.2
+// version 3.9.0
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -36,8 +36,8 @@
 
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 8 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 2 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_MINOR 9 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -221,6 +221,39 @@ static Counts& counts() {
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NODISCARD() [[nodiscard]]
 #else
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NODISCARD()
+#endif
+
+// detect hardware CRC availability. Microsoft's _M_IX86_FP only detects if SSE is present, but not
+// if 4.2 is there unfortunately.
+#if defined(__SSE4_2__) || defined(__ARM_FEATURE_CRC32) || \
+    ((defined(_M_IX86_FP) && (_M_IX86_FP >= 2))) || defined(_M_ARM64)
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 1
+#    if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)
+#        ifdef _M_ARM64
+#            include <arm64_neon.h>
+#        else
+#            include <arm_acle.h>
+#        endif
+
+#        define ROBIN_HOOD_CRC32_64(crc, v) \
+            __crc32cd(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
+#        define ROBIN_HOOD_CRC32_32(crc, v) \
+            __crc32cw(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+#    else
+#        include <nmmintrin.h>
+#        define ROBIN_HOOD_CRC32_64(crc, v) \
+            _mm_crc32_u64(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
+#        define ROBIN_HOOD_CRC32_32(crc, v) \
+            _mm_crc32_u32(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+#    endif
+#else
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 0
+#endif
+
+#if defined(_MSC_VER)
+#    include <intrin.h>
+#else
+#    include <cpuid.h>
 #endif
 
 namespace robin_hood {
@@ -677,7 +710,7 @@ inline constexpr bool operator>=(pair<A, B> const& x, pair<A, B> const& y) {
     return !(x < y);
 }
 
-inline size_t hash_bytes(void const* ptr, size_t const len) noexcept {
+static size_t fallback_hash_bytes(void const* ptr, size_t const len) noexcept {
     static constexpr uint64_t m = UINT64_C(0xc6a4a7935bd1e995);
     static constexpr uint64_t seed = UINT64_C(0xe17a1465);
     static constexpr unsigned int r = 47;
@@ -731,22 +764,153 @@ inline size_t hash_bytes(void const* ptr, size_t const len) noexcept {
     return static_cast<size_t>(h);
 }
 
-inline size_t hash_int(uint64_t x) noexcept {
+#if ROBIN_HOOD(HAS_CRC32)
+
+static inline void cpuid(uint32_t* eax, uint32_t* ebx, uint32_t* ecx, uint32_t* edx) {
+#    if defined(_MSC_VER)
+    int cpuInfo[4];
+    __cpuid(cpuInfo, *eax);
+    *eax = cpuInfo[0];
+    *ebx = cpuInfo[1];
+    *ecx = cpuInfo[2];
+    *edx = cpuInfo[3];
+#    else
+    uint32_t level = *eax;
+    __get_cpuid(level, eax, ebx, ecx, edx);
+#    endif
+}
+
+inline bool checkCrc32Support() noexcept {
+#    if defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
+    uint32_t eax{};
+    uint32_t ebx{};
+    uint32_t ecx{};
+    uint32_t edx{};
+
+    // EBX for EAX=0x1
+    eax = 0x1;
+    cpuid(&eax, &ebx, &ecx, &edx);
+
+    // check SSE4.2
+    return 0U != (ecx & (1U << 20U));
+#    elif defined(__aarch64__)
+    uint32_t hwcap = getauxval(AT_HWCAP);
+    if (hwcap != ENOENT) {
+        return (hwcap & HWCAP_CRC32) != 0;
+    }
+#    endif
+    return false;
+}
+#endif
+
+inline size_t hash_bytes(void const* ptr, size_t const len) noexcept {
+#if ROBIN_HOOD(HAS_CRC32)
+    static bool const hasCrc = checkCrc32Support();
+    if (ROBIN_HOOD_LIKELY(hasCrc)) {
+        auto const* const data8 = reinterpret_cast<uint8_t const*>(ptr);
+#    if ROBIN_HOOD(BITNESS) == 64
+        uint64_t h = len;
+        size_t const n_blocks = len / 8;
+        for (size_t i = 0; i < n_blocks; ++i) {
+            h = ROBIN_HOOD_CRC32_64(h, detail::unaligned_load<uint64_t>(data8 + i * 8));
+        }
+
+        if (0U != (len & 7U)) {
+            // NOLINTNEXTLINE(hicpp-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+            uint8_t cpy[sizeof(uint64_t)] = {0};
+
+            switch (len & 7U) {
+            case 7:
+                cpy[0] = data8[6];
+                ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+            case 6:
+                cpy[1] = data8[5];
+                ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+            case 5:
+                cpy[2] = data8[4];
+                ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+            case 4:
+                cpy[3] = data8[3];
+                ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+            case 3:
+                cpy[4] = data8[2];
+                ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+            case 2:
+                cpy[5] = data8[1];
+                ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+            case 1:
+                cpy[6] = data8[0];
+                ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+            default:
+                h = ROBIN_HOOD_CRC32_64(h, detail::unaligned_load<uint64_t>(cpy));
+                break;
+            }
+        }
+        // multiplier keeps the lower 32bits as they are, and multiplies to mix the upper bits
+        return h * UINT64_C(0x9FB21C6500000001);
+#    else
+        uint32_t h = 0;
+        size_t const n_blocks = len / 4;
+        for (size_t i = 0; i < n_blocks; ++i) {
+            h = ROBIN_HOOD_CRC32_32(h, detail::unaligned_load<uint32_t>(data8 + i * 8));
+        }
+
+        // NOLINTNEXTLINE(hicpp-avoid-c-arrays,cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+        uint8_t cpy[sizeof(uint32_t)] = {0};
+        switch (len & 3U) {
+        case 3:
+            cpy[0] = data8[2];
+            ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+        case 2:
+            cpy[1] = data8[1];
+            ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+        case 1:
+            cpy[2] = data8[0];
+            h = ROBIN_HOOD_CRC32_32(h, detail::unaligned_load<uint32_t>(cpy));
+            ROBIN_HOOD(FALLTHROUGH); // FALLTHROUGH
+        default:
+            return h;
+            break;
+        }
+#    endif
+    }
+#endif
+    return fallback_hash_bytes(ptr, len);
+}
+
+static size_t fallback_hash_int(uint64_t x) noexcept {
     // inspired by lemire's strongly universal hashing
     // https://lemire.me/blog/2018/08/15/fast-strongly-universal-64-bit-hashing-everywhere/
     //
     // Instead of shifts, we use rotations so we don't lose any bits.
     //
-    // Added a final multiplcation with a constant for more mixing. It is most important that the
-    // lower bits are well mixed.
+    // Added a final multiplcation with a constant for more mixing. It is most important that
+    // the lower bits are well mixed.
     auto h1 = x * UINT64_C(0xA24BAED4963EE407);
     auto h2 = detail::rotr(x, 32U) * UINT64_C(0x9FB21C651E98DF25);
     auto h = detail::rotr(h1 + h2, 32U);
     return static_cast<size_t>(h);
 }
 
+inline size_t hash_int(uint64_t x) noexcept {
+#if ROBIN_HOOD(HAS_CRC32)
+    static bool const hasCrc = checkCrc32Support();
+    if (ROBIN_HOOD_LIKELY(hasCrc)) {
+#    if ROBIN_HOOD(BITNESS) == 64
+        // rotr 32 results in bad hash, when hash_int is applied twice.
+        return ROBIN_HOOD_CRC32_64(UINT64_C(0xA24BAED4963EE407), x) ^
+               (ROBIN_HOOD_CRC32_64(0, x) << 32U);
+#    else
+        return ROBIN_HOOD_CRC32_32(ROBIN_HOOD_CRC32_32(0, static_cast<uint32_t>(x)),
+                                   static_cast<uint32_t>(x >> 32U));
+#    endif
+    }
+#endif
+    return fallback_hash_int(x);
+}
+
 // A thin wrapper around std::hash, performing an additional simple mixing step of the result.
-template <typename T>
+template <typename T, typename Enable = void>
 struct hash : public std::hash<T> {
     size_t operator()(T const& obj) const
         noexcept(noexcept(std::declval<std::hash<T>>().operator()(std::declval<T const&>()))) {
@@ -791,6 +955,13 @@ template <class T>
 struct hash<std::shared_ptr<T>> {
     size_t operator()(std::shared_ptr<T> const& ptr) const noexcept {
         return hash_int(reinterpret_cast<size_t>(ptr.get()));
+    }
+};
+
+template <typename Enum>
+struct hash<Enum, typename std::enable_if<std::is_enum<Enum>::value>::type> {
+    size_t operator()(Enum e) const noexcept {
+        return hash_int(static_cast<typename std::underlying_type<Enum>::type>(e));
     }
 };
 

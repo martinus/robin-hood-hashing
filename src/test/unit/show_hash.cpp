@@ -59,3 +59,21 @@ TEST_CASE("show hash distribution" * doctest::test_suite("show") * doctest::skip
         showHash(&x);
     }
 }
+
+TEST_CASE("cout_max_bucket_size" * doctest::test_suite("show") * doctest::skip()) {
+    robin_hood::unordered_flat_set<uint64_t> set;
+
+#if ROBIN_HOOD(BITNESS) == 64
+    uint64_t size = 1000U;
+    for (uint64_t i = 0U; i < size; ++i) {
+        for (uint64_t j = 0U; j < size; ++j) {
+            auto val = (i << 32U) | j;
+            for (size_t mix = 0; mix < 10; ++mix) {
+                val = robin_hood::hash<uint64_t>{}(val);
+            }
+            set.insert(val);
+        }
+    }
+    REQUIRE(set.size() == size * size);
+#endif
+}
