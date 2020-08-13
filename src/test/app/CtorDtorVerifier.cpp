@@ -104,7 +104,7 @@ bool CtorDtorVerifier::mDoPrintDebugInfo = false;
 namespace robin_hood {
 
 size_t hash<CtorDtorVerifier>::operator()(CtorDtorVerifier const& t) const {
-    return t.val() * 0xc6a4a7935bd1e995;
+    return static_cast<size_t>(t.val() * UINT64_C(0xc6a4a7935bd1e995));
 }
 
 } // namespace robin_hood
