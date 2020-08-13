@@ -104,9 +104,7 @@ bool CtorDtorVerifier::mDoPrintDebugInfo = false;
 namespace robin_hood {
 
 size_t hash<CtorDtorVerifier>::operator()(CtorDtorVerifier const& t) const {
-    // hash is bad on purpose
-    const size_t bitmaskWithoutLastBits = ~static_cast<size_t>(5);
-    return t.val() & bitmaskWithoutLastBits;
+    return t.val() * 0xc6a4a7935bd1e995;
 }
 
 } // namespace robin_hood

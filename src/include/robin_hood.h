@@ -6,7 +6,7 @@
 //                                      _/_____/
 //
 // Fast & memory efficient hashtable based on robin hood hashing for C++11/14/17/20
-// version 3.8.1
+// version 3.8.2
 // https://github.com/martinus/robin-hood-hashing
 //
 // Licensed under the MIT License <http://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 8 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 2 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -395,7 +395,7 @@ public:
     void reset() noexcept {
         while (mListForFree) {
             T* tmp = *mListForFree;
-            free(mListForFree);
+            std::free(mListForFree);
             mListForFree = reinterpret_cast_no_cast_align_warning<T**>(tmp);
         }
         mHead = nullptr;
@@ -430,7 +430,7 @@ public:
         // calculate number of available elements in ptr
         if (numBytes < ALIGNMENT + ALIGNED_SIZE) {
             // not enough data for at least one element. Free and return.
-            free(ptr);
+            std::free(ptr);
         } else {
             add(ptr, numBytes);
         }
@@ -497,7 +497,7 @@ private:
         // alloc new memory: [prev |T, T, ... T]
         // std::cout << (sizeof(T*) + ALIGNED_SIZE * numElementsToAlloc) << " bytes" << std::endl;
         size_t const bytes = ALIGNMENT + ALIGNED_SIZE * numElementsToAlloc;
-        add(assertNotNull<std::bad_alloc>(malloc(bytes)), bytes);
+        add(assertNotNull<std::bad_alloc>(std::malloc(bytes)), bytes);
         return mHead;
     }
 
@@ -533,7 +533,7 @@ struct NodeAllocator<T, MinSize, MaxSize, true> {
 
     // we are not using the data, so just free it.
     void addOrFree(void* ptr, size_t ROBIN_HOOD_UNUSED(numBytes) /*unused*/) noexcept {
-        free(ptr);
+        std::free(ptr);
     }
 };
 
@@ -923,7 +923,8 @@ private:
     static constexpr size_t InitialNumElements = sizeof(uint64_t);
     static constexpr uint32_t InitialInfoNumBits = 5;
     static constexpr uint8_t InitialInfoInc = 1U << InitialInfoNumBits;
-    static constexpr uint8_t InitialInfoHashShift = sizeof(size_t) * 8 - InitialInfoNumBits;
+    static constexpr size_t InfoMask = InitialInfoInc - 1U;
+    static constexpr uint8_t InitialInfoHashShift = 0;
     using DataPool = detail::NodeAllocator<value_type, 4, 16384, IsFlat>;
 
     // type needs to be wider than uint8_t.
@@ -1315,10 +1316,11 @@ private:
             typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
                                       ::robin_hood::detail::identity_hash<size_t>,
                                       ::robin_hood::hash<size_t>>::type;
-        *idx = Mix{}(WHash::operator()(key));
 
-        *info = mInfoInc + static_cast<InfoType>(*idx >> mInfoHashShift);
-        *idx &= mMask;
+        // the lower InitialInfoNumBits are reserved for info.
+        auto h = Mix{}(WHash::operator()(key));
+        *info = mInfoInc + static_cast<InfoType>((h & InfoMask) >> mInfoHashShift);
+        *idx = (h >> InitialInfoNumBits) & mMask;
     }
 
     // forwards the index by one, wrapping around at the end
@@ -1544,7 +1546,7 @@ public:
 
             auto const numElementsWithBuffer = calcNumElementsWithBuffer(o.mMask + 1);
             mKeyVals = static_cast<Node*>(detail::assertNotNull<std::bad_alloc>(
-                malloc(calcNumBytesTotal(numElementsWithBuffer))));
+                std::malloc(calcNumBytesTotal(numElementsWithBuffer))));
             // no need for calloc because clonData does memcpy
             mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
             mNumElements = o.mNumElements;
@@ -1592,12 +1594,12 @@ public:
             // no luck: we don't have the same array size allocated, so we need to realloc.
             if (0 != mMask) {
                 // only deallocate if we actually have data!
-                free(mKeyVals);
+                std::free(mKeyVals);
             }
 
             auto const numElementsWithBuffer = calcNumElementsWithBuffer(o.mMask + 1);
             mKeyVals = static_cast<Node*>(detail::assertNotNull<std::bad_alloc>(
-                malloc(calcNumBytesTotal(numElementsWithBuffer))));
+                std::malloc(calcNumBytesTotal(numElementsWithBuffer))));
 
             // no need for calloc here because cloneData performs a memcpy.
             mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
@@ -2112,7 +2114,7 @@ private:
 
         // calloc also zeroes everything
         mKeyVals = reinterpret_cast<Node*>(detail::assertNotNull<std::bad_alloc>(
-            calloc(1, calcNumBytesTotal(numElementsWithBuffer))));
+            std::calloc(1, calcNumBytesTotal(numElementsWithBuffer))));
         mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
 
         // set sentinel
@@ -2299,7 +2301,7 @@ private:
         // reports a compile error: attempt to free a non-heap object ‘fm’
         // [-Werror=free-nonheap-object]
         if (mKeyVals != reinterpret_cast_no_cast_align_warning<Node*>(&mMask)) {
-            free(mKeyVals);
+            std::free(mKeyVals);
         }
     }
 

@@ -11,7 +11,7 @@
 TYPE_TO_STRING(robin_hood::unordered_flat_map<CtorDtorVerifier, CtorDtorVerifier>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<CtorDtorVerifier, CtorDtorVerifier>);
 
-TEST_CASE_TEMPLATE("multiple different APIs" * doctest::test_suite("stochastic"), Map,
+TEST_CASE_TEMPLATE("multiple_different_APIs" * doctest::test_suite("stochastic"), Map,
                    robin_hood::unordered_flat_map<CtorDtorVerifier, CtorDtorVerifier>,
                    robin_hood::unordered_node_map<CtorDtorVerifier, CtorDtorVerifier>) {
     Map rhhs;
@@ -25,6 +25,7 @@ TEST_CASE_TEMPLATE("multiple different APIs" * doctest::test_suite("stochastic")
 
     const uint64_t times = 10000;
     for (uint64_t i = 0; i < times; ++i) {
+        INFO(i);
         std::pair<typename Map::iterator, bool> it_inner =
             rhhs.insert(typename Map::value_type(i * 4, i));
 
