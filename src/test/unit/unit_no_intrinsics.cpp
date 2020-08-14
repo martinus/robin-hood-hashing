@@ -6,7 +6,7 @@
 
 #include <string>
 
-TEST_CASE("string_simple") {
+TEST_CASE("disable_intrinsics") {
     robin_hood::unordered_flat_map<uint64_t, std::string> map;
     map[1] = "bug?";
 
