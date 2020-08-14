@@ -251,8 +251,6 @@ static Counts& counts() {
 
 #if defined(_MSC_VER)
 #    include <intrin.h>
-#else
-#    include <cpuid.h>
 #endif
 
 namespace robin_hood {
@@ -765,6 +763,8 @@ static size_t fallback_hash_bytes(void const* ptr, size_t const len) noexcept {
 
 #if ROBIN_HOOD(HAS_CRC32)
 
+// see e.g.
+// https://github.com/simdjson/simdjson/blob/9863f62321f59d73c7731d4ada2d7c4ed6a0a251/src/isadetection.h
 static inline void cpuid(uint32_t* eax, uint32_t* ebx, uint32_t* ecx, uint32_t* edx) {
 #    if defined(_MSC_VER)
     int cpuInfo[4];
@@ -774,8 +774,15 @@ static inline void cpuid(uint32_t* eax, uint32_t* ebx, uint32_t* ecx, uint32_t* 
     *ecx = static_cast<uint32_t>(cpuInfo[2]);
     *edx = static_cast<uint32_t>(cpuInfo[3]);
 #    else
-    uint32_t level = *eax;
-    __get_cpuid(level, eax, ebx, ecx, edx);
+    uint32_t a = *eax;
+    uint32_t b{};
+    uint32_t c = *ecx;
+    uint32_t d{};
+    asm volatile("cpuid\n\t" : "+a"(a), "=b"(b), "+c"(c), "=d"(d));
+    *eax = a;
+    *ebx = b;
+    *ecx = c;
+    *edx = d;
 #    endif
 }
 
