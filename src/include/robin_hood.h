@@ -241,7 +241,7 @@ static Counts& counts() {
 #    else
 #        include <nmmintrin.h>
 #        define ROBIN_HOOD_CRC32_64(crc, v) \
-            _mm_crc32_u64(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
+            _mm_crc32_u64(static_cast<uint64_t>(crc), static_cast<uint64_t>(v))
 #        define ROBIN_HOOD_CRC32_32(crc, v) \
             _mm_crc32_u32(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
 #    endif
