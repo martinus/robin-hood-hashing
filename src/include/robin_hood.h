@@ -131,42 +131,45 @@ static Counts& counts() {
 #endif
 
 // count leading/trailing bits
-#if ((defined __i386 || defined __x86_64__) && defined __BMI__) || defined _M_IX86 || defined _M_X64
-#    ifdef _MSC_VER
+#if !defined(ROBIN_HOOD_DISABLE_INTRINSICS)
+#    if ((defined __i386 || defined __x86_64__) && defined __BMI__) || defined _M_IX86 || \
+        defined _M_X64
+#        ifdef _MSC_VER
+#            include <intrin.h>
+#        else
+#            include <x86intrin.h>
+#        endif
+#        if ROBIN_HOOD(BITNESS) == 32
+#            define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u32
+#        else
+#            define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u64
+#        endif
+#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
+#    elif defined _MSC_VER
+#        if ROBIN_HOOD(BITNESS) == 32
+#            define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward
+#        else
+#            define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward64
+#        endif
 #        include <intrin.h>
+#        pragma intrinsic(ROBIN_HOOD(BITSCANFORWARD))
+#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                       \
+            [](size_t mask) noexcept -> int {                                             \
+                unsigned long index;                                                      \
+                return ROBIN_HOOD(BITSCANFORWARD)(&index, mask) ? static_cast<int>(index) \
+                                                                : ROBIN_HOOD(BITNESS);    \
+            }(x)
 #    else
-#        include <x86intrin.h>
+#        if ROBIN_HOOD(BITNESS) == 32
+#            define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzl
+#            define ROBIN_HOOD_PRIVATE_DEFINITION_CLZ() __builtin_clzl
+#        else
+#            define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzll
+#            define ROBIN_HOOD_PRIVATE_DEFINITION_CLZ() __builtin_clzll
+#        endif
+#        define ROBIN_HOOD_COUNT_LEADING_ZEROES(x) ((x) ? ROBIN_HOOD(CLZ)(x) : ROBIN_HOOD(BITNESS))
+#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ((x) ? ROBIN_HOOD(CTZ)(x) : ROBIN_HOOD(BITNESS))
 #    endif
-#    if ROBIN_HOOD(BITNESS) == 32
-#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u32
-#    else
-#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u64
-#    endif
-#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
-#elif defined _MSC_VER
-#    if ROBIN_HOOD(BITNESS) == 32
-#        define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward
-#    else
-#        define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward64
-#    endif
-#    include <intrin.h>
-#    pragma intrinsic(ROBIN_HOOD(BITSCANFORWARD))
-#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                       \
-        [](size_t mask) noexcept -> int {                                             \
-            unsigned long index;                                                      \
-            return ROBIN_HOOD(BITSCANFORWARD)(&index, mask) ? static_cast<int>(index) \
-                                                            : ROBIN_HOOD(BITNESS);    \
-        }(x)
-#else
-#    if ROBIN_HOOD(BITNESS) == 32
-#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzl
-#        define ROBIN_HOOD_PRIVATE_DEFINITION_CLZ() __builtin_clzl
-#    else
-#        define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzll
-#        define ROBIN_HOOD_PRIVATE_DEFINITION_CLZ() __builtin_clzll
-#    endif
-#    define ROBIN_HOOD_COUNT_LEADING_ZEROES(x) ((x) ? ROBIN_HOOD(CLZ)(x) : ROBIN_HOOD(BITNESS))
-#    define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ((x) ? ROBIN_HOOD(CTZ)(x) : ROBIN_HOOD(BITNESS))
 #endif
 
 // fallthrough
@@ -224,33 +227,37 @@ static Counts& counts() {
 
 // detect hardware CRC availability. Microsoft's _M_IX86_FP only detects if SSE is present, but not
 // if 4.2 is there unfortunately.
-#if defined(__SSE4_2__) || defined(__ARM_FEATURE_CRC32) || \
-    ((defined(_M_IX86_FP) && (_M_IX86_FP >= 2))) || defined(_M_ARM64)
-#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 1
-#    if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)
-#        ifdef _M_ARM64
-#            include <arm64_neon.h>
-#        else
-#            include <arm_acle.h>
-#        endif
+#if !defined(ROBIN_HOOD_DISABLE_INTRINSICS)
+#    if defined(__SSE4_2__) || defined(__ARM_FEATURE_CRC32) || \
+        ((defined(_M_IX86_FP) && (_M_IX86_FP >= 2))) || defined(_M_ARM64)
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 1
+#        if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)
+#            ifdef _M_ARM64
+#                include <arm64_neon.h>
+#            else
+#                include <arm_acle.h>
+#            endif
 
-#        define ROBIN_HOOD_CRC32_64(crc, v) \
-            __crc32cd(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
-#        define ROBIN_HOOD_CRC32_32(crc, v) \
-            __crc32cw(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+#            define ROBIN_HOOD_CRC32_64(crc, v) \
+                __crc32cd(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
+#            define ROBIN_HOOD_CRC32_32(crc, v) \
+                __crc32cw(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+#        else
+#            include <nmmintrin.h>
+#            define ROBIN_HOOD_CRC32_64(crc, v) \
+                _mm_crc32_u64(static_cast<uint64_t>(crc), static_cast<uint64_t>(v))
+#            define ROBIN_HOOD_CRC32_32(crc, v) \
+                _mm_crc32_u32(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+#        endif
 #    else
-#        include <nmmintrin.h>
-#        define ROBIN_HOOD_CRC32_64(crc, v) \
-            _mm_crc32_u64(static_cast<uint64_t>(crc), static_cast<uint64_t>(v))
-#        define ROBIN_HOOD_CRC32_32(crc, v) \
-            _mm_crc32_u32(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 0
+#    endif
+
+#    if defined(_MSC_VER)
+#        include <intrin.h>
 #    endif
 #else
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 0
-#endif
-
-#if defined(_MSC_VER)
-#    include <intrin.h>
 #endif
 
 namespace robin_hood {
@@ -1480,13 +1487,29 @@ private:
                 mInfo += sizeof(size_t);
                 mKeyVals += sizeof(size_t);
             }
-#if ROBIN_HOOD(LITTLE_ENDIAN)
-            auto inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
+#if defined(ROBIN_HOOD_DISABLE_INTRINSICS)
+            // we know for certain that within the next 8 bytes we'll find a non-zero one.
+            if (ROBIN_HOOD_UNLIKELY(0U == detail::unaligned_load<uint32_t>(mInfo))) {
+                mInfo += 4;
+                mKeyVals += 4;
+            }
+            if (ROBIN_HOOD_UNLIKELY(0U == detail::unaligned_load<uint16_t>(mInfo))) {
+                mInfo += 2;
+                mKeyVals += 2;
+            }
+            if (ROBIN_HOOD_UNLIKELY(0U == *mInfo)) {
+                mInfo += 1;
+                mKeyVals += 1;
+            }
 #else
+#    if ROBIN_HOOD(LITTLE_ENDIAN)
+            auto inc = ROBIN_HOOD_COUNT_TRAILING_ZEROES(n) / 8;
+#    else
             auto inc = ROBIN_HOOD_COUNT_LEADING_ZEROES(n) / 8;
-#endif
+#    endif
             mInfo += inc;
             mKeyVals += inc;
+#endif
         }
 
         friend class Table<IsFlat, MaxLoadFactor100, key_type, mapped_type, hasher, key_equal>;

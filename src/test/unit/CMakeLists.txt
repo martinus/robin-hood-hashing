@@ -63,6 +63,7 @@ target_sources_local(rh PRIVATE
     unit_maps_of_maps.cpp
     unit_multiple_apis.cpp
     unit_mup.cpp
+    unit_no_intrinsics.cpp
     unit_not_copyable.cpp
     unit_not_moveable.cpp
     unit_overflow_collisions.cpp
