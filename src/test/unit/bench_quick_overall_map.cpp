@@ -11,26 +11,27 @@
 #include <unordered_set>
 
 TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, size_t>);
+TYPE_TO_STRING(robin_hood::unordered_flat_map<uint32_t, size_t>);
 TYPE_TO_STRING(robin_hood::unordered_flat_map<std::string, size_t>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<uint64_t, size_t>);
+TYPE_TO_STRING(robin_hood::unordered_node_map<uint32_t, size_t>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<std::string, size_t>);
 TYPE_TO_STRING(std::unordered_map<uint64_t, size_t>);
+TYPE_TO_STRING(std::unordered_map<uint32_t, size_t>);
 TYPE_TO_STRING(std::unordered_map<std::string, size_t>);
 
 namespace {
 
 template <typename K>
-inline K initKey();
-
-template <>
-inline uint64_t initKey<uint64_t>() {
+inline K initKey() {
     return {};
 }
 
-inline void randomizeKey(ankerl::nanobench::Rng* rng, int n, uint64_t* key) {
+template <typename T>
+inline void randomizeKey(ankerl::nanobench::Rng* rng, int n, T* key) {
     // we limit ourselfes to 32bit n
     auto limited = (((*rng)() >> 32U) * static_cast<uint64_t>(n)) >> 32U;
-    *key = limited;
+    *key = static_cast<T>(limited);
 }
 
 template <>
