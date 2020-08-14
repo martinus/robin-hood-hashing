@@ -21,14 +21,16 @@ if (RH_STANDALONE_PROJECT)
 
     # configuration see .clang-tidy
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        # set(CMAKE_CXX_CLANG_TIDY clang-tidy-6)
-        set(CMAKE_CXX_CLANG_TIDY clang-tidy)
+        find_program(CLANG_TIDY_PROGRAM NAMES clang-tidy)
+        if(CLANG_TIDY_PROGRAM)
+            set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_PROGRAM}")
+        endif()
     endif()
 
     find_program(CCACHE_PROGRAM ccache)
     if(CCACHE_PROGRAM)
         SET(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-    endif(CCACHE_PROGRAM)
+    endif()
 
     add_executable(rh "")
 
