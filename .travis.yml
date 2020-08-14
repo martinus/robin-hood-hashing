@@ -6,6 +6,13 @@ cache: ccache
 matrix:
   include:
 
+  - os: osx
+    osx_image: xcode11.4
+    compiler: clang
+    env:
+    - COMPILER=clang++
+    - CMAKE_OPTIONS="-DRH_cxx_standard=17"
+
   # coverage
   - os: linux
     compiler: gcc
