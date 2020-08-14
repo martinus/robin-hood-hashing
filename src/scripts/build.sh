@@ -1,12 +1,18 @@
 #/bin/bash
-set -ex
+set -e
 
 ROOTDIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd )"
 
 function buildAndTest() {
-    if [[ $# -ne 3 ]]
+    if [[ ${1:0:1} == "#" ]]
     then
-        echo "not correct number of args, doing nothing"
+        echo "commented out, doing nothing: '$*'"
+        return
+    fi
+
+    if [[ $# -lt 3 ]]
+    then
+        echo "not correct number of args, doing nothing: '$*'"
         return
     fi
 
@@ -19,14 +25,6 @@ function buildAndTest() {
     CXX_STANDARD=$2
     SANITIZER=$3
     CXXFLAGS=$4
-
-    if [[ ${COMPILER:0:1} == "#" ]]
-    then
-        echo "commented out, doing nothing"
-        return
-    fi
-
-
 
     DIRNAME=${COMPILER}_cxx${CXX_STANDARD}_sanitizer${SANITIZER}_${CXXFLAGS}
     
