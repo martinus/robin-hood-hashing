@@ -225,11 +225,9 @@ static Counts& counts() {
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NODISCARD()
 #endif
 
-// detect hardware CRC availability. Microsoft's _M_IX86_FP only detects if SSE is present, but not
-// if 4.2 is there unfortunately.
+// detect hardware CRC availability.
 #if !defined(ROBIN_HOOD_DISABLE_INTRINSICS)
-#    if defined(__SSE4_2__) || defined(__ARM_FEATURE_CRC32) || \
-        ((defined(_M_IX86_FP) && (_M_IX86_FP >= 2))) || defined(_M_ARM64)
+#    if defined(__SSE4_2__) || defined(__ARM_FEATURE_CRC32) || defined(_MSC_VER)
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 1
 #        if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)
 #            ifdef _M_ARM64
@@ -239,15 +237,15 @@ static Counts& counts() {
 #            endif
 
 #            define ROBIN_HOOD_CRC32_64(crc, v) \
-                __crc32cd(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
+                __crc32cd(static_cast< uint32_t >(crc), static_cast< uint64_t >(v))
 #            define ROBIN_HOOD_CRC32_32(crc, v) \
-                __crc32cw(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+                __crc32cw(static_cast< uint32_t >(crc), static_cast< uint32_t >(v))
 #        else
 #            include <nmmintrin.h>
 #            define ROBIN_HOOD_CRC32_64(crc, v) \
-                _mm_crc32_u64(static_cast<uint64_t>(crc), static_cast<uint64_t>(v))
+                _mm_crc32_u64(static_cast< uint64_t >(crc), static_cast< uint64_t >(v))
 #            define ROBIN_HOOD_CRC32_32(crc, v) \
-                _mm_crc32_u32(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+                _mm_crc32_u32(static_cast< uint32_t >(crc), static_cast< uint32_t >(v))
 #        endif
 #    else
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 0
@@ -777,17 +775,18 @@ static size_t fallback_hash_bytes(void const* ptr, size_t const len) noexcept {
 
 #if ROBIN_HOOD(HAS_CRC32)
 
+#    ifndef _M_ARM64
 // see e.g.
 // https://github.com/simdjson/simdjson/blob/9863f62321f59d73c7731d4ada2d7c4ed6a0a251/src/isadetection.h
 static inline void cpuid(uint32_t* eax, uint32_t* ebx, uint32_t* ecx, uint32_t* edx) {
-#    if defined(_MSC_VER)
+#        if defined(_MSC_VER)
     int cpuInfo[4];
     __cpuid(cpuInfo, static_cast<int>(*eax));
     *eax = static_cast<uint32_t>(cpuInfo[0]);
     *ebx = static_cast<uint32_t>(cpuInfo[1]);
     *ecx = static_cast<uint32_t>(cpuInfo[2]);
     *edx = static_cast<uint32_t>(cpuInfo[3]);
-#    else
+#        else
     uint32_t a = *eax;
     uint32_t b{};
     uint32_t c = *ecx;
@@ -798,8 +797,9 @@ static inline void cpuid(uint32_t* eax, uint32_t* ebx, uint32_t* ecx, uint32_t* 
     *ebx = b;
     *ecx = c;
     *edx = d;
-#    endif
+#        endif
 }
+#    endif
 
 inline bool checkCrc32Support() noexcept {
 #    if defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
@@ -819,6 +819,8 @@ inline bool checkCrc32Support() noexcept {
     if (hwcap != ENOENT) {
         return (hwcap & HWCAP_CRC32) != 0;
     }
+#    elif defined(_M_ARM64)
+    return true;
 #    endif
     return false;
 }
