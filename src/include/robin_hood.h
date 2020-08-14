@@ -225,26 +225,30 @@ static Counts& counts() {
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_NODISCARD()
 #endif
 
-// Use the correct CRC intrinsics. Hardware support is done at runtime.
+// detect hardware CRC availability.
 #if !defined(ROBIN_HOOD_DISABLE_INTRINSICS)
-#    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 1
-#    if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)
-#        ifdef _M_ARM64
-#            include <arm64_neon.h>
-#        else
-#            include <arm_acle.h>
-#        endif
+#    if defined(__SSE4_2__) || defined(__ARM_FEATURE_CRC32) || defined(_MSC_VER)
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 1
+#        if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)
+#            ifdef _M_ARM64
+#                include <arm64_neon.h>
+#            else
+#                include <arm_acle.h>
+#            endif
 
-#        define ROBIN_HOOD_CRC32_64(crc, v) \
-            __crc32cd(static_cast<uint32_t>(crc), static_cast<uint64_t>(v))
-#        define ROBIN_HOOD_CRC32_32(crc, v) \
-            __crc32cw(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+#            define ROBIN_HOOD_CRC32_64(crc, v) \
+                __crc32cd(static_cast< uint32_t >(crc), static_cast< uint64_t >(v))
+#            define ROBIN_HOOD_CRC32_32(crc, v) \
+                __crc32cw(static_cast< uint32_t >(crc), static_cast< uint32_t >(v))
+#        else
+#            include <nmmintrin.h>
+#            define ROBIN_HOOD_CRC32_64(crc, v) \
+                _mm_crc32_u64(static_cast< uint64_t >(crc), static_cast< uint64_t >(v))
+#            define ROBIN_HOOD_CRC32_32(crc, v) \
+                _mm_crc32_u32(static_cast< uint32_t >(crc), static_cast< uint32_t >(v))
+#        endif
 #    else
-#        include <nmmintrin.h>
-#        define ROBIN_HOOD_CRC32_64(crc, v) \
-            _mm_crc32_u64(static_cast<uint64_t>(crc), static_cast<uint64_t>(v))
-#        define ROBIN_HOOD_CRC32_32(crc, v) \
-            _mm_crc32_u32(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 0
 #    endif
 
 #    if defined(_MSC_VER)
