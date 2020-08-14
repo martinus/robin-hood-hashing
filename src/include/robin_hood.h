@@ -905,12 +905,23 @@ inline size_t hash_int(uint64_t x) noexcept {
     if (ROBIN_HOOD_LIKELY(hasCrc)) {
 #    if ROBIN_HOOD(BITNESS) == 64
         // rotr 32 results in bad hash, when hash_int is applied twice.
-        return ROBIN_HOOD_CRC32_64(UINT64_C(0xA24BAED4963EE407), x) ^
+        return ROBIN_HOOD_CRC32_64(0, x ^ UINT64_C(0xA24BAED4963EE407)) ^
                (ROBIN_HOOD_CRC32_64(0, x) << 32U);
 #    else
         return ROBIN_HOOD_CRC32_32(ROBIN_HOOD_CRC32_32(0, static_cast<uint32_t>(x)),
                                    static_cast<uint32_t>(x >> 32U));
 #    endif
+    }
+#endif
+    return fallback_hash_int(x);
+}
+
+inline size_t hash_int(uint32_t x) noexcept {
+#if ROBIN_HOOD(HAS_CRC32)
+    static bool const hasCrc = checkCrc32Support();
+    if (ROBIN_HOOD_LIKELY(hasCrc)) {
+        // rotr 32 results in bad hash, when hash_int is applied twice.
+        return ROBIN_HOOD_CRC32_32(0, x);
     }
 #endif
     return fallback_hash_int(x);
@@ -924,7 +935,7 @@ struct hash : public std::hash<T> {
         // call base hash
         auto result = std::hash<T>::operator()(obj);
         // return mixed of that, to be save against identity has
-        return hash_int(static_cast<uint64_t>(result));
+        return hash_int(static_cast<size_t>(result));
     }
 };
 
@@ -968,16 +979,19 @@ struct hash<std::shared_ptr<T>> {
 template <typename Enum>
 struct hash<Enum, typename std::enable_if<std::is_enum<Enum>::value>::type> {
     size_t operator()(Enum e) const noexcept {
-        return hash_int(static_cast<typename std::underlying_type<Enum>::type>(e));
+        using Underlying = typename std::underlying_type<Enum>::type;
+        return hash<Underlying>{}(static_cast<Underlying>(e));
     }
 };
 
-#define ROBIN_HOOD_HASH_INT(T)                           \
-    template <>                                          \
-    struct hash<T> {                                     \
-        size_t operator()(T const& obj) const noexcept { \
-            return hash_int(static_cast<uint64_t>(obj)); \
-        }                                                \
+#define ROBIN_HOOD_HASH_INT(T)                                                             \
+    template <>                                                                            \
+    struct hash<T> {                                                                       \
+        size_t operator()(T const& obj) const noexcept {                                   \
+            using Type =                                                                   \
+                std::conditional<sizeof(T) <= sizeof(uint32_t), uint32_t, uint64_t>::type; \
+            return hash_int(static_cast<Type>(obj));                                       \
+        }                                                                                  \
     }
 
 #if defined(__GNUC__) && !defined(__clang__)
