@@ -778,6 +778,7 @@ static inline void cpuid(uint32_t* eax, uint32_t* ebx, uint32_t* ecx, uint32_t* 
     uint32_t b{};
     uint32_t c = *ecx;
     uint32_t d{};
+    // NOLINTNEXTLINE(hicpp-no-assembler)
     asm volatile("cpuid\n\t" : "+a"(a), "=b"(b), "+c"(c), "=d"(d));
     *eax = a;
     *ebx = b;
