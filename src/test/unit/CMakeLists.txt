@@ -72,6 +72,7 @@ target_sources_local(rh PRIVATE
     unit_pair_trivial.cpp
     unit_random_verifier.cpp
     unit_reserve_and_assign.cpp
+    unit_rotr.cpp
     unit_reserve.cpp
     unit_scoped_free.cpp
     unit_sfc64_is_deterministic.cpp
