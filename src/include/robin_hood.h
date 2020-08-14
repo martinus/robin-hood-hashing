@@ -338,6 +338,13 @@ using index_sequence_for = make_index_sequence<sizeof...(T)>;
 
 namespace detail {
 
+// make sure we static_cast to the correct type for hash_int
+#if ROBIN_HOOD(BITNESS) == 64
+using SizeT = uint64_t;
+#else
+using SizeT = uint32_t;
+#endif
+
 template <typename T>
 T rotr(T x, unsigned k) {
     return (x >> k) | (x << (8U * sizeof(T) - k));
@@ -942,7 +949,7 @@ struct hash : public std::hash<T> {
         // call base hash
         auto result = std::hash<T>::operator()(obj);
         // return mixed of that, to be save against identity has
-        return hash_int(static_cast<size_t>(result));
+        return hash_int(static_cast<detail::SizeT>(result));
     }
 };
 
@@ -965,21 +972,21 @@ struct hash<std::basic_string_view<CharT>> {
 template <class T>
 struct hash<T*> {
     size_t operator()(T* ptr) const noexcept {
-        return hash_int(reinterpret_cast<size_t>(ptr));
+        return hash_int(reinterpret_cast<detail::SizeT>(ptr));
     }
 };
 
 template <class T>
 struct hash<std::unique_ptr<T>> {
     size_t operator()(std::unique_ptr<T> const& ptr) const noexcept {
-        return hash_int(reinterpret_cast<size_t>(ptr.get()));
+        return hash_int(reinterpret_cast<detail::SizeT>(ptr.get()));
     }
 };
 
 template <class T>
 struct hash<std::shared_ptr<T>> {
     size_t operator()(std::shared_ptr<T> const& ptr) const noexcept {
-        return hash_int(reinterpret_cast<size_t>(ptr.get()));
+        return hash_int(reinterpret_cast<detail::SizeT>(ptr.get()));
     }
 };
 
