@@ -50,6 +50,9 @@
 #if __cplusplus >= 201703L
 #    include <string_view>
 #endif
+#if defined(__aarch64__)
+#    include <sys/auxv.h> // for getauxval
+#endif
 
 // #define ROBIN_HOOD_LOG_ENABLED
 #ifdef ROBIN_HOOD_LOG_ENABLED
@@ -237,15 +240,17 @@ static Counts& counts() {
 #            endif
 
 #            define ROBIN_HOOD_CRC32_64(crc, v) \
-                __crc32cd(static_cast< uint32_t >(crc), static_cast< uint64_t >(v))
+                static_cast<uint64_t>(          \
+                    __crc32cd(static_cast<uint32_t>(crc), static_cast<uint64_t>(v)))
 #            define ROBIN_HOOD_CRC32_32(crc, v) \
-                __crc32cw(static_cast< uint32_t >(crc), static_cast< uint32_t >(v))
+                __crc32cw(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
 #        else
 #            include <nmmintrin.h>
 #            define ROBIN_HOOD_CRC32_64(crc, v) \
-                _mm_crc32_u64(static_cast< uint64_t >(crc), static_cast< uint64_t >(v))
+                static_cast<uint64_t>(          \
+                    _mm_crc32_u64(static_cast<uint64_t>(crc), static_cast<uint64_t>(v)))
 #            define ROBIN_HOOD_CRC32_32(crc, v) \
-                _mm_crc32_u32(static_cast< uint32_t >(crc), static_cast< uint32_t >(v))
+                _mm_crc32_u32(static_cast<uint32_t>(crc), static_cast<uint32_t>(v))
 #        endif
 #    else
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_CRC32() 0
