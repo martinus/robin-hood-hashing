@@ -820,9 +820,11 @@ inline bool checkCrc32Support() noexcept {
     // check SSE4.2
     return 0U != (ecx & (1U << 20U));
 #    elif defined(__aarch64__)
-    uint32_t hwcap = getauxval(AT_HWCAP);
+    auto hwcap = getauxval(AT_HWCAP);
     if (hwcap != ENOENT) {
-        return (hwcap & HWCAP_CRC32) != 0;
+        // HWCAP_CRC32 is not necessarily defined, so hardcode it.
+        // see https://github.com/torvalds/linux/blob/master/arch/arm64/include/uapi/asm/hwcap.h
+        return (hwcap & (1U << 7U)) != 0;
     }
 #    elif defined(_M_ARM64)
     return true;
