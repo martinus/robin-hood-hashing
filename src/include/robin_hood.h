@@ -135,21 +135,7 @@ static Counts& counts() {
 
 // count leading/trailing bits
 #if !defined(ROBIN_HOOD_DISABLE_INTRINSICS)
-#    if ((defined __i386 || defined __x86_64__) && defined __BMI__) || defined _M_IX86 || \
-        defined _M_X64
-#        ifdef _MSC_VER
-#            include <intrin.h>
-#        endif
-#        if ROBIN_HOOD(BITNESS) == 32
-// _tzcnt_u32 clashes with dotNetCorePal windows.h include in linux. Use __builtin_ctzl here
-// instead.
-#            define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzl
-#        else
-#            include <x86intrin.h> 
-#            define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u64
-#        endif
-#        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
-#    elif defined _MSC_VER
+#    ifdef _MSC_VER
 #        if ROBIN_HOOD(BITNESS) == 32
 #            define ROBIN_HOOD_PRIVATE_DEFINITION_BITSCANFORWARD() _BitScanForward
 #        else
