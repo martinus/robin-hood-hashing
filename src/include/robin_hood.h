@@ -145,7 +145,9 @@ static Counts& counts() {
 // instead.
 #            define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzl
 #        else
-#            include <x86intrin.h> 
+#            ifndef _MSC_VER
+#                include <x86intrin.h> 
+#            endif
 #            define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() _tzcnt_u64
 #        endif
 #        define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x) ROBIN_HOOD(CTZ)(x)
