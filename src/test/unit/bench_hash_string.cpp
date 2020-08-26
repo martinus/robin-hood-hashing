@@ -31,7 +31,7 @@ namespace {
 template <typename Op>
 void bench(std::string name, Op&& op) {
     ankerl::nanobench::Rng rng(123);
-    std::vector<uint8_t> blob(10000000, 'x');
+    std::vector<uint8_t> blob(10000, 'x');
     for (auto& b : blob) {
         b = static_cast<uint8_t>(rng());
     }
@@ -44,7 +44,7 @@ void bench(std::string name, Op&& op) {
             ankerl::nanobench::doNotOptimizeAway(op(blob.data(), len));
             blob[0] = static_cast<uint8_t>(blob[0] + UINT8_C(1));
             blob[len / 2] = static_cast<uint8_t>(blob[len / 2] + UINT8_C(2));
-            blob[len] = static_cast<uint8_t>(blob[len] + UINT8_C(3));
+            blob[len - 1] = static_cast<uint8_t>(blob[len - 1] + UINT8_C(3));
         });
         len = std::max(len + 1, (len * 101U) / 100U);
     }
