@@ -23,7 +23,7 @@ TEST_CASE_TEMPLATE("bench_swap" * doctest::test_suite("nanobench") * doctest::sk
         }
         bench.complexityN(a.size()).run("swap " + type_string(a), [&] { std::swap(a, b); });
     }
-    ankerl::nanobench::doNotOptimizeAway(a);
-    ankerl::nanobench::doNotOptimizeAway(b);
+    ankerl::nanobench::doNotOptimizeAway(&a);
+    ankerl::nanobench::doNotOptimizeAway(&b);
     std::cout << bench.complexityBigO() << std::endl;
 }

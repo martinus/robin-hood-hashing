@@ -32,7 +32,7 @@
 
 // see https://semver.org/
 #define ANKERL_NANOBENCH_VERSION_MAJOR 4 // incompatible API changes
-#define ANKERL_NANOBENCH_VERSION_MINOR 0 // backwards-compatible changes
+#define ANKERL_NANOBENCH_VERSION_MINOR 2 // backwards-compatible changes
 #define ANKERL_NANOBENCH_VERSION_PATCH 0 // backwards-compatible bug fixes
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,9 +78,14 @@
 
 #if defined(ANKERL_NANOBENCH_LOG_ENABLED)
 #    include <iostream>
-#    define ANKERL_NANOBENCH_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
+#    define ANKERL_NANOBENCH_LOG(x)                                                 \
+        do {                                                                        \
+            std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl; \
+        } while (0)
 #else
-#    define ANKERL_NANOBENCH_LOG(x)
+#    define ANKERL_NANOBENCH_LOG(x) \
+        do {                        \
+        } while (0)
 #endif
 
 #if defined(__linux__) && !defined(ANKERL_NANOBENCH_DISABLE_PERF_COUNTERS)
@@ -208,7 +213,7 @@ class BigO;
  *
  *    * `{{#measurement}}` To access individual measurement results, open the begin tag for measurements.
  *
- *       * `{{elapsed}}` Average elapsed time per iteration, in seconds.
+ *       * `{{elapsed}}` Average elapsed wall clock time per iteration, in seconds.
  *
  *       * `{{iterations}}` Number of iterations in the measurement. The number of iterations will fluctuate due
  *         to some applied randomness, to enhance accuracy.
@@ -262,6 +267,7 @@ class BigO;
    * :cpp:func:`templates::csv() <ankerl::nanobench::templates::csv()>`
    * :cpp:func:`templates::json() <ankerl::nanobench::templates::json()>`
    * :cpp:func:`templates::htmlBoxplot() <ankerl::nanobench::templates::htmlBoxplot()>`
+   * :cpp:func:`templates::pyperf() <ankerl::nanobench::templates::pyperf()>`
 
    @endverbatim
  *
@@ -270,6 +276,7 @@ class BigO;
  * @param out Output for the generated output.
  */
 void render(char const* mustacheTemplate, Bench const& bench, std::ostream& out);
+void render(std::string const& mustacheTemplate, Bench const& bench, std::ostream& out);
 
 /**
  * Same as render(char const* mustacheTemplate, Bench const& bench, std::ostream& out), but for when
@@ -280,6 +287,7 @@ void render(char const* mustacheTemplate, Bench const& bench, std::ostream& out)
  * @param out Output for the generated output.
  */
 void render(char const* mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
+void render(std::string const& mustacheTemplate, std::vector<Result> const& results, std::ostream& out);
 
 // Contains mustache-like templates
 namespace templates {
@@ -298,7 +306,7 @@ char const* csv() noexcept;
 /*!
   @brief HTML output that uses plotly to generate an interactive boxplot chart. See the tutorial for an example output.
 
-  The output uses only the elapsed time, and displays each epoch as a single dot.
+  The output uses only the elapsed wall clock time, and displays each epoch as a single dot.
   @verbatim embed:rst
   See the tutorial at :ref:`tutorial-template-html` for an example.
   @endverbatim
@@ -306,6 +314,14 @@ char const* csv() noexcept;
   @see ankerl::nanobench::render()
  */
 char const* htmlBoxplot() noexcept;
+
+/*!
+ @brief Output in pyperf  compatible JSON format, which can be used for more analyzations.
+ @verbatim embed:rst
+ See the tutorial at :ref:`tutorial-template-pyperf` for an example how to further analyze the output.
+ @endverbatim
+ */
+char const* pyperf() noexcept;
 
 /*!
   @brief Template to generate JSON data.
@@ -370,6 +386,8 @@ struct Config {
     uint64_t mEpochIterations{0}; // If not 0, run *exactly* these number of iterations per epoch.
     uint64_t mWarmup = 0;
     std::ostream* mOut = nullptr;
+    std::chrono::duration<double> mTimeUnit = std::chrono::nanoseconds{1};
+    std::string mTimeUnitName = "ns";
     bool mShowPerformanceCounters = true;
     bool mIsRelative = false;
 
@@ -668,6 +686,19 @@ public:
     ANKERL_NANOBENCH(NODISCARD) std::string const& unit() const noexcept;
 
     /**
+     * @brief Sets the time unit to be used for the default output.
+     *
+     * Nanobench defaults to using ns (nanoseconds) as output in the markdown. For some benchmarks this is too coarse, so it is
+     * possible to configure this. E.g. use `timeUnit(1ms, "ms")` to show `ms/op` instead of `ns/op`.
+     *
+     * @param tu Time unit to display the results in, default is 1ns.
+     * @param tuName Name for the time unit, default is "ns"
+     */
+    Bench& timeUnit(std::chrono::duration<double> const& tu, std::string const& tuName);
+    ANKERL_NANOBENCH(NODISCARD) std::string const& timeUnitName() const noexcept;
+    ANKERL_NANOBENCH(NODISCARD) std::chrono::duration<double> const& timeUnit() const noexcept;
+
+    /**
      * @brief Set the output stream where the resulting markdown table will be printed to.
      *
      * The default is `&std::cout`. You can disable all output by setting `nullptr`.
@@ -917,6 +948,7 @@ public:
       @endverbatim
      */
     Bench& render(char const* templateContent, std::ostream& os);
+    Bench& render(std::string const& templateContent, std::ostream& os);
 
     Bench& config(Config const& benchmarkConfig);
     ANKERL_NANOBENCH(NODISCARD) Config const& config() const noexcept;
@@ -946,23 +978,24 @@ void doNotOptimizeAway(T const& val);
 
 #else
 
-// see folly's Benchmark.h
+// These assembly magic is directly from what Google Benchmark is doing. I have previously used what facebook's folly was doing, but
+// this seemd to have compilation problems in some cases. Google Benchmark seemed to be the most well tested anyways.
+// see https://github.com/google/benchmark/blob/master/include/benchmark/benchmark.h#L307
 template <typename T>
-constexpr bool doNotOptimizeNeedsIndirect() {
-    using Decayed = typename std::decay<T>::type;
-    return !ANKERL_NANOBENCH_IS_TRIVIALLY_COPYABLE(Decayed) || sizeof(Decayed) > sizeof(long) || std::is_pointer<Decayed>::value;
+void doNotOptimizeAway(T const& val) {
+    // NOLINTNEXTLINE(hicpp-no-assembler)
+    asm volatile("" : : "r,m"(val) : "memory");
 }
 
 template <typename T>
-typename std::enable_if<!doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway(T const& val) {
+void doNotOptimizeAway(T& val) {
+#    if defined(__clang__)
     // NOLINTNEXTLINE(hicpp-no-assembler)
-    asm volatile("" ::"r"(val));
-}
-
-template <typename T>
-typename std::enable_if<doNotOptimizeNeedsIndirect<T>()>::type doNotOptimizeAway(T const& val) {
+    asm volatile("" : "+r,m"(val) : : "memory");
+#    else
     // NOLINTNEXTLINE(hicpp-no-assembler)
-    asm volatile("" ::"m"(val) : "memory");
+    asm volatile("" : "+m,r"(val) : : "memory");
+#    endif
 }
 #endif
 
@@ -1307,6 +1340,30 @@ char const* htmlBoxplot() noexcept {
 </html>)DELIM";
 }
 
+char const* pyperf() noexcept {
+    return R"DELIM({
+    "benchmarks": [
+        {
+            "runs": [
+                {
+                    "values": [
+{{#measurement}}                        {{elapsed}}{{^-last}},
+{{/last}}{{/measurement}}
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "loops": {{sum(iterations)}},
+        "inner_loops": {{batch}},
+        "name": "{{title}}",
+        "unit": "second"
+    },
+    "version": "1.0"
+})DELIM";
+}
+
 char const* json() noexcept {
     return R"DELIM({
     "results": [
@@ -1411,6 +1468,7 @@ static std::vector<Node> parseMustacheTemplate(char const** tpl) {
 }
 
 static bool generateFirstLast(Node const& n, size_t idx, size_t size, std::ostream& out) {
+    ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
     bool matchFirst = n == "-first";
     bool matchLast = n == "-last";
     if (!matchFirst && !matchLast) {
@@ -1569,7 +1627,7 @@ static std::ostream& generateResultTag(Node const& n, Result const& r, std::ostr
 static void generateResultMeasurement(std::vector<Node> const& nodes, size_t idx, Result const& r, std::ostream& out) {
     for (auto const& n : nodes) {
         if (!generateFirstLast(n, idx, r.size(), out)) {
-            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type))
+            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
             switch (n.type) {
             case Node::Type::content:
                 out.write(n.begin, std::distance(n.begin, n.end));
@@ -1599,7 +1657,7 @@ static void generateResult(std::vector<Node> const& nodes, size_t idx, std::vect
     auto const& r = results[idx];
     for (auto const& n : nodes) {
         if (!generateFirstLast(n, idx, results.size(), out)) {
-            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type))
+            ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
             switch (n.type) {
             case Node::Type::content:
                 out.write(n.begin, std::distance(n.begin, n.end));
@@ -1633,6 +1691,7 @@ namespace detail {
 
 char const* getEnv(char const* name);
 bool isEndlessRunning(std::string const& name);
+bool isWarningsEnabled();
 
 template <typename T>
 T parseFile(std::string const& filename);
@@ -1756,7 +1815,7 @@ void render(char const* mustacheTemplate, std::vector<Result> const& results, st
     auto nodes = templates::parseMustacheTemplate(&mustacheTemplate);
 
     for (auto const& n : nodes) {
-        ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type))
+        ANKERL_NANOBENCH_LOG("n.type=" << static_cast<int>(n.type));
         switch (n.type) {
         case templates::Node::Type::content:
             out.write(n.begin, std::distance(n.begin, n.end));
@@ -1771,23 +1830,47 @@ void render(char const* mustacheTemplate, std::vector<Result> const& results, st
                 for (size_t i = 0; i < nbResults; ++i) {
                     generateResult(n.children, i, results, out);
                 }
+            } else if (n == "measurement") {
+                if (results.size() != 1) {
+                    throw std::runtime_error(
+                        "render: can only use section 'measurement' here if there is a single result, but there are " +
+                        detail::fmt::to_s(results.size()));
+                }
+                // when we only have a single result, we can immediately go into its measurement.
+                auto const& r = results.front();
+                for (size_t i = 0; i < r.size(); ++i) {
+                    generateResultMeasurement(n.children, i, r, out);
+                }
             } else {
-                throw std::runtime_error("unknown section '" + std::string(n.begin, n.end) + "'");
+                throw std::runtime_error("render: unknown section '" + std::string(n.begin, n.end) + "'");
             }
             break;
 
         case templates::Node::Type::tag:
-            // This just uses the last result's config.
-            if (!generateConfigTag(n, results.back().config(), out)) {
-                throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+            if (results.size() == 1) {
+                // result & config are both supported there
+                generateResultTag(n, results.front(), out);
+            } else {
+                // This just uses the last result's config.
+                if (!generateConfigTag(n, results.back().config(), out)) {
+                    throw std::runtime_error("unknown tag '" + std::string(n.begin, n.end) + "'");
+                }
             }
             break;
         }
     }
 }
 
+void render(std::string const& mustacheTemplate, std::vector<Result> const& results, std::ostream& out) {
+    render(mustacheTemplate.c_str(), results, out);
+}
+
 void render(char const* mustacheTemplate, const Bench& bench, std::ostream& out) {
     render(mustacheTemplate, bench.results(), out);
+}
+
+void render(std::string const& mustacheTemplate, const Bench& bench, std::ostream& out) {
+    render(mustacheTemplate.c_str(), bench.results(), out);
 }
 
 namespace detail {
@@ -1836,6 +1919,12 @@ char const* getEnv(char const* name) {
 bool isEndlessRunning(std::string const& name) {
     auto endless = getEnv("NANOBENCH_ENDLESS");
     return nullptr != endless && endless == name;
+}
+
+// True when environment variable NANOBENCH_SUPPRESS_WARNINGS is either not set at all, or set to "0"
+bool isWarningsEnabled() {
+    auto suppression = getEnv("NANOBENCH_SUPPRESS_WARNINGS");
+    return nullptr == suppression || suppression == std::string("0");
 }
 
 void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<std::string>& recommendations) {
@@ -1890,13 +1979,13 @@ void gatherStabilityInformation(std::vector<std::string>& warnings, std::vector<
         recommendations.emplace_back("Make sure you compile for Release");
     }
     if (recommendPyPerf) {
-        recommendations.emplace_back("Use 'pyperf system tune' before benchmarking. See https://github.com/vstinner/pyperf");
+        recommendations.emplace_back("Use 'pyperf system tune' before benchmarking. See https://github.com/psf/pyperf");
     }
 }
 
 void printStabilityInformationOnce(std::ostream* outStream) {
     static bool shouldPrint = true;
-    if (shouldPrint && outStream) {
+    if (shouldPrint && outStream && isWarningsEnabled()) {
         auto& os = *outStream;
         shouldPrint = false;
         std::vector<std::string> warnings;
@@ -1922,15 +2011,6 @@ void printStabilityInformationOnce(std::ostream* outStream) {
 uint64_t& singletonHeaderHash() noexcept {
     static uint64_t sHeaderHash{};
     return sHeaderHash;
-}
-
-ANKERL_NANOBENCH_NO_SANITIZE("integer")
-inline uint64_t fnv1a(std::string const& str) noexcept {
-    auto val = UINT64_C(14695981039346656037);
-    for (auto c : str) {
-        val = (val ^ static_cast<uint8_t>(c)) * UINT64_C(1099511628211);
-    }
-    return val;
 }
 
 ANKERL_NANOBENCH_NO_SANITIZE("integer")
@@ -2085,11 +2165,11 @@ struct IterationLogic::Impl {
         ANKERL_NANOBENCH_LOG(mBench.name() << ": " << detail::fmt::Number(20, 3, static_cast<double>(elapsed.count())) << " elapsed, "
                                            << detail::fmt::Number(20, 3, static_cast<double>(mTargetRuntimePerEpoch.count()))
                                            << " target. oldIters=" << oldIters << ", mNumIters=" << mNumIters
-                                           << ", mState=" << static_cast<int>(mState))
+                                           << ", mState=" << static_cast<int>(mState));
     }
 
     void showResult(std::string const& errorMessage) const {
-        ANKERL_NANOBENCH_LOG(errorMessage)
+        ANKERL_NANOBENCH_LOG(errorMessage);
 
         if (mBench.output() != nullptr) {
             // prepare column data ///////
@@ -2109,7 +2189,8 @@ struct IterationLogic::Impl {
                 columns.emplace_back(14, 0, "complexityN", "", mBench.complexityN());
             }
 
-            columns.emplace_back(22, 2, "ns/" + mBench.unit(), "", 1e9 * rMedian / mBench.batch());
+            columns.emplace_back(22, 2, mBench.timeUnitName() + "/" + mBench.unit(), "",
+                                 rMedian / (mBench.timeUnit().count() * mBench.batch()));
             columns.emplace_back(22, 2, mBench.unit() + "/s", "", rMedian <= 0.0 ? 0.0 : mBench.batch() / rMedian);
 
             double rErrorMedian = mResult.medianAbsolutePercentError(Result::Measure::elapsed);
@@ -2141,14 +2222,17 @@ struct IterationLogic::Impl {
                 }
             }
 
-            columns.emplace_back(12, 2, "total", "", mResult.sum(Result::Measure::elapsed));
+            columns.emplace_back(12, 2, "total", "", mResult.sumProduct(Result::Measure::iterations, Result::Measure::elapsed));
 
             // write everything
             auto& os = *mBench.output();
 
+            // combine all elements that are relevant for printing the header
             uint64_t hash = 0;
-            hash = hash_combine(fnv1a(mBench.unit()), hash);
-            hash = hash_combine(fnv1a(mBench.title()), hash);
+            hash = hash_combine(std::hash<std::string>{}(mBench.unit()), hash);
+            hash = hash_combine(std::hash<std::string>{}(mBench.title()), hash);
+            hash = hash_combine(std::hash<std::string>{}(mBench.timeUnitName()), hash);
+            hash = hash_combine(std::hash<double>{}(mBench.timeUnit().count()), hash);
             hash = hash_combine(mBench.relative(), hash);
             hash = hash_combine(mBench.performanceCounters(), hash);
 
@@ -2178,7 +2262,7 @@ struct IterationLogic::Impl {
                     os << col.value();
                 }
                 os << "| ";
-                auto showUnstable = rErrorMedian >= 0.05;
+                auto showUnstable = isWarningsEnabled() && rErrorMedian >= 0.05;
                 if (showUnstable) {
                     os << ":wavy_dash: ";
                 }
@@ -2222,7 +2306,7 @@ IterationLogic::~IterationLogic() {
 }
 
 uint64_t IterationLogic::numIters() const noexcept {
-    ANKERL_NANOBENCH_LOG(mPimpl->mBench.name() << ": mNumIters=" << mPimpl->mNumIters)
+    ANKERL_NANOBENCH_LOG(mPimpl->mBench.name() << ": mNumIters=" << mPimpl->mNumIters);
     return mPimpl->mNumIters;
 }
 
@@ -2964,6 +3048,20 @@ std::string const& Bench::unit() const noexcept {
     return mConfig.mUnit;
 }
 
+Bench& Bench::timeUnit(std::chrono::duration<double> const& tu, std::string const& tuName) {
+    mConfig.mTimeUnit = tu;
+    mConfig.mTimeUnitName = tuName;
+    return *this;
+}
+
+std::string const& Bench::timeUnitName() const noexcept {
+    return mConfig.mTimeUnitName;
+}
+
+std::chrono::duration<double> const& Bench::timeUnit() const noexcept {
+    return mConfig.mTimeUnit;
+}
+
 // If benchmarkTitle differs from currently set title, the stored results will be cleared.
 Bench& Bench::title(const char* benchmarkTitle) {
     if (benchmarkTitle != mConfig.mBenchmarkTitle) {
@@ -3080,6 +3178,11 @@ std::vector<Result> const& Bench::results() const noexcept {
 }
 
 Bench& Bench::render(char const* templateContent, std::ostream& os) {
+    ::ankerl::nanobench::render(templateContent, *this, os);
+    return *this;
+}
+
+Bench& Bench::render(std::string const& templateContent, std::ostream& os) {
     ::ankerl::nanobench::render(templateContent, *this, os);
     return *this;
 }
