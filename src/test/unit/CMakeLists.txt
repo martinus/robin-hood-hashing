@@ -44,6 +44,7 @@ target_sources_local(rh PRIVATE
     unit_count.cpp
     unit_diamond.cpp
     unit_empty.cpp
+    unit_explicitctor.cpp
     unit_fallback_hash.cpp
     unit_hash_char_types.cpp
     unit_hash_smart_ptr.cpp
@@ -73,8 +74,8 @@ target_sources_local(rh PRIVATE
     unit_pair_trivial.cpp
     unit_random_verifier.cpp
     unit_reserve_and_assign.cpp
-    unit_rotr.cpp
     unit_reserve.cpp
+    unit_rotr.cpp
     unit_scoped_free.cpp
     unit_sfc64_is_deterministic.cpp
     unit_sizeof.cpp

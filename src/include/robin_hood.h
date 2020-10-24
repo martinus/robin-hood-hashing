@@ -1756,13 +1756,19 @@ public:
     using iterator = Iter<false>;
     using const_iterator = Iter<true>;
 
+    Table() noexcept(noexcept(Hash()) && noexcept(KeyEqual()))
+        : WHash()
+        , WKeyEqual() {
+        ROBIN_HOOD_TRACE(this)
+    }
+
     // Creates an empty hash map. Nothing is allocated yet, this happens at the first insert.
     // This tremendously speeds up ctor & dtor of a map that never receives an element. The
     // penalty is payed at the first insert, and not before. Lookup of this empty map works
     // because everybody points to DummyInfoByte::b. parameter bucket_count is dictated by the
     // standard, but we can ignore it.
     explicit Table(
-        size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0, const Hash& h = Hash{},
+        size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/, const Hash& h = Hash{},
         const KeyEqual& equal = KeyEqual{}) noexcept(noexcept(Hash(h)) && noexcept(KeyEqual(equal)))
         : WHash(h)
         , WKeyEqual(equal) {
