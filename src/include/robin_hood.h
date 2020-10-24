@@ -50,9 +50,6 @@
 #if __cplusplus >= 201703L
 #    include <string_view>
 #endif
-#if defined(__aarch64__)
-#    include <sys/auxv.h> // for getauxval
-#endif
 
 // #define ROBIN_HOOD_LOG_ENABLED
 #ifdef ROBIN_HOOD_LOG_ENABLED
