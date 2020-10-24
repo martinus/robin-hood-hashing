@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#if ROBIN_HOOD(CXX) >= ROBIN_HOOD(CXX14)
+
 struct Texture {
     int width;
     int height;
@@ -27,3 +29,5 @@ struct AppState {
 TEST_CASE("unit_create_AppState (issue #97)") {
     AppState appState{};
 }
+
+#endif
