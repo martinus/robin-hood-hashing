@@ -38,7 +38,7 @@ MESSAGE(STATUS "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}, C++${CMA
 
 function(add_compile_flags_target target)
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(${target} PRIVATE -march=native)
+        # target_compile_options(${target} PRIVATE -march=native)
         target_compile_options(${target} PRIVATE -fdiagnostics-color)
         target_compile_options(${target} PRIVATE -Werror)
         target_compile_options(${target} PRIVATE -pedantic)
