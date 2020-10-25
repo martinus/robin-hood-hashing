@@ -106,7 +106,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS="-DRH_sanitizer=OFF -DRH_cxx_standard=11"
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=11"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -116,7 +116,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS="-DRH_sanitizer=OFF -DRH_cxx_standard=14"
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=14"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -126,7 +126,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS="-DRH_sanitizer=OFF -DRH_cxx_standard=17"
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -137,7 +137,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS="-DRH_sanitizer=OFF -DRH_cxx_standard=11"
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=11"
     - CXXFLAGS="-m32"
     - LDFLAGS="-m32"
     addons:
@@ -149,7 +149,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS="-DRH_sanitizer=OFF -DRH_cxx_standard=14"
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=14"
     - CXXFLAGS="-m32"
     - LDFLAGS="-m32"
     addons:
@@ -161,7 +161,7 @@ matrix:
     compiler: gcc
     env:
     - COMPILER=g++-8
-    - CMAKE_OPTIONS="-DRH_sanitizer=OFF -DRH_cxx_standard=17"
+    - CMAKE_OPTIONS="-DRH_sanitizer=ON -DRH_cxx_standard=17"
     - CXXFLAGS="-m32"
     - LDFLAGS="-m32"
     addons:
