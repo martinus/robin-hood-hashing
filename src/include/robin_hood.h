@@ -318,14 +318,14 @@ inline T reinterpret_cast_no_cast_align_warning(void const* ptr) noexcept {
 // make sure this is not inlined as it is slow and dramatically enlarges code, thus making other
 // inlinings more difficult. Throws are also generally the slow path.
 template <typename E, typename... Args>
-ROBIN_HOOD(NOINLINE)
+[[noreturn]] ROBIN_HOOD(NOINLINE)
 #if ROBIN_HOOD(HAS_EXCEPTIONS)
-void doThrow(Args&&... args) {
+    void doThrow(Args&&... args) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
     throw E(std::forward<Args>(args)...);
 }
 #else
-void doThrow(Args&&... ROBIN_HOOD_UNUSED(args) /*unused*/) {
+    void doThrow(Args&&... ROBIN_HOOD_UNUSED(args) /*unused*/) {
     abort();
 }
 #endif

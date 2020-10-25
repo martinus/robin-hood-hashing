@@ -83,3 +83,13 @@ TEST_CASE_TEMPLATE("reserve_and_assign", Map, robin_hood::unordered_flat_map<std
     REQUIRE(checksum::map(a) == checksum::map(c));
     REQUIRE(c.find("button") != c.end()); // Fails.
 }
+
+TEST_CASE("unit_reserve_only_flat") {
+    robin_hood::unordered_flat_map<std::string, uint64_t> map;
+    map.reserve(51);
+}
+
+TEST_CASE("unit_reserve_only_node") {
+    robin_hood::unordered_flat_map<std::string, uint64_t> map;
+    map.reserve(51);
+}
