@@ -2095,8 +2095,13 @@ private:
                 }
             }
 
-            // don't destroy old data: put it into the pool instead
-            DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElementsWithBuffer));
+            // this check is not necessary as it's guarded by the previous if, but it helps silence
+            // g++'s overeager "attempt to free a non-heap object 'map'
+            // [-Werror=free-nonheap-object]" warning.
+            if (oldKeyVals != reinterpret_cast_no_cast_align_warning<Node*>(&mMask)) {
+                // don't destroy old data: put it into the pool instead
+                DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElementsWithBuffer));
+            }
         }
     }
 
