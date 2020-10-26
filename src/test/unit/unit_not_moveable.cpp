@@ -27,10 +27,10 @@ TYPE_TO_STRING(robin_hood::unordered_node_map<size_t, NoCopyMove>);
 
 // doesn't work with robin_hood::unordered_flat_map<size_t, NoCopyMove> because not movable and not
 // copyable
-TEST_CASE_TEMPLATE("not moveable", Map, robin_hood::unordered_node_map<unsigned int, NoCopyMove>) {
+TEST_CASE_TEMPLATE("not moveable", Map, robin_hood::unordered_node_map<size_t, NoCopyMove>) {
     // it's ok because it is movable.
     Map m;
-    for (typename Map::key_type i = 0; i < 100; ++i) {
+    for (size_t i = 0; i < 100; ++i) {
         m[i];
         m.emplace(std::piecewise_construct, std::forward_as_tuple(i * 100),
                   std::forward_as_tuple(i));
