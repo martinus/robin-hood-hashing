@@ -2099,8 +2099,12 @@ private:
             // g++'s overeager "attempt to free a non-heap object 'map'
             // [-Werror=free-nonheap-object]" warning.
             if (oldKeyVals != reinterpret_cast_no_cast_align_warning<Node*>(&mMask)) {
-                // don't destroy old data: put it into the pool instead
-                DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElementsWithBuffer));
+                if(empty()) {
+                    std::free(oldKeyVals);
+                } else {
+                    // don't destroy old data: put it into the pool instead
+                    DataPool::addOrFree(oldKeyVals, calcNumBytesTotal(oldMaxElementsWithBuffer));
+                }
             }
         }
     }
