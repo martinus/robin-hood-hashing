@@ -21,8 +21,12 @@ TEST_CASE_TEMPLATE("reserve", Map, robin_hood::unordered_flat_map<uint64_t, uint
 
     REQUIRE(2047 == map.mask());
 
-    // shrink map to best fit
+    // reserve(0) does *not* shrink map
     map.reserve(0);
+    REQUIRE(2047 == map.mask());
+
+    // rehash(0) *does* shrink the map
+    map.rehash(0);
     REQUIRE(127 == map.mask());
 }
 

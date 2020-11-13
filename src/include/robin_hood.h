@@ -36,7 +36,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3 // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 9 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 0 // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 1 // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -54,7 +54,8 @@
 // #define ROBIN_HOOD_LOG_ENABLED
 #ifdef ROBIN_HOOD_LOG_ENABLED
 #    include <iostream>
-#    define ROBIN_HOOD_LOG(x) std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
+#    define ROBIN_HOOD_LOG(...) \
+        std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << __VA_ARGS__ << std::endl
 #else
 #    define ROBIN_HOOD_LOG(x)
 #endif
@@ -62,8 +63,8 @@
 // #define ROBIN_HOOD_TRACE_ENABLED
 #ifdef ROBIN_HOOD_TRACE_ENABLED
 #    include <iostream>
-#    define ROBIN_HOOD_TRACE(x) \
-        std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << x << std::endl
+#    define ROBIN_HOOD_TRACE(...) \
+        std::cout << __FUNCTION__ << "@" << __LINE__ << ": " << __VA_ARGS__ << std::endl
 #else
 #    define ROBIN_HOOD_TRACE(x)
 #endif
@@ -391,6 +392,7 @@ public:
     void reset() noexcept {
         while (mListForFree) {
             T* tmp = *mListForFree;
+            ROBIN_HOOD_LOG("std::free");
             std::free(mListForFree);
             mListForFree = reinterpret_cast_no_cast_align_warning<T**>(tmp);
         }
@@ -426,8 +428,10 @@ public:
         // calculate number of available elements in ptr
         if (numBytes < ALIGNMENT + ALIGNED_SIZE) {
             // not enough data for at least one element. Free and return.
+            ROBIN_HOOD_LOG("std::free");
             std::free(ptr);
         } else {
+            ROBIN_HOOD_LOG("add to buffer");
             add(ptr, numBytes);
         }
     }
@@ -491,8 +495,9 @@ private:
         size_t const numElementsToAlloc = calcNumElementsToAlloc();
 
         // alloc new memory: [prev |T, T, ... T]
-        // std::cout << (sizeof(T*) + ALIGNED_SIZE * numElementsToAlloc) << " bytes" << std::endl;
         size_t const bytes = ALIGNMENT + ALIGNED_SIZE * numElementsToAlloc;
+        ROBIN_HOOD_LOG("std::malloc " << bytes << " = " << ALIGNMENT << " + " << ALIGNED_SIZE
+                                      << " * " << numElementsToAlloc);
         add(assertNotNull<std::bad_alloc>(std::malloc(bytes)), bytes);
         return mHead;
     }
@@ -529,6 +534,7 @@ struct NodeAllocator<T, MinSize, MaxSize, true> {
 
     // we are not using the data, so just free it.
     void addOrFree(void* ptr, size_t ROBIN_HOOD_UNUSED(numBytes) /*unused*/) noexcept {
+        ROBIN_HOOD_LOG("std::free");
         std::free(ptr);
     }
 };
@@ -1571,8 +1577,12 @@ public:
             // elements and insert them, but copying is probably faster.
 
             auto const numElementsWithBuffer = calcNumElementsWithBuffer(o.mMask + 1);
-            mKeyVals = static_cast<Node*>(detail::assertNotNull<std::bad_alloc>(
-                std::malloc(calcNumBytesTotal(numElementsWithBuffer))));
+            auto const numBytesTotal = calcNumBytesTotal(numElementsWithBuffer);
+
+            ROBIN_HOOD_LOG("std::malloc " << numBytesTotal << " = calcNumBytesTotal("
+                                          << numElementsWithBuffer << ")");
+            mKeyVals = static_cast<Node*>(
+                detail::assertNotNull<std::bad_alloc>(std::malloc(numBytesTotal)));
             // no need for calloc because clonData does memcpy
             mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
             mNumElements = o.mNumElements;
@@ -1620,12 +1630,16 @@ public:
             // no luck: we don't have the same array size allocated, so we need to realloc.
             if (0 != mMask) {
                 // only deallocate if we actually have data!
+                ROBIN_HOOD_LOG("std::free");
                 std::free(mKeyVals);
             }
 
             auto const numElementsWithBuffer = calcNumElementsWithBuffer(o.mMask + 1);
-            mKeyVals = static_cast<Node*>(detail::assertNotNull<std::bad_alloc>(
-                std::malloc(calcNumBytesTotal(numElementsWithBuffer))));
+            auto const numBytesTotal = calcNumBytesTotal(numElementsWithBuffer);
+            ROBIN_HOOD_LOG("std::malloc " << numBytesTotal << " = calcNumBytesTotal("
+                                          << numElementsWithBuffer << ")");
+            mKeyVals = static_cast<Node*>(
+                detail::assertNotNull<std::bad_alloc>(std::malloc(numBytesTotal)));
 
             // no need for calloc here because cloneData performs a memcpy.
             mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
@@ -1967,23 +1981,15 @@ public:
     // reserves space for the specified number of elements. Makes sure the old data fits.
     // exactly the same as reserve(c).
     void rehash(size_t c) {
-        reserve(c);
+        // forces a reserve
+        reserve(c, true);
     }
 
     // reserves space for the specified number of elements. Makes sure the old data fits.
-    // Exactly the same as resize(c). Use resize(0) to shrink to fit.
+    // Exactly the same as rehash(c). Use rehash(0) to shrink to fit.
     void reserve(size_t c) {
-        ROBIN_HOOD_TRACE(this)
-        auto const minElementsAllowed = (std::max)(c, mNumElements);
-        auto newSize = InitialNumElements;
-        while (calcMaxNumElementsAllowed(newSize) < minElementsAllowed && newSize != 0) {
-            newSize *= 2;
-        }
-        if (ROBIN_HOOD_UNLIKELY(newSize == 0)) {
-            throwOverflowError();
-        }
-
-        rehashPowerOfTwo(newSize);
+        // reserve, but don't force rehash
+        reserve(c, false);
     }
 
     size_type size() const noexcept { // NOLINT(modernize-use-nodiscard)
@@ -2074,6 +2080,26 @@ private:
         return find(e) != end();
     }
 
+    void reserve(size_t c, bool forceRehash) {
+        ROBIN_HOOD_TRACE(this)
+        auto const minElementsAllowed = (std::max)(c, mNumElements);
+        auto newSize = InitialNumElements;
+        while (calcMaxNumElementsAllowed(newSize) < minElementsAllowed && newSize != 0) {
+            newSize *= 2;
+        }
+        if (ROBIN_HOOD_UNLIKELY(newSize == 0)) {
+            throwOverflowError();
+        }
+
+        ROBIN_HOOD_LOG("newSize > mMask + 1: " << newSize << " > " << mMask << " + 1");
+
+        // only actually do anything when the new size is bigger than the old one. This prevents to
+        // continuously allocate for each reserve() call.
+        if (forceRehash || newSize > mMask + 1) {
+            rehashPowerOfTwo(newSize);
+        }
+    }
+
     // reserves space for at least the specified number of elements.
     // only works if numBuckets if power of two
     void rehashPowerOfTwo(size_t numBuckets) {
@@ -2144,8 +2170,11 @@ private:
         auto const numElementsWithBuffer = calcNumElementsWithBuffer(max_elements);
 
         // calloc also zeroes everything
-        mKeyVals = reinterpret_cast<Node*>(detail::assertNotNull<std::bad_alloc>(
-            std::calloc(1, calcNumBytesTotal(numElementsWithBuffer))));
+        auto const numBytesTotal = calcNumBytesTotal(numElementsWithBuffer);
+        ROBIN_HOOD_LOG("std::calloc " << numBytesTotal << " = calcNumBytesTotal("
+                                      << numElementsWithBuffer << ")");
+        mKeyVals = reinterpret_cast<Node*>(
+            detail::assertNotNull<std::bad_alloc>(std::calloc(1, numBytesTotal)));
         mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
 
         // set sentinel
@@ -2269,7 +2298,7 @@ private:
     bool try_increase_info() {
         ROBIN_HOOD_LOG("mInfoInc=" << mInfoInc << ", numElements=" << mNumElements
                                    << ", maxNumElementsAllowed="
-                                   << calcMaxNumElementsAllowed(mMask + 1))
+                                   << calcMaxNumElementsAllowed(mMask + 1));
         if (mInfoInc <= 2) {
             // need to be > 2 so that shift works (otherwise undefined behavior!)
             return false;
@@ -2309,7 +2338,7 @@ private:
         ROBIN_HOOD_LOG("mNumElements=" << mNumElements << ", maxNumElementsAllowed="
                                        << maxNumElementsAllowed << ", load="
                                        << (static_cast<double>(mNumElements) * 100.0 /
-                                           (static_cast<double>(mMask) + 1)))
+                                           (static_cast<double>(mMask) + 1)));
         // it seems we have a really bad hash function! don't try to resize again
         if (mNumElements * 2 < calcMaxNumElementsAllowed(mMask + 1)) {
             throwOverflowError();
@@ -2332,6 +2361,7 @@ private:
         // reports a compile error: attempt to free a non-heap object 'fm'
         // [-Werror=free-nonheap-object]
         if (mKeyVals != reinterpret_cast_no_cast_align_warning<Node*>(&mMask)) {
+            ROBIN_HOOD_LOG("std::free");
             std::free(mKeyVals);
         }
     }
