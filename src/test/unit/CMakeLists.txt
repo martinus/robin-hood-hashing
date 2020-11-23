@@ -40,6 +40,7 @@ target_sources_local(rh PRIVATE
     unit_at.cpp
     unit_calcMaxNumElementsAllowed.cpp
     unit_calcsize.cpp
+    unit_compact.cpp
     unit_copyassignment.cpp
     unit_count.cpp
     unit_diamond.cpp

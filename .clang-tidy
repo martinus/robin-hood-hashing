@@ -1,34 +1,40 @@
 ---
 Checks: "*,\
-  -google-runtime-int,\
-  -google-explicit-constructor,\
-  -hicpp-no-malloc,\
-  -hicpp-vararg,\
-  -hicpp-invalid-access-moved,\
-  -hicpp-no-array-decay,\
-  -llvm-header-guard,\
-  -readability-magic-numbers,\
+  -cert-dcl21-cpp,\
+  -cert-err58-cpp,\
   -cppcoreguidelines-avoid-magic-numbers,\
+  -cppcoreguidelines-avoid-non-const-global-variables,\
+  -cppcoreguidelines-macro-usage,\
+  -cppcoreguidelines-no-malloc,\
+  -cppcoreguidelines-owning-memory,\
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
   -cppcoreguidelines-pro-bounds-constant-array-index,\
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
   -cppcoreguidelines-pro-type-reinterpret-cast,\
-  -cppcoreguidelines-no-malloc,\
-  -cppcoreguidelines-owning-memory,\
-  -cppcoreguidelines-macro-usage,\
   -cppcoreguidelines-pro-type-vararg,\
-  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
-  -fuchsia-overloaded-operator,\
-  -fuchsia-default-arguments,\
-  -fuchsia-multiple-inheritance,\
   -fuchsia-default-arguments-calls,\
   -fuchsia-default-arguments-declarations,\
-  -modernize-use-trailing-return-type,\
-  -cert-err58-cpp,\
-  -cert-dcl21-cpp,\
+  -fuchsia-default-arguments,\
+  -fuchsia-multiple-inheritance,\
+  -fuchsia-overloaded-operator,\
+  -google-explicit-constructor,\
+  -google-runtime-int,\
+  -hicpp-invalid-access-moved,\
+  -hicpp-no-array-decay,\
+  -hicpp-no-malloc,\
+  -hicpp-use-nullptr,\
+  -hicpp-vararg,\
+  -llvm-header-guard,\
   -llvm-qualified-auto,\
+  -llvmlibc-callee-namespace,\
+  -llvmlibc-implementation-in-namespace,\
+  -llvmlibc-restrict-system-libc-headers,\
+  -modernize-use-nullptr,\
+  -modernize-use-trailing-return-type,\
+  -readability-magic-numbers,\
   -readability-qualified-auto,\
-  -hicpp-use-nullptr,
-  -modernize-use-nullptr"
+  -readability-use-anyofallof,\
+  "
 WarningsAsErrors: "*"
 HeaderFilterRegex: 'robin_hood\.h'
 ...
