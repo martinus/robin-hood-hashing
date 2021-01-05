@@ -1,14 +1,20 @@
 cmake_minimum_required(VERSION 3.5)
-project(robin-hood-hashing LANGUAGES CXX)
+project(robin-hood-hashing
+    VERSION 3.9.1
+    LANGUAGES CXX
+)
 
 # generate compile_commands.json
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # determine whether this is a standalone project or included by other projects
-set(RH_STANDALONE_PROJECT OFF)
-if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-    set(RH_STANDALONE_PROJECT ON)
-endif ()
+if (NOT DEFINED RH_STANDALONE_PROJECT)
+    if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+        set(RH_STANDALONE_PROJECT ON)
+    else()
+        set(RH_STANDALONE_PROJECT OFF)
+    endif ()
+endif()
 
 if (RH_STANDALONE_PROJECT)
     option(RH_sanitizer "Address sanitizer" OFF)
@@ -116,11 +122,44 @@ if (RH_STANDALONE_PROJECT)
     target_sources_local(rh PUBLIC .clang-tidy)
 else()
     # creates a library robin_hood which is an interface (header files only)
-    add_library(robin_hood INTERFACE)
-    add_library(robin_hood::robin_hood ALIAS robin_hood)
+
+    set(LIB_NAME "robin_hood")
+    set(LIB_NAMESPACE "robin_hood")
+
+    add_library(${LIB_NAME} INTERFACE)
+    add_library(${LIB_NAMESPACE}::${LIB_NAME} ALIAS ${LIB_NAME})
 
     target_include_directories(robin_hood INTERFACE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src/include>
-        $<INSTALL_INTERFACE:src/include>
+        $<INSTALL_INTERFACE:include>
+    )
+
+    include(GNUInstallDirs)
+
+    install(
+        TARGETS ${LIB_NAME}
+        EXPORT ${LIB_NAME}-targets
+    )
+
+    install(
+        FILES src/include/robin_hood.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
+
+    configure_file(
+        cmake/config.cmake.in
+        ${LIB_NAME}Config.cmake
+        @ONLY
+    )
+
+    install(
+        FILES ${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}Config.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIB_NAME}
+    )
+
+    install(
+        EXPORT ${LIB_NAME}-targets
+        NAMESPACE ${LIB_NAMESPACE}::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIB_NAME}
     )
 endif()
