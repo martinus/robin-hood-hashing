@@ -1431,6 +1431,29 @@ private:
                                 mKeyVals, reinterpret_cast_no_cast_align_warning<Node*>(mInfo)));
     }
 
+    template <typename Other>
+    ROBIN_HOOD(NODISCARD)
+    size_t findIdx_impl(Other const& key,size_t idx,InfoType info) const {
+        do {
+            // unrolling this twice gives a bit of a speedup. More unrolling did not help.
+            if (info == mInfo[idx] &&
+                ROBIN_HOOD_LIKELY(WKeyEqual::operator()(key, mKeyVals[idx].getFirst()))) {
+                return idx;
+            }
+            next(&info, &idx);
+            if (info == mInfo[idx] &&
+                ROBIN_HOOD_LIKELY(WKeyEqual::operator()(key, mKeyVals[idx].getFirst()))) {
+                return idx;
+            }
+            next(&info, &idx);
+        } while (info <= mInfo[idx]);
+
+        // nothing found!
+        return mMask == 0 ? 0
+                          : static_cast<size_t>(std::distance(
+                                mKeyVals, reinterpret_cast_no_cast_align_warning<Node*>(mInfo)));
+    }
+
     void cloneData(const Table& o) {
         Cloner<Table, IsFlat && ROBIN_HOOD_IS_TRIVIALLY_COPYABLE(Node)>()(o, *this);
     }
@@ -1743,6 +1766,13 @@ public:
             n.destroy(*this);
         }
         return r;
+    }
+
+    template <typename... Args>
+    std::pair<iterator, bool> emplace_impl(size_t idx,InfoType info,Args&&... args) {
+        ROBIN_HOOD_TRACE(this)
+        Node n{*this, std::forward<Args>(args)...};
+        return doInsert_impl(idx,info,std::move(n));
     }
 
     template <typename... Args>
@@ -2167,9 +2197,13 @@ private:
     template <typename OtherKey, typename... Args>
     std::pair<iterator, bool> try_emplace_impl(OtherKey&& key, Args&&... args) {
         ROBIN_HOOD_TRACE(this)
-        auto it = find(key);
+        size_t idx{};
+        InfoType info{};
+        keyToIdx(key,&idx,&info);
+        idx = findIdx_impl(key,idx,info);
+        auto it = iterator{mKeyVals + idx, mInfo + idx};
         if (it == end()) {
-            return emplace(std::piecewise_construct,
+            return emplace_impl(idx,info,std::piecewise_construct,
                            std::forward_as_tuple(std::forward<OtherKey>(key)),
                            std::forward_as_tuple(std::forward<Args>(args)...));
         }
@@ -2306,6 +2340,57 @@ private:
 
             auto& l = mKeyVals[insertion_idx];
             if (idx == insertion_idx) {
+                ::new (static_cast<void*>(&l)) Node(*this, std::forward<Arg>(keyval));
+            } else {
+                shiftUp(idx, insertion_idx);
+                l = Node(*this, std::forward<Arg>(keyval));
+            }
+
+            // put at empty spot
+            mInfo[insertion_idx] = static_cast<uint8_t>(insertion_info);
+
+            ++mNumElements;
+            return std::make_pair(iterator(mKeyVals + insertion_idx, mInfo + insertion_idx), true);
+        }
+    }
+
+    template <typename Arg>
+    std::pair<iterator, bool> doInsert_impl(size_t* idx,InfoType* info,Arg&& keyval) {
+        while (true) {
+            nextWhileLess(info, idx);
+
+            // while we potentially have a match
+            while (*info == mInfo[*idx]) {
+                if (WKeyEqual::operator()(getFirstConst(keyval), mKeyVals[idx].getFirst())) {
+                    // key already exists, do NOT insert.
+                    // see http://en.cppreference.com/w/cpp/container/unordered_map/insert
+                    return std::make_pair<iterator, bool>(iterator(mKeyVals + *idx, mInfo + *idx),
+                                                          false);
+                }
+                next(info, idx);
+            }
+
+            // unlikely that this evaluates to true
+            if (ROBIN_HOOD_UNLIKELY(mNumElements >= mMaxNumElementsAllowed)) {
+                increase_size();
+                keyToIdx(getFirstConst(keyval), idx, info);
+                continue;
+            }
+
+            // key not found, so we are now exactly where we want to insert it.
+            auto const insertion_idx = *idx;
+            auto const insertion_info = *info;
+            if (ROBIN_HOOD_UNLIKELY(insertion_info + mInfoInc > 0xFF)) {
+                mMaxNumElementsAllowed = 0;
+            }
+
+            // find an empty spot
+            while (0 != mInfo[*idx]) {
+                next(info, idx);
+            }
+
+            auto& l = mKeyVals[insertion_idx];
+            if (*idx == insertion_idx) {
                 ::new (static_cast<void*>(&l)) Node(*this, std::forward<Arg>(keyval));
             } else {
                 shiftUp(idx, insertion_idx);
