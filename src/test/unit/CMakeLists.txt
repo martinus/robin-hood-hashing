@@ -53,6 +53,7 @@ target_sources_local(rh PRIVATE
     unit_heterogeneous.cpp
     unit_include_only.cpp
     unit_initializerlist.cpp
+    unit_insert_collision.cpp
     unit_insert_or_assign.cpp
     unit_insert.cpp
     unit_iterator_twice_bug.cpp

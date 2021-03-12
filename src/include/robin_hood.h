@@ -734,17 +734,14 @@ inline size_t hash_bytes(void const* ptr, size_t len) noexcept {
 }
 
 inline size_t hash_int(uint64_t x) noexcept {
-    // inspired by lemire's strongly universal hashing
-    // https://lemire.me/blog/2018/08/15/fast-strongly-universal-64-bit-hashing-everywhere/
-    //
-    // Instead of shifts, we use rotations so we don't lose any bits.
-    //
-    // Added a final multiplcation with a constant for more mixing. It is most important that
-    // the lower bits are well mixed.
-    auto h1 = x * UINT64_C(0xA24BAED4963EE407);
-    auto h2 = detail::rotr(x, 32U) * UINT64_C(0x9FB21C651E98DF25);
-    auto h = detail::rotr(h1 + h2, 32U);
-    return static_cast<size_t>(h);
+    // tried lots of different hashes, let's stick with murmurhash3. It's simple, fast, well tested,
+    // and doesn't need any special 128bit operations.
+    x ^= x >> 33U;
+    x *= UINT64_C(0xff51afd7ed558ccd);
+    x ^= x >> 33U;
+    x *= UINT64_C(0xc4ceb9fe1a85ec53);
+    x ^= x >> 33U;
+    return static_cast<size_t>(x);
 }
 
 // A thin wrapper around std::hash, performing an additional simple mixing step of the result.
