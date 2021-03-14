@@ -33,6 +33,7 @@ TEST_CASE_TEMPLATE(
     }
     REQUIRE(CtorDtorVerifier::mapSize() == 0);
 
+    // produce overflow with insert
     {
         Map m;
         for (uint64_t i = 0; i < max_val; ++i) {
@@ -40,6 +41,21 @@ TEST_CASE_TEMPLATE(
         }
         REQUIRE(m.size() == max_val);
         REQUIRE_THROWS_AS(m.insert(typename Map::value_type(max_val, max_val)),
+                          std::overflow_error);
+        REQUIRE(m.size() == max_val);
+    }
+    if (0 != CtorDtorVerifier::mapSize()) {
+        CtorDtorVerifier::printMap();
+    }
+
+    // produce overflow with emplace
+    {
+        Map m;
+        for (uint64_t i = 0; i < max_val; ++i) {
+            REQUIRE(m.insert(typename Map::value_type(i, i)).second);
+        }
+        REQUIRE(m.size() == max_val);
+        REQUIRE_THROWS_AS(m.emplace(typename Map::value_type(max_val, max_val)),
                           std::overflow_error);
         REQUIRE(m.size() == max_val);
     }
