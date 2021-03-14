@@ -10,9 +10,12 @@
 TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, uint64_t, hash::Bad<uint64_t>>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<uint64_t, uint64_t, hash::Bad<uint64_t>>);
 
-#if ROBIN_HOOD(HAS_EXCEPTIONS)
+// This test doesn't work as it was intended with the hash overflow protection
+#if 0
 
-TEST_CASE_TEMPLATE("bug overflow" * doctest::test_suite("stochastic"), Map,
+#    if ROBIN_HOOD(HAS_EXCEPTIONS)
+
+TEST_CASE_TEMPLATE("bug_overflow" * doctest::test_suite("stochastic"), Map,
                    robin_hood::unordered_flat_map<uint64_t, uint64_t, hash::Bad<uint64_t>>,
                    robin_hood::unordered_node_map<uint64_t, uint64_t, hash::Bad<uint64_t>>) {
     Map rh;
@@ -42,5 +45,7 @@ TEST_CASE_TEMPLATE("bug overflow" * doctest::test_suite("stochastic"), Map,
     REQUIRE(num_throws > 0);
     REQUIRE(checksum::map(rh) == checksum::map(uo));
 }
+
+#    endif
 
 #endif
