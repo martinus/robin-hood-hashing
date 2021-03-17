@@ -5,6 +5,7 @@
 #include <app/counter_defaults.h>
 #include <app/sfc64.h>
 
+#if !ROBIN_HOOD(BROKEN_CONSTEXPR)
 TEST_CASE_TEMPLATE("count one emplace" * doctest::test_suite("count") * doctest::skip(), Map,
                    robin_hood::unordered_flat_map<cnt, cnt, std::hash<cnt>>,
                    robin_hood::unordered_flat_map<cnt, cnt, robin_hood::hash<cnt>>,
@@ -19,3 +20,4 @@ TEST_CASE_TEMPLATE("count one emplace" * doctest::test_suite("count") * doctest:
                 std::forward_as_tuple(x, counts));
     counts.printCounts(std::string("one emplace ") + doctest::detail::type_to_string<Map>());
 }
+#endif

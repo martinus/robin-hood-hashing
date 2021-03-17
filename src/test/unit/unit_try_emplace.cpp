@@ -4,6 +4,7 @@
 
 #include <string>
 
+#if !ROBIN_HOOD(BROKEN_CONSTEXPR)
 struct RegularType {
     // cppcheck-suppress passedByValue
     RegularType(std::size_t i_, std::string s_) noexcept
@@ -67,3 +68,4 @@ TEST_CASE_TEMPLATE("try_emplace", Map, robin_hood::unordered_flat_map<std::strin
     REQUIRE(ret.first->second == RegularType(67U, "f"));
     REQUIRE(map.size() == 3U);
 }
+#endif

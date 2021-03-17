@@ -2233,8 +2233,8 @@ struct IterationLogic::Impl {
             hash = hash_combine(std::hash<std::string>{}(mBench.title()), hash);
             hash = hash_combine(std::hash<std::string>{}(mBench.timeUnitName()), hash);
             hash = hash_combine(std::hash<double>{}(mBench.timeUnit().count()), hash);
-            hash = hash_combine(mBench.relative(), hash);
-            hash = hash_combine(mBench.performanceCounters(), hash);
+            hash = hash_combine(std::hash<bool>{}(mBench.relative()), hash);
+            hash = hash_combine(std::hash<bool>{}(mBench.performanceCounters()), hash);
 
             if (hash != singletonHeaderHash()) {
                 singletonHeaderHash() = hash;

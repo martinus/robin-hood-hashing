@@ -192,6 +192,17 @@ static Counts& counts() {
 #    define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 1
 #endif
 
+// detect if MSVC supports the pair(std::piecewise_construct_t,...) consructor being constexpr
+#ifdef _MSC_VER
+#    if _MSC_VER <= 1900
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_BROKEN_CONSTEXPR() 1
+#     else
+#        define ROBIN_HOOD_PRIVATE_DEFINITION_BROKEN_CONSTEXPR() 0
+#    endif
+#else
+#    define ROBIN_HOOD_PRIVATE_DEFINITION_BROKEN_CONSTEXPR() 0
+#endif
+
 // workaround missing "is_trivially_copyable" in g++ < 5.0
 // See https://stackoverflow.com/a/31798726/48181
 #if defined(__GNUC__) && __GNUC__ < 5
@@ -610,7 +621,12 @@ struct pair {
         , second(std::forward<U2>(b)) {}
 
     template <typename... U1, typename... U2>
-    constexpr pair(
+    // MSVC 2015 produces error "C2476: ‘constexpr’ constructor does not initialize all members"
+    // if this constructor is constexpr
+#if !ROBIN_HOOD(BROKEN_CONSTEXPR)
+    constexpr
+#endif
+    pair(
         std::piecewise_construct_t /*unused*/, std::tuple<U1...> a,
         std::tuple<U2...> b) noexcept(noexcept(pair(std::declval<std::tuple<U1...>&>(),
                                                     std::declval<std::tuple<U2...>&>(),
@@ -1336,7 +1352,7 @@ private:
         // an additional mixing step. This serves as a bad hash prevention, if the given data is
         // badly mixed.
         using Mix =
-            typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
+            typename std::conditional<std::is_same< ::robin_hood::hash<key_type>, hasher>::value,
                                       ::robin_hood::detail::identity_hash<size_t>,
                                       ::robin_hood::hash<size_t>>::type;
 

@@ -1,10 +1,10 @@
 #include <robin_hood.h>
 
 #include <app/doctest.h>
-
 TYPE_TO_STRING(robin_hood::unordered_flat_map<uint64_t, uint64_t>);
 TYPE_TO_STRING(robin_hood::unordered_node_map<uint64_t, uint64_t>);
 
+#if !ROBIN_HOOD(BROKEN_CONSTEXPR)
 TEST_CASE_TEMPLATE("compact", Map, robin_hood::unordered_flat_map<uint64_t, uint64_t>,
                    robin_hood::unordered_node_map<uint64_t, uint64_t>) {
     Map map;
@@ -38,3 +38,4 @@ TEST_CASE_TEMPLATE("compact", Map, robin_hood::unordered_flat_map<uint64_t, uint
     map.compact();
     REQUIRE(63 == map.mask());
 }
+#endif
