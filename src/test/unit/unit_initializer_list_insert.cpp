@@ -16,8 +16,8 @@ TEST_CASE_TEMPLATE("insert_initializer_list", Map, robin_hood::unordered_flat_ma
 }
 
 TEST_CASE_TEMPLATE("insert_initializer_list_string", Map,
-                   robin_hood::unordered_flat_map<int, std::string>,
-                   robin_hood::unordered_node_map<int, std::string>) {
+                   robin_hood::unordered_flat_map<uint64_t, std::string>,
+                   robin_hood::unordered_node_map<uint64_t, std::string>) {
     auto m = Map();
     m.insert({{1, "a"}, {3, "b"}, {5, "c"}});
     REQUIRE(m.size() == 3U);
