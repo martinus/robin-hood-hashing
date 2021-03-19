@@ -35,7 +35,7 @@
 
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3  // for incompatible API changes
-#define ROBIN_HOOD_VERSION_MINOR 10 // for adding functionality in a backwards-compatible manner
+#define ROBIN_HOOD_VERSION_MINOR 11 // for adding functionality in a backwards-compatible manner
 #define ROBIN_HOOD_VERSION_PATCH 0  // for backwards-compatible bug fixes
 
 #include <algorithm>
@@ -196,7 +196,7 @@ static Counts& counts() {
 #ifdef _MSC_VER
 #    if _MSC_VER <= 1900
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_BROKEN_CONSTEXPR() 1
-#     else
+#    else
 #        define ROBIN_HOOD_PRIVATE_DEFINITION_BROKEN_CONSTEXPR() 0
 #    endif
 #else
@@ -626,14 +626,15 @@ struct pair {
 #if !ROBIN_HOOD(BROKEN_CONSTEXPR)
     constexpr
 #endif
-    pair(
-        std::piecewise_construct_t /*unused*/, std::tuple<U1...> a,
-        std::tuple<U2...> b) noexcept(noexcept(pair(std::declval<std::tuple<U1...>&>(),
-                                                    std::declval<std::tuple<U2...>&>(),
-                                                    ROBIN_HOOD_STD::index_sequence_for<U1...>(),
-                                                    ROBIN_HOOD_STD::index_sequence_for<U2...>())))
+        pair(std::piecewise_construct_t /*unused*/, std::tuple<U1...> a,
+             std::tuple<U2...>
+                 b) noexcept(noexcept(pair(std::declval<std::tuple<U1...>&>(),
+                                           std::declval<std::tuple<U2...>&>(),
+                                           ROBIN_HOOD_STD::index_sequence_for<U1...>(),
+                                           ROBIN_HOOD_STD::index_sequence_for<U2...>())))
         : pair(a, b, ROBIN_HOOD_STD::index_sequence_for<U1...>(),
-               ROBIN_HOOD_STD::index_sequence_for<U2...>()) {}
+               ROBIN_HOOD_STD::index_sequence_for<U2...>()) {
+    }
 
     // constructor called from the std::piecewise_construct_t ctor
     template <typename... U1, size_t... I1, typename... U2, size_t... I2>
@@ -1352,7 +1353,7 @@ private:
         // an additional mixing step. This serves as a bad hash prevention, if the given data is
         // badly mixed.
         using Mix =
-            typename std::conditional<std::is_same< ::robin_hood::hash<key_type>, hasher>::value,
+            typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
                                       ::robin_hood::detail::identity_hash<size_t>,
                                       ::robin_hood::hash<size_t>>::type;
 
@@ -1783,6 +1784,12 @@ public:
         for (; first != last; ++first) {
             // value_type ctor needed because this might be called with std::pair's
             insert(value_type(*first));
+        }
+    }
+
+    void insert(std::initializer_list<value_type> ilist) {
+        for (auto&& vt : ilist) {
+            insert(std::move(vt));
         }
     }
 

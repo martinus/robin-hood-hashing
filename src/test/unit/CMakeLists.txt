@@ -52,6 +52,7 @@ target_sources_local(rh PRIVATE
     unit_hash_string_view.cpp
     unit_heterogeneous.cpp
     unit_include_only.cpp
+    unit_initializer_list_insert.cpp
     unit_initializerlist.cpp
     unit_insert_collision.cpp
     unit_insert_or_assign.cpp
@@ -75,6 +76,7 @@ target_sources_local(rh PRIVATE
     unit_overflow.cpp
     unit_pair_operators.cpp
     unit_pair_trivial.cpp
+    unit_playback.cpp
     unit_random_verifier.cpp
     unit_reserve_and_assign.cpp
     unit_reserve.cpp
