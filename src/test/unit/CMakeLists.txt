@@ -76,7 +76,6 @@ target_sources_local(rh PRIVATE
     unit_overflow.cpp
     unit_pair_operators.cpp
     unit_pair_trivial.cpp
-    unit_playback.cpp
     unit_random_verifier.cpp
     unit_reserve_and_assign.cpp
     unit_reserve.cpp
