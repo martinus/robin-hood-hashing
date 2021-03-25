@@ -9,7 +9,7 @@
 TEST_CASE("playback" * doctest::skip()) {
     auto sets = std::map<size_t, robin_hood::unordered_flat_set<int32_t>>();
 
-    auto fin = std::fstream("../test-data-3.txt");
+    std::fstream fin("../test-data-3.txt");
     auto line = std::string();
 
     auto prefix = std::string();
