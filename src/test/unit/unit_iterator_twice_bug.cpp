@@ -38,7 +38,8 @@ struct hash<Dummy> {
 
 } // namespace robin_hood
 
-TEST_CASE("iterator_twice_bug") {
+// don't run, this test only works when we know exactly where insertion happens
+TEST_CASE("iterator_twice_bug" * doctest::skip()) {
     robin_hood::unordered_flat_map<Dummy, size_t> map;
 
     auto a = 31U + 1024U * 0U;

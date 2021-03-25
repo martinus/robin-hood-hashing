@@ -36,7 +36,7 @@
 // see https://semver.org/
 #define ROBIN_HOOD_VERSION_MAJOR 3  // for incompatible API changes
 #define ROBIN_HOOD_VERSION_MINOR 11 // for adding functionality in a backwards-compatible manner
-#define ROBIN_HOOD_VERSION_PATCH 0  // for backwards-compatible bug fixes
+#define ROBIN_HOOD_VERSION_PATCH 1  // for backwards-compatible bug fixes
 
 #include <algorithm>
 #include <cstdlib>
@@ -553,14 +553,6 @@ struct NodeAllocator<T, MinSize, MaxSize, true> {
 template <typename T, size_t MinSize, size_t MaxSize>
 struct NodeAllocator<T, MinSize, MaxSize, false> : public BulkPoolAllocator<T, MinSize, MaxSize> {};
 
-// dummy hash, unsed as mixer when robin_hood::hash is already used
-template <typename T>
-struct identity_hash {
-    constexpr size_t operator()(T const& obj) const noexcept {
-        return static_cast<size_t>(obj);
-    }
-};
-
 // c++14 doesn't have is_nothrow_swappable, and clang++ 6.0.1 doesn't like it either, so I'm making
 // my own here.
 namespace swappable {
@@ -745,8 +737,10 @@ inline size_t hash_bytes(void const* ptr, size_t len) noexcept {
     }
 
     h ^= h >> r;
-    h *= m;
-    h ^= h >> r;
+
+    // not doing the final step here, because this will be done by keyToIdx anyways
+    // h *= m;
+    // h ^= h >> r;
     return static_cast<size_t>(h);
 }
 
@@ -756,8 +750,10 @@ inline size_t hash_int(uint64_t x) noexcept {
     x ^= x >> 33U;
     x *= UINT64_C(0xff51afd7ed558ccd);
     x ^= x >> 33U;
-    x *= UINT64_C(0xc4ceb9fe1a85ec53);
-    x ^= x >> 33U;
+
+    // not doing the final step here, because this will be done by keyToIdx anyways
+    // x *= UINT64_C(0xc4ceb9fe1a85ec53);
+    // x ^= x >> 33U;
     return static_cast<size_t>(x);
 }
 
@@ -1349,18 +1345,17 @@ private:
     // The upper 1-5 bits need to be a reasonable good hash, to save comparisons.
     template <typename HashKey>
     void keyToIdx(HashKey&& key, size_t* idx, InfoType* info) const {
-        // for a user-specified hash that is *not* robin_hood::hash, apply robin_hood::hash as
-        // an additional mixing step. This serves as a bad hash prevention, if the given data is
+        // In addition to whatever hash is used, add another mul & shift so we get better hashing.
+        // This serves as a bad hash prevention, if the given data is
         // badly mixed.
-        using Mix =
-            typename std::conditional<std::is_same<::robin_hood::hash<key_type>, hasher>::value,
-                                      ::robin_hood::detail::identity_hash<size_t>,
-                                      ::robin_hood::hash<size_t>>::type;
+        auto h = static_cast<uint64_t>(WHash::operator()(key));
+
+        h *= mHashMultiplier;
+        h ^= h >> 33U;
 
         // the lower InitialInfoNumBits are reserved for info.
-        auto h = Mix{}(WHash::operator()(key));
         *info = mInfoInc + static_cast<InfoType>((h & InfoMask) >> mInfoHashShift);
-        *idx = (h >> InitialInfoNumBits) & mMask;
+        *idx = (static_cast<size_t>(h) >> InitialInfoNumBits) & mMask;
     }
 
     // forwards the index by one, wrapping around at the end
@@ -1451,11 +1446,11 @@ private:
 
     // inserts a keyval that is guaranteed to be new, e.g. when the hashmap is resized.
     // @return True on success, false if something went wrong
-    bool insert_move(Node&& keyval) {
+    void insert_move(Node&& keyval) {
         // we don't retry, fail if overflowing
         // don't need to check max num elements
         if (0 == mMaxNumElementsAllowed && !try_increase_info()) {
-            return false;
+            throwOverflowError();
         }
 
         size_t idx{};
@@ -1492,7 +1487,6 @@ private:
         mInfo[insertion_idx] = insertion_info;
 
         ++mNumElements;
-        return true;
     }
 
 public:
@@ -1542,6 +1536,7 @@ public:
         , DataPool(std::move(static_cast<DataPool&>(o))) {
         ROBIN_HOOD_TRACE(this)
         if (o.mMask) {
+            mHashMultiplier = std::move(o.mHashMultiplier);
             mKeyVals = std::move(o.mKeyVals);
             mInfo = std::move(o.mInfo);
             mNumElements = std::move(o.mNumElements);
@@ -1560,6 +1555,7 @@ public:
             if (o.mMask) {
                 // only move stuff if the other map actually has some data
                 destroy();
+                mHashMultiplier = std::move(o.mHashMultiplier);
                 mKeyVals = std::move(o.mKeyVals);
                 mInfo = std::move(o.mInfo);
                 mNumElements = std::move(o.mNumElements);
@@ -1595,6 +1591,7 @@ public:
 
             ROBIN_HOOD_LOG("std::malloc " << numBytesTotal << " = calcNumBytesTotal("
                                           << numElementsWithBuffer << ")")
+            mHashMultiplier = o.mHashMultiplier;
             mKeyVals = static_cast<Node*>(
                 detail::assertNotNull<std::bad_alloc>(std::malloc(numBytesTotal)));
             // no need for calloc because clonData does memcpy
@@ -1662,6 +1659,7 @@ public:
         WHash::operator=(static_cast<const WHash&>(o));
         WKeyEqual::operator=(static_cast<const WKeyEqual&>(o));
         DataPool::operator=(static_cast<DataPool const&>(o));
+        mHashMultiplier = o.mHashMultiplier;
         mNumElements = o.mNumElements;
         mMask = o.mMask;
         mMaxNumElementsAllowed = o.mMaxNumElementsAllowed;
@@ -2085,9 +2083,7 @@ public:
         // only actually do anything when the new size is bigger than the old one. This prevents to
         // continuously allocate for each reserve() call.
         if (newSize < mMask + 1) {
-            if (!rehashPowerOfTwo(newSize, true)) {
-                throwOverflowError();
-            }
+            rehashPowerOfTwo(newSize, true);
         }
     }
 
@@ -2195,16 +2191,14 @@ private:
         // only actually do anything when the new size is bigger than the old one. This prevents to
         // continuously allocate for each reserve() call.
         if (forceRehash || newSize > mMask + 1) {
-            if (!rehashPowerOfTwo(newSize, false)) {
-                throwOverflowError();
-            }
+            rehashPowerOfTwo(newSize, false);
         }
     }
 
     // reserves space for at least the specified number of elements.
     // only works if numBuckets if power of two
     // True on success, false otherwise
-    bool rehashPowerOfTwo(size_t numBuckets, bool forceFree) {
+    void rehashPowerOfTwo(size_t numBuckets, bool forceFree) {
         ROBIN_HOOD_TRACE(this)
 
         Node* const oldKeyVals = mKeyVals;
@@ -2217,16 +2211,16 @@ private:
         if (oldMaxElementsWithBuffer > 1) {
             for (size_t i = 0; i < oldMaxElementsWithBuffer; ++i) {
                 if (oldInfo[i] != 0) {
-                    if (!insert_move(std::move(oldKeyVals[i]))) {
-                        return false;
-                    }
+                    // might throw an exception, which is really bad since we are in the middle of
+                    // moving stuff.
+                    insert_move(std::move(oldKeyVals[i]));
                     // destroy the node but DON'T destroy the data.
                     oldKeyVals[i].~Node();
                 }
             }
 
-            // this check is not necessary as it's guarded by the previous if, but it helps silence
-            // g++'s overeager "attempt to free a non-heap object 'map'
+            // this check is not necessary as it's guarded by the previous if, but it helps
+            // silence g++'s overeager "attempt to free a non-heap object 'map'
             // [-Werror=free-nonheap-object]" warning.
             if (oldKeyVals != reinterpret_cast_no_cast_align_warning<Node*>(&mMask)) {
                 // don't destroy old data: put it into the pool instead
@@ -2237,7 +2231,6 @@ private:
                 }
             }
         }
-        return true;
     }
 
     ROBIN_HOOD(NOINLINE) void throwOverflowError() const {
@@ -2332,11 +2325,11 @@ private:
     enum class InsertionState { overflow_error, key_found, new_node, overwrite_node };
 
     // Finds key, and if not already present prepares a spot where to pot the key & value.
-    // This potentially shifts nodes out of the way, updates mInfo and number of inserted elements,
-    // so the only operation left to do is create/assign a new node at that spot.
+    // This potentially shifts nodes out of the way, updates mInfo and number of inserted
+    // elements, so the only operation left to do is create/assign a new node at that spot.
     template <typename OtherKey>
     std::pair<size_t, InsertionState> insertKeyPrepareEmptySpot(OtherKey&& key) {
-        while (true) {
+        for (int i = 0; i < 256; ++i) {
             size_t idx{};
             InfoType info{};
             keyToIdx(key, &idx, &info);
@@ -2382,6 +2375,9 @@ private:
                                                      ? InsertionState::new_node
                                                      : InsertionState::overwrite_node);
         }
+
+        // enough attempts failed, so finally give up.
+        return std::make_pair(size_t(0), InsertionState::overflow_error);
     }
 
     bool try_increase_info() {
@@ -2429,12 +2425,25 @@ private:
                                        << maxNumElementsAllowed << ", load="
                                        << (static_cast<double>(mNumElements) * 100.0 /
                                            (static_cast<double>(mMask) + 1)))
-        // it seems we have a really bad hash function! don't try to resize again
-        if (mNumElements * 2 < calcMaxNumElementsAllowed(mMask + 1)) {
-            return false;
-        }
 
-        return rehashPowerOfTwo((mMask + 1) * 2, false);
+        nextHashMultiplier();
+        if (mNumElements * 2 < calcMaxNumElementsAllowed(mMask + 1)) {
+            // we have to resize, even though there would still be plenty of space left!
+            // Try to rehash instead. Delete freed memory so we don't steadyily increase mem in case
+            // we have to rehash a few times
+            rehashPowerOfTwo(mMask + 1, true);
+        } else {
+            // Each resize use a different hash so we don't so easily overflow.
+            // Make sure we only have odd numbers, so that the multiplication is reversible!
+            rehashPowerOfTwo((mMask + 1) * 2, false);
+        }
+        return true;
+    }
+
+    void nextHashMultiplier() {
+        // adding an *even* number, so that the multiplier will always stay odd. This is necessary
+        // so that the hash stays a mixing function (and thus doesn't have any information loss).
+        mHashMultiplier += UINT64_C(0xc4ceb9fe1a85ec54);
     }
 
     void destroy() {
@@ -2467,13 +2476,14 @@ private:
     }
 
     // members are sorted so no padding occurs
-    Node* mKeyVals = reinterpret_cast_no_cast_align_warning<Node*>(&mMask); // 8 byte  8
-    uint8_t* mInfo = reinterpret_cast<uint8_t*>(&mMask);                    // 8 byte 16
-    size_t mNumElements = 0;                                                // 8 byte 24
-    size_t mMask = 0;                                                       // 8 byte 32
-    size_t mMaxNumElementsAllowed = 0;                                      // 8 byte 40
-    InfoType mInfoInc = InitialInfoInc;                                     // 4 byte 44
-    InfoType mInfoHashShift = InitialInfoHashShift;                         // 4 byte 48
+    uint64_t mHashMultiplier = UINT64_C(0xc4ceb9fe1a85ec53);                // 8 byte  8
+    Node* mKeyVals = reinterpret_cast_no_cast_align_warning<Node*>(&mMask); // 8 byte 16
+    uint8_t* mInfo = reinterpret_cast<uint8_t*>(&mMask);                    // 8 byte 24
+    size_t mNumElements = 0;                                                // 8 byte 32
+    size_t mMask = 0;                                                       // 8 byte 40
+    size_t mMaxNumElementsAllowed = 0;                                      // 8 byte 48
+    InfoType mInfoInc = InitialInfoInc;                                     // 4 byte 52
+    InfoType mInfoHashShift = InitialInfoHashShift;                         // 4 byte 56
                                                     // 16 byte 56 if NodeAllocator
 };
 
