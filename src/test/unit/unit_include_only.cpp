@@ -1,7 +1,2 @@
-#include <unit/include_only.h>
-
-#include <app/doctest.h>
-
-TEST_CASE("include only") {
-    REQUIRE(include_only() == 878);
-}
+// just include robin_hood.h to see all is included
+#include <robin_hood.h>
