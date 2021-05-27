@@ -36,6 +36,8 @@ if (RH_STANDALONE_PROJECT)
     find_program(CCACHE_PROGRAM ccache)
     if(CCACHE_PROGRAM)
         SET(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+        #SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "/home/martinus/git/rust-throttler/target/release/throttler run -g compile --")
+        #SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_LINK "/home/martinus/git/rust-throttler/target/release/throttler run -g link --")    
     endif()
 
     add_executable(rh "")
