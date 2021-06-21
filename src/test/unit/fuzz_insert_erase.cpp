@@ -21,6 +21,17 @@ std::ostream& operator<<(std::ostream& os, decltype(sfc64{}.state()) const& stat
 
 #if ROBIN_HOOD(HAS_EXCEPTIONS)
 
+template <typename T, size_t S>
+std::string to_string(std::array<T, S> const& data) {
+    std::stringstream ss;
+    auto prefix = "";
+    for (auto const& x : data) {
+        ss << prefix << x;
+        prefix = ", ";
+    }
+    return ss.str();
+}
+
 TEST_CASE("fuzz insert erase" * doctest::test_suite("fuzz") * doctest::skip()) {
     sfc64 rng;
     size_t min_ops = 10000;
@@ -48,23 +59,23 @@ TEST_CASE("fuzz insert erase" * doctest::test_suite("fuzz") * doctest::skip()) {
                 auto const key = rng.uniform<int>(n);
                 if (0U != (op & 1U)) {
                     if (suo.erase(key) != ruo.erase(key)) {
-                        MESSAGE("error after " << op << " ops, rng{" << state << "}");
+                        MESSAGE("error after " << op << " ops, rng{" << to_string(state) << "}");
                         min_ops = op;
                     }
                 } else {
                     if (suo.emplace(key, key).second != ruo.emplace(key, key).second) {
-                        MESSAGE("error after " << op << " ops, rng{" << state << "}");
+                        MESSAGE("error after " << op << " ops, rng{" << to_string(state) << "}");
                         min_ops = op;
                     }
                 }
                 if (suo.size() != ruo.size()) {
-                    MESSAGE("error after " << op << " ops, rng{" << state << "}");
+                    MESSAGE("error after " << op << " ops, rng{" << to_string(state) << "}");
                     min_ops = op;
                 }
             }
 
         } catch (std::overflow_error const&) {
-            MESSAGE("error after " << op << " ops, rng{" << state << "}");
+            MESSAGE("error after " << op << " ops, rng{" << to_string(state) << "}");
             min_ops = op;
         }
     }
