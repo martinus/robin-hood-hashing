@@ -1,5 +1,5 @@
-#define ROBIN_HOOD_TRACE_ENABLED
-#define ROBIN_HOOD_LOG_ENABLED
+//#define ROBIN_HOOD_TRACE_ENABLED
+//#define ROBIN_HOOD_LOG_ENABLED
 #include <robin_hood.h>
 
 #include <app/doctest.h>
