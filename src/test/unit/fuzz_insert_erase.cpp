@@ -5,6 +5,7 @@
 #include <app/sfc64.h>
 
 #include <iostream>
+#include <sstream>
 #include <unordered_map>
 
 std::ostream& operator<<(std::ostream& os, decltype(sfc64{}.state()) const& state);
