@@ -35,7 +35,7 @@
 1. Create `conanfile.txt` in your source dir (don't forget to update the version)
    ```ini
    [requires]
-   robin-hood-hashing/3.10.0
+   robin-hood-hashing/3.11.4
 
    [generators]
    cmake

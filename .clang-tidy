@@ -1,7 +1,10 @@
 ---
 Checks: "*,\
+  -altera-*,\
+  -bugprone-easily-swappable-parameters,\
   -cert-dcl21-cpp,\
   -cert-err58-cpp,\
+  -clang-diagnostic-reserved-identifier,\
   -cppcoreguidelines-avoid-magic-numbers,\
   -cppcoreguidelines-avoid-non-const-global-variables,\
   -cppcoreguidelines-macro-usage,\
@@ -31,6 +34,7 @@ Checks: "*,\
   -llvmlibc-restrict-system-libc-headers,\
   -modernize-use-nullptr,\
   -modernize-use-trailing-return-type,\
+  -readability-function-cognitive-complexity,\
   -readability-magic-numbers,\
   -readability-qualified-auto,\
   -readability-use-anyofallof,\

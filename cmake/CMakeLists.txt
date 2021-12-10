@@ -47,6 +47,7 @@ function(add_compile_flags_target target)
         target_compile_options(${target} PRIVATE -fstrict-aliasing)
         target_compile_options(${target} PRIVATE -Wstrict-aliasing=2)
         target_compile_options(${target} PRIVATE -Wno-zero-as-null-pointer-constant)
+        target_compile_options(${target} PRIVATE -Wno-reserved-identifier)
     endif()
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")

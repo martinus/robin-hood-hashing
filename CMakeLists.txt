@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(robin-hood-hashing
-    VERSION 3.10.0
+    VERSION 3.11.4
     LANGUAGES CXX
 )
 
@@ -37,7 +37,7 @@ if (RH_STANDALONE_PROJECT)
     if(CCACHE_PROGRAM)
         SET(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
         #SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "/home/martinus/git/rust-throttler/target/release/throttler run -g compile --")
-        #SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_LINK "/home/martinus/git/rust-throttler/target/release/throttler run -g link --")    
+        #SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_LINK "/home/martinus/git/rust-throttler/target/release/throttler run -g link --")
     endif()
 
     add_executable(rh "")

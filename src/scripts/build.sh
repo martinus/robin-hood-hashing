@@ -27,7 +27,7 @@ function buildAndTest() {
     CXXFLAGS=$4
 
     DIRNAME=${COMPILER}_cxx${CXX_STANDARD}_sanitizer${SANITIZER}_${CXXFLAGS}
-    
+
     mkdir -p ${DIRNAME}
     rm -f ${DIRNAME}/CMakeCache.txt
     cd ${DIRNAME}
