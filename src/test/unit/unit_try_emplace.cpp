@@ -54,18 +54,16 @@ TEST_CASE_TEMPLATE("try_emplace", Map, robin_hood::unordered_flat_map<std::strin
     REQUIRE(ret.first->second == RegularType(1U, "b"));
     REQUIRE(map.size() == 2U);
 
-    ret = map.try_emplace(map.end(), "e", 67U, "f");
-    REQUIRE(ret.second);
-    REQUIRE(ret.first == map.find("e"));
-    REQUIRE(ret.first->second == RegularType(67U, "f"));
+    auto pos = map.try_emplace(map.end(), "e", 67U, "f");
+    REQUIRE(pos == map.find("e"));
+    REQUIRE(pos->second == RegularType(67U, "f"));
     REQUIRE(map.size() == 3U);
 
     key = "e";
     RegularType value2(66U, "ff");
-    ret = map.try_emplace(map.begin(), key, value2);
-    REQUIRE_FALSE(ret.second);
-    REQUIRE(ret.first == map.find("e"));
-    REQUIRE(ret.first->second == RegularType(67U, "f"));
+    pos = map.try_emplace(map.begin(), key, value2);
+    REQUIRE(pos == map.find("e"));
+    REQUIRE(pos->second == RegularType(67U, "f"));
     REQUIRE(map.size() == 3U);
 }
 #endif

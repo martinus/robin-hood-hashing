@@ -1821,7 +1821,8 @@ public:
     }
 
     template <typename... Args>
-    iterator emplace_hint(Args&&... args) {
+    iterator emplace_hint(const_iterator position, Args&&... args) {
+        (void)position;
         return emplace(std::forward<Args>(args)...).first;
     }
 
@@ -1836,16 +1837,16 @@ public:
     }
 
     template <typename... Args>
-    std::pair<iterator, bool> try_emplace(const_iterator hint, const key_type& key,
+    iterator try_emplace(const_iterator hint, const key_type& key,
                                           Args&&... args) {
         (void)hint;
-        return try_emplace_impl(key, std::forward<Args>(args)...);
+        return try_emplace_impl(key, std::forward<Args>(args)...).first;
     }
 
     template <typename... Args>
-    std::pair<iterator, bool> try_emplace(const_iterator hint, key_type&& key, Args&&... args) {
+    iterator try_emplace(const_iterator hint, key_type&& key, Args&&... args) {
         (void)hint;
-        return try_emplace_impl(std::move(key), std::forward<Args>(args)...);
+        return try_emplace_impl(std::move(key), std::forward<Args>(args)...).first;
     }
 
     template <typename Mapped>
@@ -1859,16 +1860,16 @@ public:
     }
 
     template <typename Mapped>
-    std::pair<iterator, bool> insert_or_assign(const_iterator hint, const key_type& key,
+    iterator insert_or_assign(const_iterator hint, const key_type& key,
                                                Mapped&& obj) {
         (void)hint;
-        return insertOrAssignImpl(key, std::forward<Mapped>(obj));
+        return insertOrAssignImpl(key, std::forward<Mapped>(obj)).first;
     }
 
     template <typename Mapped>
-    std::pair<iterator, bool> insert_or_assign(const_iterator hint, key_type&& key, Mapped&& obj) {
+    iterator insert_or_assign(const_iterator hint, key_type&& key, Mapped&& obj) {
         (void)hint;
-        return insertOrAssignImpl(std::move(key), std::forward<Mapped>(obj));
+        return insertOrAssignImpl(std::move(key), std::forward<Mapped>(obj)).first;
     }
 
     std::pair<iterator, bool> insert(const value_type& keyval) {
@@ -1876,18 +1877,18 @@ public:
         return emplace(keyval);
     }
 
-    std::pair<iterator, bool> insert(const_iterator hint, const value_type& keyval) {
+    iterator insert(const_iterator hint, const value_type& keyval) {
         (void)hint;
-        return emplace(keyval);
+        return emplace(keyval).first;
     }
 
     std::pair<iterator, bool> insert(value_type&& keyval) {
         return emplace(std::move(keyval));
     }
 
-    std::pair<iterator, bool> insert(const_iterator hint, value_type&& keyval) {
+    iterator insert(const_iterator hint, value_type&& keyval) {
         (void)hint;
-        return emplace(std::move(keyval));
+        return emplace(std::move(keyval)).first;
     }
 
     // Returns 1 if key is found, 0 otherwise.

@@ -40,15 +40,13 @@ TEST_CASE_TEMPLATE("insert_or_assign", Map,
 
     key = "e";
     value = "f";
-    ret = map.insert_or_assign(map.end(), key, value);
-    REQUIRE(ret.second);
-    REQUIRE(ret.first == map.find("e"));
+    auto pos = map.insert_or_assign(map.end(), key, value);
+    REQUIRE(pos == map.find("e"));
     REQUIRE(map.size() == 3);
     REQUIRE(map["e"] == "f");
 
-    ret = map.insert_or_assign(map.begin(), "e", "ff");
-    REQUIRE_FALSE(ret.second);
-    REQUIRE(ret.first == map.find("e"));
+    pos = map.insert_or_assign(map.begin(), "e", "ff");
+    REQUIRE(pos == map.find("e"));
     REQUIRE(map.size() == 3);
     REQUIRE(map["e"] == "ff");
 }
