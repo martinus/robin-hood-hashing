@@ -2329,8 +2329,9 @@ private:
         ROBIN_HOOD_LOG("std::calloc " << numBytesTotal << " = calcNumBytesTotal("
                                       << numElementsWithBuffer << ")")
         mKeyVals = reinterpret_cast<Node*>(
-            detail::assertNotNull<std::bad_alloc>(std::calloc(1, numBytesTotal)));
+            detail::assertNotNull<std::bad_alloc>(std::malloc(numBytesTotal)));
         mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
+	::memset(mInfo, 0, numBytesTotal - numElementsWithBuffer * sizeof(Node));
 
         // set sentinel
         mInfo[numElementsWithBuffer] = 1;
