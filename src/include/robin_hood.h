@@ -2324,13 +2324,14 @@ private:
 
         auto const numElementsWithBuffer = calcNumElementsWithBuffer(max_elements);
 
-        // calloc also zeroes everything
+        // malloc & zero mInfo. Faster than calloc everything.
         auto const numBytesTotal = calcNumBytesTotal(numElementsWithBuffer);
         ROBIN_HOOD_LOG("std::calloc " << numBytesTotal << " = calcNumBytesTotal("
                                       << numElementsWithBuffer << ")")
         mKeyVals = reinterpret_cast<Node*>(
-            detail::assertNotNull<std::bad_alloc>(std::calloc(1, numBytesTotal)));
+            detail::assertNotNull<std::bad_alloc>(std::malloc(numBytesTotal)));
         mInfo = reinterpret_cast<uint8_t*>(mKeyVals + numElementsWithBuffer);
+        std::memset(mInfo, 0, numBytesTotal - numElementsWithBuffer * sizeof(Node));
 
         // set sentinel
         mInfo[numElementsWithBuffer] = 1;
