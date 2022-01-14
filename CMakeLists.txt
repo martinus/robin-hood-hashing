@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(robin-hood-hashing
-    VERSION 3.11.4
+    VERSION 3.11.5
     LANGUAGES CXX
 )
 
