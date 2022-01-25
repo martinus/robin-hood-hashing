@@ -758,11 +758,24 @@ inline size_t hash_int(uint64_t x) noexcept {
     return static_cast<size_t>(x);
 }
 
+namespace detail {
+
+template <typename T>
+struct void_type {
+    using type = void;
+};
+
+} // namespace detail
+
 // A thin wrapper around std::hash, performing an additional simple mixing step of the result.
 template <typename T, typename Enable = void>
 struct hash : public std::hash<T> {
-    size_t operator()(T const& obj) const
-        noexcept(noexcept(std::declval<std::hash<T>>().operator()(std::declval<T const&>()))) {
+    template <
+        typename U,
+        typename = typename detail::void_type<
+            decltype(std::declval<std::hash<T>>().operator()(std::declval<U const&>()))>::type>
+    size_t operator()(U const& obj) const
+        noexcept(noexcept(std::declval<std::hash<T>>().operator()(std::declval<U const&>()))) {
         // call base hash
         auto result = std::hash<T>::operator()(obj);
         // return mixed of that, to be save against identity has
@@ -849,11 +862,6 @@ ROBIN_HOOD_HASH_INT(unsigned long long);
 #    pragma GCC diagnostic pop
 #endif
 namespace detail {
-
-template <typename T>
-struct void_type {
-    using type = void;
-};
 
 template <typename T, typename = void>
 struct has_is_transparent : public std::false_type {};
