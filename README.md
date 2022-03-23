@@ -1,6 +1,9 @@
 ➵ robin_hood unordered map & set  [![Release](https://img.shields.io/github/release/martinus/robin-hood-hashing.svg)](https://github.com/martinus/robin-hood-hashing/releases) [![GitHub license](https://img.shields.io/github/license/martinus/robin-hood-hashing.svg)](https://raw.githubusercontent.com/martinus/robin-hood-hashing/master/LICENSE)
 ============
 
+------
+> **_NOTE:_**  Unfortunately I do not have time to continue development for this hashmap. I have spent a lot of time developing and improving it, and it works quite well for most use cases. I won't make any updates to this code any more, unless they are PRs for critical bug fixes.
+------
 
 [![Travis CI Build Status](https://travis-ci.com/martinus/robin-hood-hashing.svg?branch=master)](https://travis-ci.com/martinus/robin-hood-hashing)
 [![Appveyor Build Status](https://ci.appveyor.com/api/projects/status/github/martinus/robin-hood-hashing?branch=master&svg=true)](https://ci.appveyor.com/project/martinus/robin-hood-hashing)
