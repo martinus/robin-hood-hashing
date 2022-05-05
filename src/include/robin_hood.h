@@ -2433,8 +2433,8 @@ private:
         }
 
         auto const maxNumElementsAllowed = calcMaxNumElementsAllowed(mMask + 1);
-        if (mNumElements < maxNumElementsAllowed && try_increase_info()) {
-            return true;
+        if (mNumElements < maxNumElementsAllowed) {
+            return try_increase_info();
         }
 
         ROBIN_HOOD_LOG("mNumElements=" << mNumElements << ", maxNumElementsAllowed="
