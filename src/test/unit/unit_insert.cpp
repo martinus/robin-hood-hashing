@@ -1,15 +1,12 @@
-#include <robin_hood.h>
+#include <dense_flat_map.h>
 
 #include <app/doctest.h>
 
-TYPE_TO_STRING(robin_hood::unordered_flat_map<unsigned int, int>);
-TYPE_TO_STRING(robin_hood::unordered_node_map<unsigned int, int>);
+TYPE_TO_STRING(ankerl::dense_flat_map<unsigned int, int>);
 
-TEST_CASE_TEMPLATE("insert", Map, robin_hood::unordered_flat_map<unsigned int, int>,
-                   robin_hood::unordered_node_map<unsigned int, int>) {
-
-    Map map;
-
+TEST_CASE("insert") {
+    using Map = ankerl::dense_flat_map<unsigned int, int>;
+    auto map = Map();
     typename Map::value_type val(123U, 321);
     map.insert(val);
     REQUIRE(map.size() == 1);

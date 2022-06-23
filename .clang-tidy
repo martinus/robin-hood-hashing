@@ -20,6 +20,7 @@ Checks: "*,\
   -fuchsia-default-arguments,\
   -fuchsia-multiple-inheritance,\
   -fuchsia-overloaded-operator,\
+  -fuchsia-trailing-return,\
   -google-explicit-constructor,\
   -google-runtime-int,\
   -hicpp-invalid-access-moved,\
