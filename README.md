@@ -2,7 +2,9 @@
 ============
 
 ------
-> **_NOTE:_**  Unfortunately I do not have time to continue development for this hashmap. I have spent a lot of time developing and improving it, and it works quite well for most use cases. I won't make any updates to this code any more, unless they are PRs for critical bug fixes.
+> **_NOTE:_**  Unfortunately I do not have time to continue development for this hashmap. I have a worthy successor though, please head over to: [`ankerl::unordered_dense::{map, set}`](https://github.com/martinus/unordered_dense)
+
+> I have spent a lot of time developing and improving it `robin_hood`, and it works quite well for most use cases. I won't make any updates to this code any more, unless they are PRs for critical bug fixes.
 ------
 
 [![Travis CI Build Status](https://travis-ci.com/martinus/robin-hood-hashing.svg?branch=master)](https://travis-ci.com/martinus/robin-hood-hashing)
