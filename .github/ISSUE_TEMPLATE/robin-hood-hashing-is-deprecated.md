@@ -7,9 +7,9 @@ assignees: ''
 
 ---
 
-# WARNING: robin-hood-hashing is DEPRECATED.
+WARNING: robin-hood-hashing is DEPRECATED
 
-## I will not add any more features or fix any warnings. Only critical PRs will be merged, if you are willing to write one yourself.
+>>>> I will not add any more features or fix any warnings. Only critical PRs will be merged, if you are willing to write one yourself. <<<
 
 Unfortunately I do not have time to continue development for this hashmap. I have a worthy successor though, please head over to: `ankerl::unordered_dense::{map, set}` https://github.com/martinus/unordered_dense
 
